@@ -1,0 +1,21 @@
+# A NaN in the reverb (what an out-of-table read made on the FM-1: a glitch, then silence until a restart): the
+# render's guard clears it, and the next note sounds (tests/run_tests.sh)
+wait 600
+tap PLAY
+wait 30
+expect arp 0
+key 7 down 100
+wait 300
+expect poison 0
+wait 100
+expect dsp_resets >0
+key 7 up
+wait 50
+key 9 down 100
+wait 50
+peakreset
+wav recover.wav
+wait 500
+wavstop
+expect peak_db_min -30
+key 9 up

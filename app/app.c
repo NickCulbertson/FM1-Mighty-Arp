@@ -96,6 +96,7 @@ static inline float sin_t(float ph)      /* ph in turns, any value: the table, r
     x = ph * (float)SIN_N;
     i = (uint32_t)x;
     f = x - (float)i;
+    i &= SIN_N - 1u;                     /* a phase a hair below 0 wraps to exactly 1.0: index SIN_N is 0 */
     return sin_tab[i] + (sin_tab[i + 1] - sin_tab[i]) * f;
 }
 
@@ -267,6 +268,14 @@ static inline float dly_read(const int16_t *b, float d)
     return ((float)b[i & (DLY_N - 1)] * (1.0f - f) + (float)b[(i + 1) & (DLY_N - 1)] * f) * (1.0f / 16384.0f);
 }
 static inline int16_t to16(float x) { return (int16_t)fm_clampf(x * 16384.0f, -32767.0f, 32767.0f); }
+
+/* a number that is not one (infinite or NaN): in a feedback loop it would sound forever, so the render checks */
+static inline int finite_f(float x)
+{
+    union { float f; uint32_t u; } b;
+    b.f = x;
+    return (b.u & 0x7F800000u) != 0x7F800000u;
+}
 
 /* reverb: four delay lines fed back through a Hadamard matrix, each with a low-pass, after four allpasses that smear
  * the input. SIZE is the feedback (the tail), TONE the low-pass */
@@ -583,9 +592,31 @@ static void events_in(void)
 /* ----------------------------------------------------------------- render --- */
 static float gain_now, dmix_now, rmix_now;
 
+static volatile uint32_t dsp_resets;     /* how often the guard had to clear (the host's tests read it) */
+static void dsp_reset(void)
+{
+    uint32_t i, k;
+    for (i = 0; i < NVOICE; i++) {
+        vc[i].stage = ENV_OFF;
+        vc[i].note = -1;
+    }
+    for (i = 0; i < DLY_N; i++)
+        dly_l[i] = dly_r[i] = 0;
+    for (k = 0; k < 4; k++) {
+        for (i = 0; i < FDN_LEN[k]; i++)
+            FDN_BUF[k][i] = 0.0f;
+        for (i = 0; i < AP_LEN[k]; i++)
+            AP_BUF[k][i] = 0.0f;
+        fdn_lp[k] = 0.0f;
+    }
+    dly_lp_l = dly_lp_r = 0.0f;
+    dsp_resets = dsp_resets + 1u;
+}
+
 void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
 {
     uint32_t i, k;
+    int bad = 0;
     float gain = (float)master_q12 / 4096.0f * 8300000.0f;   /* MASTER, read once a block */
     float beat = 60.0f / (float)set.p[P_TEMPO] * SR;
     float dtarget = fm_minf(beat * DDIV_BEATS[set.p[P_DTIME]], (float)(DLY_N - 4u));
@@ -615,6 +646,10 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
                 l += voice_tick(&vc[k], &vr);
                 r += vr;
             }
+        if (!finite_f(l + r)) {          /* a voice gone bad: never into the delay and the reverb */
+            l = r = 0.0f;
+            bad = 1;
+        }
         /* the delay: ping-pong, a low-pass in its feedback */
         dly_t += (dtarget - dly_t) * 0.00005f;
         dl = dly_read(dly_l, dly_t);
@@ -632,10 +667,16 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         reverb((outl + outr) * 0.25f, rg, damp, &rl, &rr);
         outl += rl * rmix_now;
         outr += rr * rmix_now;
+        if (!finite_f(outl + outr)) {
+            outl = outr = 0.0f;
+            bad = 1;
+        }
         gain_now += (gain - gain_now) * 0.004f;   /* ~5 ms: turning MASTER does not click */
         lr[2 * i] = (int32_t)(fm_tanhf(outl * 0.9f) * gain_now);
         lr[2 * i + 1] = (int32_t)(fm_tanhf(outr * 0.9f) * gain_now);
     }
+    if (bad)                             /* silence, then everything that feeds back starts clean */
+        dsp_reset();
     for (k = 0; k < NHELD; k++)          /* the arp's note-offs, to the block */
         if (out_note[k] >= 0 && (out_left[k] -= (int32_t)n) <= 0) {
             midi_off((uint32_t)out_note[k]);
@@ -1081,6 +1122,13 @@ int app_expect(const char *what, int *got)
         *got = (int)n;
     } else if (!strcmp(what, "dirty"))
         *got = set_dirty;
+    else if (!strcmp(what, "dsp_resets"))    /* the render's guard cleared a bad number */
+        *got = (int)dsp_resets;
+    else if (!strcmp(what, "poison")) {      /* (always 0) a NaN into the reverb, as the out-of-table read made */
+        union { uint32_t u; float f; } nan = {0x7FC00000u};
+        fdn_buf0[0] = fdn_buf1[0] = nan.f;
+        *got = 0;
+    }
     else if (!strncmp(what, "p", 1) && what[1] >= '0' && what[1] <= '9')   /* pN: parameter N's value */
         *got = set.p[atoi(what + 1) % NP];
     else
