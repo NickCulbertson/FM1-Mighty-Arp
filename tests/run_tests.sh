@@ -18,5 +18,5 @@ run() {
     fi
 }
 run host-build sh build.sh --host
-run basic $B/host/template_host app/tests/basic.txt $B/host   # NAME_host: fm1.toml's name in lower case
+run basic $B/host/drift_host app/tests/basic.txt $B/host   # NAME_host: fm1.toml's name in lower case
 exit $FAIL

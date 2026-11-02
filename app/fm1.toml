@@ -1,14 +1,13 @@
-# The template's build settings (tools/build.py)
-name = "TEMPLATE"              # APP_NAME is in app.h; this names the build's files
-id_prefix = "FM-1_11"          # package identity (each firmware its own): dev FM-1_1100, releases FM-1_11XXYYZZ
-usb_manufacturer = "fm1-base"
-usb_product = "TEMPLATE FM-1"
+# DRIFT's build settings (tools/build.py)
+name = "DRIFT"                 # APP_NAME is in app.h; this names the build's files
+id_prefix = "FM-1_11"          # TODO: its own before a release (each firmware its own): dev FM-1_1100, releases FM-1_11XXYYZZ
+usb_manufacturer = "Nick Culbertson"
+usb_product = "DRIFT FM-1"
 o2 = []                        # separate units compiled at -O2 (an app's DSP)
 words = "words.tsv"
-ble = true                     # Bluetooth MIDI (--no-ble builds without it)
-ble_central = true             # and the FM-1 connects to Bluetooth MIDI devices too
+ble = false                    # Bluetooth MIDI: off for now (true adds it, with OBJ_BLE in app.h)
 # the site (tools/make_site.py, tools/publish_site.sh)
-tagline = "a starting point for FM-1 firmware"
-repo = "https://github.com/charlesvestal/fm1-base"
+tagline = "FM keys with a chance arpeggiator, for generative playing"
+repo = ""                      # TODO: this firmware's repository
 licence = "MPL-2.0"
-credits = ""                   # a sentence for the installer's footer: what your firmware is built from
+credits = "Built on fm1-base by Charles Vestal"                   # a sentence for the installer's footer: what your firmware is built from
