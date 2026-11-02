@@ -951,7 +951,8 @@ static void lights(void)
             keys |= 1u << note;
     }
     keys |= ui.keys;
-    plat_lights(btn, keys, 0, dim & ~keys, 1);
+    plat_lights(btn, keys, 0, 0, 1);
+    plat_lights_mid(0, dim & ~keys);         /* the held notes steady at the mid level (the glow is too faint) */
 }
 
 void app_input_only(void) { input(); }
