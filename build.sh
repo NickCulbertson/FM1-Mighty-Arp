@@ -22,6 +22,9 @@ if [ "$(uname -s)" = Darwin ] && [ -f "$FRIBIDI_LIB/libfribidi.0.dylib" ]; then
 fi
 "$PY" -c 'from PIL import features; assert features.check("raqm")' 2>/dev/null ||
     { echo "build.sh: $PY's Pillow has no raqm (its fonts need FriBiDi: see FRIBIDI_LIB)"; exit 1; }
+if ! command -v docker >/dev/null 2>&1 && [ -x /Applications/Docker.app/Contents/Resources/bin/docker ]; then
+    PATH="$PATH:/Applications/Docker.app/Contents/Resources/bin"   # Docker Desktop without its PATH link
+fi
 if ! command -v emcc >/dev/null 2>&1 && [ -f "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" ]; then
     . "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" >/dev/null 2>&1
 fi

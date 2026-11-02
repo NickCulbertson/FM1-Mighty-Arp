@@ -99,13 +99,13 @@ static inline float sin_t(float ph)      /* ph in turns, any value: the table, r
     return sin_tab[i] + (sin_tab[i + 1] - sin_tab[i]) * f;
 }
 
-static uint32_t rng = 0x9E3779B9u;
+static uint32_t drift_rng = 0x9E3779B9u;
 static inline uint32_t rnd(void)         /* xorshift32 */
 {
-    rng ^= rng << 13;
-    rng ^= rng >> 17;
-    rng ^= rng << 5;
-    return rng;
+    drift_rng ^= drift_rng << 13;
+    drift_rng ^= drift_rng >> 17;
+    drift_rng ^= drift_rng << 5;
+    return drift_rng;
 }
 static inline uint32_t rnd_n(uint32_t n) { return (uint32_t)(((uint64_t)rnd() * n) >> 32); }
 
@@ -702,7 +702,7 @@ void app_init(void)
     if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) != (int)sizeof set || !settings_ok())
         settings_defaults();
 #ifndef PLAT_HOST
-    rng ^= plat_ticks24() | 1u;          /* a different piece every power-on (the host's tests repeat) */
+    drift_rng ^= plat_ticks24() | 1u;          /* a different piece every power-on (the host's tests repeat) */
 #endif
 }
 
