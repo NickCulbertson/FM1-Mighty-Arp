@@ -6,6 +6,7 @@
 #   PYTHON           a Python with Pillow (and libraqm, for the fonts)
 #   FRIBIDI_LIB      macOS: a folder with libfribidi.0.dylib for Pillow's raqm, when the system's is the wrong
 #                    architecture (default: ~/.local/fribidi-arm64/lib, if it is there)
+#   EMSDK            Emscripten for --web, when emcc is not on the PATH (default: ~/emsdk, if it is there)
 set -e
 cd "$(dirname "$0")"
 export JIELI_TOOLCHAIN="${JIELI_TOOLCHAIN:-$HOME/.jieli/toolchain}"
@@ -21,4 +22,7 @@ if [ "$(uname -s)" = Darwin ] && [ -f "$FRIBIDI_LIB/libfribidi.0.dylib" ]; then
 fi
 "$PY" -c 'from PIL import features; assert features.check("raqm")' 2>/dev/null ||
     { echo "build.sh: $PY's Pillow has no raqm (its fonts need FriBiDi: see FRIBIDI_LIB)"; exit 1; }
+if ! command -v emcc >/dev/null 2>&1 && [ -f "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" ]; then
+    . "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" >/dev/null 2>&1
+fi
 exec "$PY" base/tools/build.py app "$@"
