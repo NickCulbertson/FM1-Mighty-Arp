@@ -2,8 +2,12 @@
 wait 600
 shot boot.png
 expect arp 1
-expect hold 1
+expect hold 0
 expect preset 0
+# HOLD on for the arp checks below (REC)
+tap REC
+wait 30
+expect hold 1
 # the arp at full chance: a held chord plays on every step (90 BPM 1/8: 3 steps in a second)
 turn ALGO 40
 wait 50

@@ -10,7 +10,7 @@ playing: you choose the notes, the arp chooses when. Built on [fm1-base](https:/
 | --- | --- |
 | Keys | Notes into the arp (or played straight, with the arp off). With HOLD, a new chord after you let go replaces the last |
 | PLAY | Arp on / off |
-| REC | HOLD on / off |
+| REC | HOLD on / off (off by default: a key let go stops) |
 | PRESETS | The sound: E.PIANO, BELLS, GLASS, KALIMBA, MARIMBA, PAD, MUSIC BOX, HARP (loads its envelope) |
 | SELECT / ALGORITHM | Tempo / chance, on every page |
 | SEL, ENV, ARP, FX, GLO | The page K1-K4 edit (below) |

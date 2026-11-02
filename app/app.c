@@ -675,7 +675,7 @@ static void settings_defaults(void)
     preset_load(0);
     set.octave = 0;
     set.arp_on = 1;
-    set.hold = 1;
+    set.hold = 0;                        /* off: a key let go stops (REC latches the chord) */
 }
 
 static int settings_ok(void)
@@ -1007,17 +1007,19 @@ static void draw(void)
         cv_rect(x - s, y - s, 2 * s + 1, 2 * s + 1, age < 25u ? C_WHITE : age < 120u ? C_HI : C_DIM);
     }
     cv_blit(0, 142);
-    /* the state line: the arp, HOLD, tempo and chance (the left encoders) */
+    /* the state line: the arp and HOLD under the buttons that switch them, then tempo and chance (SELECT, ALGO) */
     cv_begin(240, 24, C_BLACK);
-    cv_text(10, 4, &FONT_XS, set.arp_on ? "ARP" : "KEYS", set.arp_on ? C_HI : C_GRAY);
-    cv_text(44, 4, &FONT_XS, "HOLD", set.hold ? C_HI : C_DIM);
+    cv_text(10, 0, &FONT_T, "PLAY", C_DIM);
+    cv_text(10, 10, &FONT_XS, set.arp_on ? "ARP" : "KEYS", set.arp_on ? C_HI : C_GRAY);
+    cv_text(48, 0, &FONT_T, "REC", C_DIM);
+    cv_text(48, 10, &FONT_XS, set.hold ? "HOLD" : "NO HOLD", set.hold ? C_HI : C_GRAY);
+    cv_text(110, 0, &FONT_T, "SELECT", C_DIM);
     param_text(P_TEMPO, t);
-    cv_text(84, 4, &FONT_XS, t, ui.tempo_at && now - ui.tempo_at < 400u ? C_WHITE : C_AMB);
-    t[0] = 0;
-    text_cat(t, "CHANCE ");
-    int_text(set.p[P_CHANCE], t + 7);
+    cv_text(110, 10, &FONT_XS, t, ui.tempo_at && now - ui.tempo_at < 400u ? C_WHITE : C_AMB);
+    cv_text(172, 0, &FONT_T, "ALGO  CHANCE", C_DIM);
+    int_text(set.p[P_CHANCE], t);
     text_cat(t, "%");
-    cv_text(148, 4, &FONT_XS, t, ui.chance_at && now - ui.chance_at < 400u ? C_WHITE : C_AMB);
+    cv_text(172, 10, &FONT_XS, t, ui.chance_at && now - ui.chance_at < 400u ? C_WHITE : C_AMB);
     cv_blit(0, 216);
 }
 
