@@ -28,7 +28,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | ARP | Rate (1/1 .. 1/32, dotted and triplet) | Octaves | Mode (up, down, up-down, as played, converge, diverge, thumb, pinky, chord, random, walk) | Gate |
 | SEQ | Ratchet chance | Octave-jump chance | Velocity random | Swing |
 | FX: delay | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Mix | Chorus |
-| FX again: reverb | Mix | Length (0.5-100 s) | Dark | Shimmer |
+| FX again: reverb | Mix | Length (0.5-15 s) | Dark | Shimmer |
 | GLO | Sync (int / ext MIDI clock) | Clock out | MIDI channel | Velocity curve |
 
 Every note the arp plays also goes out over USB MIDI; MIDI notes in feed the arp like the keys. The mod wheel adds

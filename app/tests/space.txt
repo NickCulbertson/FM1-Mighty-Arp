@@ -30,12 +30,12 @@ wait 2000
 key 7 up
 key 11 up
 key 14 up
-wait 20000
+wait 8000
 expect dsp_resets 0
 peakreset
 wav space_tail.wav
 wait 5000
 wavstop
 expect peak_db_max <-1
-expect peak_db_min -60
+expect peak_db_min -80
 expect dsp_resets 0

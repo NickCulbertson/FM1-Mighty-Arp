@@ -267,7 +267,7 @@ static inline uint32_t rnd_n(uint32_t n) { return ((rnd() >> 16) * n) >> 16; }
 /* a 0..100 time knob: 1 ms .. 10 s, exponential */
 static float knob_secs(int32_t v) { return 0.001f * fm_exp2f((float)v * 0.1328771f); }   /* 10000 ^ (v / 100) */
 static float lfo_hz(int32_t v) { return 0.05f * fm_exp2f((float)v * 0.0864386f); }        /* 0.05 .. 20 Hz */
-static float rev_secs(int32_t v) { return 0.5f * fm_exp2f((float)v * 0.0764386f); }      /* 0.5 .. 100 s */
+static float rev_secs(int32_t v) { return 0.5f * fm_exp2f((float)v * 0.0490689f); }      /* 0.5 .. 15 s */
 
 /* ---------------------------------------------------------- notes and arp --- */
 /* the keys' events, main loop -> render (one writer, one reader) */
@@ -763,7 +763,9 @@ static void events_in(void)
 
 /* ----------------------------------------------------------------- render --- */
 static float buf_l[ENG_BLOCK], buf_r[ENG_BLOCK];
-static volatile uint32_t dsp_resets;     /* how often the guard had to clear (the host's tests read it) */
+static volatile uint32_t dsp_resets;     /* how often the guard had to clear (GLOBAL shows it; the tests read it) */
+static volatile uint32_t sheds;          /* how often the render ran late and a voice went (GLOBAL shows it) */
+static uint32_t cap_back_at;             /* the sample clock at which a voice shed comes back */
 
 static void engine_params(uint32_t n)    /* the knobs, as the engine takes them */
 {
@@ -837,6 +839,11 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     eng_voices(buf_l, buf_r, seg, n);
     if (eng_out(buf_l, buf_r, lr, n, gain))   /* a bad number: silence, then everything starts clean */
         dsp_resets = dsp_resets + 1u;
+    if (eng_cap(0) < ENG_NVOICE && sample_clock - cap_back_at < 0x80000000u) {   /* 2 s without running late: a
+                                                                                  * voice back */
+        eng_cap(1);
+        cap_back_at = sample_clock + (uint32_t)(2.0f * SR);
+    }
     for (k = 0; k < NHELD; k++)          /* the arp's note-offs, to the block */
         if (out_note[k] >= 0 && (out_left[k] -= (int32_t)n) <= 0) {
             midi_off((uint32_t)out_note[k]);
@@ -851,7 +858,13 @@ void app_panic(void)
     nheld = 0;
 }
 
-void app_overload(void) { eng_shed(); }  /* the render ran late (APP_OVERLOAD) */
+void app_overload(void)                  /* the render ran late (APP_OVERLOAD): a voice out, back after 2 s */
+{
+    eng_shed();
+    sheds = sheds + 1u;
+    cap_back_at = sample_clock + (uint32_t)(2.0f * SR);
+}
+
 
 /* --------------------------------------------------------------- settings --- */
 static void preset_load(uint32_t p)      /* a sound: its envelope, LFO and EDIT pages, and SOUND's two at the middle */
@@ -912,9 +925,9 @@ void app_init(void)
 }
 
 /* --------------------------------------------------------------------- UI --- */
-/* the colours: synthwave. A deep violet ground, cyan labels, hot pink values and new notes, electric purple for
- * the rest */
-#define C_BG RGB(16, 10, 32)
+/* the colours: synthwave. A black ground (the FM-1's screen reads best on it), cyan labels, hot pink values and new
+ * notes, electric purple for the rest */
+#define C_BG C_BLACK
 #define C_GHOST RGB(84, 62, 136)
 static void theme(void)
 {
@@ -1070,6 +1083,29 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
     return (set.p[p] - PAR[p].lo) * w / (PAR[p].hi - PAR[p].lo);
 }
 
+/* the load, for GLOBAL: now and the most since the page was opened, and the two counts */
+static uint32_t cpu_peak;
+static void load_text(char *t)
+{
+    uint32_t c = plat_cpu_pct();
+    char v[12];
+    if (c > cpu_peak)
+        cpu_peak = c;
+    t[0] = 0;
+    text_cat(t, "CPU ");
+    int_text((int32_t)c, v);
+    text_cat(t, v);
+    text_cat(t, "% PEAK ");
+    int_text((int32_t)cpu_peak, v);
+    text_cat(t, v);
+    text_cat(t, "% DROPS ");
+    int_text((int32_t)sheds, v);
+    text_cat(t, v);
+    text_cat(t, " RESETS ");
+    int_text((int32_t)dsp_resets, v);
+    text_cat(t, v);
+}
+
 void app_say(const char *a, const char *b)
 {
     uint32_t i;
@@ -1096,7 +1132,7 @@ void app_say(const char *a, const char *b)
 /* a screen reader that has just started listening (or asks) hears the whole screen */
 static void speak(void)
 {
-    char t[192], v[16];
+    char t[240], v[16];
     uint32_t i;
     if (ann_on() && ann_where()) {
         t[0] = 0;
@@ -1112,6 +1148,12 @@ static void speak(void)
             text_cat(t, " ");
             param_text(PAGE[ui.page].p[i], v);
             text_cat(t, v);
+        }
+        if (ui.page == PG_GLOBAL) {
+            char l[48];
+            load_text(l);
+            text_cat(t, ". ");
+            text_cat(t, l);
         }
         ann_say(t, 0, ANN_NOW);
     }
@@ -1164,6 +1206,7 @@ static void octave_step(int32_t d)
 static void page_go(uint32_t pg)
 {
     ui.page = pg;
+    cpu_peak = 0;
     ui.turned_at[0] = ui.turned_at[1] = ui.turned_at[2] = ui.turned_at[3] = 0;
     ui.redraw = 1;
     app_say(PAGE[pg].name, "");
@@ -1422,7 +1465,7 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
 
 static void draw(void)
 {
-    char t[24];
+    char t[48];
     uint32_t i, now = plat_ms();
     const page_t *pg = &PAGE[ui.page];
     header(now);
@@ -1469,6 +1512,10 @@ static void draw(void)
         cv_begin(240, 70, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
         notes_view(70, 400u, 0);
+        if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */
+            load_text(t);
+            cv_text(10, 4, &FONT_XS, t, C_DIM);
+        }
         cv_blit(0, 142);
     }
     state_line(now);
@@ -1495,7 +1542,8 @@ void app_frame(void)
         ui.msg_until = 0;
         ui.redraw = 1;
     }
-    if (viz_w != last_viz || (viz_w && now - last_frame >= 50u))   /* the notes move: ~20 frames a second */
+    if (viz_w != last_viz || ((viz_w || ui.page == PG_GLOBAL) && now - last_frame >= 50u))   /* the notes move (and
+                                                                                                * GLOBAL's load) */
         ui.redraw = 1;
     if (ui.redraw) {
         ui.redraw = 0;
@@ -1534,6 +1582,14 @@ int app_expect(const char *what, int *got)
         *got = (int)eng_active();
     else if (!strcmp(what, "dirty"))
         *got = set_dirty;
+    else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */
+        *got = (int)sheds;
+    else if (!strcmp(what, "cap"))           /* the voices new notes may take */
+        *got = (int)eng_cap(0);
+    else if (!strcmp(what, "overload")) {    /* (always 0) the render ran late, as the device's audio interrupt tells */
+        app_overload();
+        *got = 0;
+    }
     else if (!strcmp(what, "dsp_resets"))    /* the render's guard cleared a bad number */
         *got = (int)dsp_resets;
     else if (!strcmp(what, "last_note"))     /* the arp's last note played */

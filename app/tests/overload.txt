@@ -1,0 +1,38 @@
+# The render running late (the device's audio interrupt calls app_overload): one voice goes each time, never all of
+# them, and they come back after 2 s without (tests/run_tests.sh)
+wait 600
+tap PLAY
+wait 30
+expect arp 0
+key 0 down 100
+key 2 down 100
+key 4 down 100
+key 5 down 100
+key 7 down 100
+key 9 down 100
+key 11 down 100
+key 12 down 100
+wait 100
+expect voices 8
+expect overload 0
+expect overload 0
+expect overload 0
+wait 300
+expect sheds 3
+expect voices 5
+expect cap 5
+expect overload 0
+expect overload 0
+expect overload 0
+expect overload 0
+wait 300
+expect voices 4
+expect cap >3
+peakreset
+wait 300
+expect peak_db_min -40
+wait 7000
+expect cap >6
+tap GLO
+wait 300
+shot global_load.png

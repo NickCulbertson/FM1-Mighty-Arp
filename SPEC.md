@@ -37,7 +37,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB, PINKY, CHORD, RANDOM, WALK) | GATE |
 | SEQ | RATCHET (chance) | OCT JUMP (chance) | VEL RAND | SWING |
 | DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | CHORUS |
-| REVERB | MIX | LENGTH (0.5 s .. 100 s) | DARK | SHIMMER |
+| REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | GLOBAL | SYNC (INT / EXT) | CLOCK OUT (OFF / ON) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) |
 
 A sound sets the SOUND, ENVELOPE, LFO and EDIT pages. ARP, SEQ, effects and GLOBAL stay as they are, so changing
@@ -71,11 +71,11 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 - Delay: ping-pong, int16 at half the rate, up to 1.49 s; a time longer than that at a slow tempo is halved (still in
   time).
 - Reverb: the same 4-line feedback network, lines about 3x longer, stored 16-bit, slowly modulated; LENGTH as a
-  decay time up to 100 s. SHIMMER: an octave-up pitch shifter in the reverb's feedback.
+  decay time up to 15 s. SHIMMER: an octave-up pitch shifter in the reverb's feedback.
 
 ## Screen
 
-- Synthwave colours: a deep violet ground, cyan labels, hot pink values, knobs and new notes, electric purple for
+- Synthwave colours: a black ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as smooth arcs. The name: MIGHTY in the labels' cyan, ARP in pink.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.

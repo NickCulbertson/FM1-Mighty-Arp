@@ -10,15 +10,15 @@
 /* ------------------------------------------------------------------ tables --- */
 #define SIN_N 2048u
 static float sin_tab[SIN_N + 1];
-static inline float sin_t(float ph)      /* ph in turns, any value: the table, read between its points */
+/* ph in turns, -64 .. 64 (a phase plus its modulation: far inside that): the table, read between its points. The
+ * offset makes it positive, so a truncation is its floor (no floorf: this runs four times a voice a sample) */
+#define PH_OFS 64.0f
+static inline float sin_t(float ph)
 {
-    float x, f;
-    uint32_t i;
-    ph -= fm_floorf(ph);
-    x = ph * (float)SIN_N;
-    i = (uint32_t)x;
+    float x = (ph + PH_OFS) * (float)SIN_N, f;
+    uint32_t i = (uint32_t)x;
     f = x - (float)i;
-    i &= SIN_N - 1u;                     /* a phase a hair below 0 wraps to exactly 1.0: index SIN_N is 0 */
+    i &= SIN_N - 1u;
     return sin_tab[i] + (sin_tab[i + 1] - sin_tab[i]) * f;
 }
 
@@ -40,7 +40,8 @@ static inline float wave(float ph, uint32_t w)
         s = sin_t(ph);
         return s > 0.0f ? s * s : 0.0f;
     default:
-        f = ph - fm_floorf(ph);
+        f = ph + PH_OFS;
+        f -= (float)(uint32_t)f;
         if (f >= 0.5f)
             return 0.0f;
         s = sin_t(2.0f * f);
@@ -90,7 +91,7 @@ static const float DSIGN[4] = {-1.0f, 0.5f, 1.0f, -0.5f};   /* DETUNE: each oper
 typedef struct {
     int32_t note, gate;                  /* gate: samples before the arp releases it; -1 a key holds it */
     uint32_t age;
-    uint8_t on, rel, wv[4], att[4];      /* att[k]: operator k still rising */
+    uint8_t on, rel, shed, wv[4], att[4];   /* att[k]: operator k still rising; shed: fading out for the CPU */
     float env[4], pk[4], ai[4], tgt[4], kk[4], sus[4], dk[4], rk[4];
     float lvl[4], cl[4], cr[4], ic[4];   /* ic: 1 a carrier (its envelope ends the voice) */
     float mw[6];                         /* the modulation: 2>1 3>1 4>1 3>2 4>2 4>3 */
@@ -101,7 +102,7 @@ typedef struct {
     uint32_t drift_n;
 } voice_t;
 static voice_t vc[ENG_NVOICE];
-static uint32_t vc_age;
+static uint32_t vc_age, vc_cap = ENG_NVOICE;   /* the voices a new note may take: fewer after an overload */
 
 static const eng_sound_t *snd;
 static eng_params_t prm;
@@ -155,20 +156,23 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         for (i = 0; i < ENG_NVOICE; i++)   /* the same note again: that voice, so it never stacks */
             if (vc[i].on && vc[i].note == note)
                 v = &vc[i];
-        if (!v)
-            for (i = 0; i < ENG_NVOICE; i++)   /* else a free one, else the oldest releasing, else the oldest */
+        if (!v && eng_active() < vc_cap)
+            for (i = 0; i < ENG_NVOICE; i++)   /* else a free one (under the cap), else the oldest releasing, else
+                                                * the oldest */
                 if (!vc[i].on) {
                     v = &vc[i];
                     break;
                 }
         if (!v)
             for (i = 0; i < ENG_NVOICE; i++)
-                if (vc[i].rel && vc[i].age < oldest)
+                if (vc[i].on && vc[i].rel && vc[i].age < oldest)
                     oldest = vc[i].age, v = &vc[i];
         if (!v)
             for (i = 0, oldest = 0xFFFFFFFFu; i < ENG_NVOICE; i++)
-                if (vc[i].age < oldest)
+                if (vc[i].on && vc[i].age < oldest)
                     oldest = vc[i].age, v = &vc[i];
+        if (!v)
+            v = &vc[0];
     }
     car = CAR[prm.alg & 7u];
     velf = (float)vel / 127.0f;
@@ -242,6 +246,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
     v->on = 1;
     v->rel = 0;
+    v->shed = 0;
     voice_pitch(v);
 }
 
@@ -277,21 +282,35 @@ int32_t eng_sounding(int32_t note)
     return 0;
 }
 
-void eng_shed(void)                      /* the two oldest out, quickly */
+/* the render ran late: one voice out, quickly (the oldest releasing, else the oldest), and one voice fewer for new
+ * notes until eng_cap gives it back. Never all at once */
+void eng_shed(void)
 {
-    uint32_t n, i;
-    for (n = 0; n < 2u; n++) {
-        voice_t *v = 0;
-        uint32_t oldest = 0xFFFFFFFFu;
-        for (i = 0; i < ENG_NVOICE; i++)
-            if (vc[i].on && vc[i].age < oldest && !(vc[i].rel && vc[i].rk[0] < 0.999f))
-                oldest = vc[i].age, v = &vc[i];
-        if (!v)
-            return;
-        voice_release(v);
-        for (i = 0; i < 4u; i++)
-            v->kk[i] = v->rk[i] = 0.995f;
-    }
+    voice_t *v = 0;
+    uint32_t i, k, oldest = 0xFFFFFFFFu, n = 0;
+    for (i = 0; i < ENG_NVOICE; i++)     /* the voices sounding, but those already going */
+        n += vc[i].on && !vc[i].shed;
+    for (i = 0; i < ENG_NVOICE; i++)
+        if (vc[i].on && !vc[i].shed && vc[i].rel && vc[i].age < oldest)
+            oldest = vc[i].age, v = &vc[i];
+    for (i = 0; !v && i < ENG_NVOICE; i++)
+        if (vc[i].on && !vc[i].shed && vc[i].age < oldest)
+            oldest = vc[i].age, v = &vc[i];
+    if (n > 4u && n - 1u < vc_cap)
+        vc_cap = n - 1u;
+    if (!v || n <= 4u)                   /* four always sound */
+        return;
+    voice_release(v);
+    v->shed = 1;
+    for (k = 0; k < 4u; k++)
+        v->kk[k] = v->rk[k] = 0.9985f;   /* ~0.1 s */
+}
+
+uint32_t eng_cap(int up)                 /* one more voice back (up), or just ask: the cap */
+{
+    if (up && vc_cap < ENG_NVOICE)
+        vc_cap++;
+    return vc_cap;
 }
 
 /* one operator's envelope, a sample: rising, then falling to its target (the sustain, or 0 once released) */
@@ -356,7 +375,7 @@ static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
             kk2 = v->rk[2];
             kk3 = v->rk[3];
         }
-        if (rel && e0 * ic0 + e1 * ic1 + e2 * ic2 + e3 * ic3 < 0.0003f) {
+        if (rel && e0 * ic0 + e1 * ic1 + e2 * ic2 + e3 * ic3 < 0.001f) {   /* -60 dB: done */
             v->on = 0;
             v->note = -1;
             break;

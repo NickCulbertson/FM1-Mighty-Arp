@@ -61,7 +61,8 @@ void eng_voices(float *l, float *r, uint32_t a, uint32_t b);  /* the voices, add
 int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain);
 uint32_t eng_active(void);               /* voices sounding */
 int32_t eng_sounding(int32_t note);      /* a voice plays it (not releasing) */
-void eng_shed(void);                     /* the render ran late: the oldest voices out */
+void eng_shed(void);                     /* the render ran late: a voice out, and one fewer for new notes */
+uint32_t eng_cap(int up);                /* the voices new notes may take; up: one more back */
 void eng_reset(void);                    /* silence, and every buffer clean */
 void eng_silence(void);                  /* the voices off at once (the buffers as they are) */
 void eng_poison(void);                   /* (the host's test) a NaN into the reverb */
