@@ -49,9 +49,11 @@ typedef struct {
     float dly_samples, dly_fb, dly_mix, dly_width;   /* width: 0 the echoes in the middle .. 1 full ping-pong */
     float rev_mix, rev_secs, rev_dark, shimmer;
     /* the filter: a low-pass a voice, after its carriers. cut: log2 Hz; res 0 .. 1; env: octaves a note opens it
-     * (the amp's attack, then fdec seconds closing); lfo_cut: octaves the LFO moves it. Off (no cost) when open */
+     * (its own ADSR, fatt..frel); lfo_cut: octaves the LFO moves it. Off (no cost) when open */
     uint8_t filter;
-    float cut, res, env, fdec, lfo_cut;
+    float cut, res, env, lfo_cut;
+    float fatt, fdec, fsus, frel;        /* its envelope: seconds, a level, seconds */
+    float keytrack;                      /* octaves of cutoff an octave of the key */
     float pwm;                           /* how far the LFO moves the square's and pulses' width (0 .. 1) */
 } eng_params_t;
 

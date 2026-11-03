@@ -31,6 +31,8 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_VOICES, P_GLIDE,                             /* VOICE (SEL again) */
        P_CUTOFF, P_RES, P_FENV, P_FDEC,               /* FILTER (ENV again) */
        P_PWM, P_LFOCUT,                               /* LFO 2 (LFO again) */
+       P_FATT, P_FSUS, P_FREL, P_KEYTRK,              /* FILTER ENVELOPE (ENV a third time; its DECAY is P_FDEC),
+                                                       * FILTER's KEY TRACK */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
@@ -38,9 +40,10 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 13u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE */
 static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI"};
-#define NP5 (NP - 10u)                    /* the parameters a save had before CHORUS's rate and depth */
-#define NP6 (NP - 8u)                    /* and before VOICES and GLIDE */
-#define NP7 (NP - 6u)                    /* and before the filter and PWM */
+#define NP5 (NP - 14u)                   /* the parameters a save had before CHORUS's rate and depth */
+#define NP6 (NP - 12u)                   /* and before VOICES and GLIDE */
+#define NP7 (NP - 10u)                   /* and before the filter and PWM */
+#define NP8 (NP - 4u)                    /* and before the filter's own envelope */
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
        U_SECS, U_VOICES, U_GLIDE, U_CUT,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
@@ -75,13 +78,15 @@ static const param_t PAR[NP] = {
     {"RATE", "chorus_rate", 0, 100, 44, U_CHZ},  {"DEPTH", "chorus_depth", 0, 100, 65, U_PCT},
     {"VOICES", "voice_mode", 0, 2, 0, U_VOICES},     {"GLIDE", "glide", 0, 100, 0, U_GLIDE},
     {"CUTOFF", "cutoff", 0, 100, 100, U_CUT},    {"RESONANCE", "res", 0, 100, 0, U_PCT},
-    {"ENV AMOUNT", "fenv", 0, 100, 0, U_PCT},    {"ENV DECAY", "fdec", 0, 100, 60, U_TIME},
+    {"ENV AMOUNT", "fenv", 0, 100, 0, U_PCT},    {"DECAY", "fdec", 0, 100, 60, U_TIME},
     {"PWM", "pwm", 0, 100, 0, U_PCT},            {"FILTER", "lfo_cut", 0, 100, 0, U_PCT},
+    {"ATTACK", "fatt", 0, 100, 0, U_TIME},       {"SUSTAIN", "fsus", 0, 100, 0, U_PCT},
+    {"RELEASE", "frel", 0, 100, 60, U_TIME},     {"KEY TRACK", "keytrack", 0, 100, 50, U_PCT},
 };
 
 /* the pages: each button's four knobs */
 enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, PG_CHORUS,
-       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
+       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
                                                              * again: VOICE */
 typedef struct {
     const char *name;
@@ -90,7 +95,7 @@ typedef struct {
 static const page_t PAGE[NPAGE] = {
     {"HOME", B_HOME, {P_CHANCE, P_RATE, PX_SPACE, P_VIB}},
     {"SOUND", B_SEL, {P_TONE, P_STRIKE, P_DETUNE, P_VELO}},
-    {"ENVELOPE", B_ENV, {P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE}},
+    {"AMP ENVELOPE", B_ENV, {P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE}},
     {"LFO", B_LFO, {P_LRATE, P_LSHAPE, P_VIB, P_TREM}},
     {"EDIT", B_EDIT, {P_ALGO, P_RATIO, P_FDBK, P_WAVE}},
     {"ARP", B_ARP, {P_RATE, P_OCTAVES, P_MODE, P_GATE}},
@@ -105,8 +110,9 @@ static const page_t PAGE[NPAGE] = {
     {"OP 4", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"VOICE", B_SEL, {P_VOICES, P_GLIDE, PX_NONE, PX_NONE}},
     {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, PX_NONE}},
-    {"FILTER", B_ENV, {P_CUTOFF, P_RES, P_FENV, P_FDEC}},
+    {"FILTER", B_ENV, {P_CUTOFF, P_RES, P_FENV, P_KEYTRK}},
     {"LFO 2", B_LFO, {P_PWM, P_LFOCUT, PX_NONE, PX_NONE}},
+    {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
 };
 #define IS_OP_PAGE(pg) ((pg) >= PG_OP1 && (pg) <= PG_OP4)
 enum { V_POLY, V_MONO, V_LEGATO };       /* VOICES: MONO starts each note afresh, LEGATO only glides to it */
@@ -352,7 +358,8 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3852414Du            /* "MAR8": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x3952414Du            /* "MAR9": the settings record; another magic loads defaults */
+#define SET_MAGIC_8 0x3852414Du          /* "MAR8": before the filter's own envelope (settings8_t) */
 #define SET_MAGIC_7 0x3752414Du          /* "MAR7": before the filter and PWM (settings7_t) */
 #define SET_MAGIC_6 0x3652414Du          /* "MAR6": before VOICES and GLIDE (settings6_t) */
 #define SET_MAGIC_5 0x3552414Du          /* "MAR5": before CHORUS's rate and depth and the operators (settings5_t) */
@@ -370,6 +377,14 @@ typedef struct {
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
 } settings_t;
+typedef struct {                         /* MAR8 */
+    uint32_t magic;
+    int16_t p[NP8];
+    uint8_t preset;
+    int8_t octave;
+    uint8_t arp_on, hold;
+    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
+} settings8_t;
 typedef struct {                         /* MAR7 */
     uint32_t magic;
     int16_t p[NP7];
@@ -401,11 +416,14 @@ static uint8_t set_dirty;                /* changed since the last save: SAVE is
  * on SOUNDS writes one there. A sound number past the factory's (set.preset >= NPRESET) is user slot n - NPRESET */
 static const uint8_t SOUND_P[] = {P_TONE, P_STRIKE, P_DETUNE, P_VELO, P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE,
                                   P_LRATE, P_LSHAPE, P_VIB, P_TREM, P_ALGO, P_RATIO, P_FDBK, P_WAVE, P_VOICES,
-                                  P_GLIDE, P_CUTOFF, P_RES, P_FENV, P_FDEC, P_PWM, P_LFOCUT};
+                                  P_GLIDE, P_CUTOFF, P_RES, P_FENV, P_FDEC, P_PWM, P_LFOCUT, P_FATT, P_FSUS,
+                                  P_FREL, P_KEYTRK};
 #define NSOUNDP1 18u                     /* those a MAU1 bank kept (before the filter and PWM) */
+#define NSOUNDP2 24u                     /* a MAU2 bank (before the filter's own envelope) */
 #define NSOUNDP (sizeof SOUND_P)
 #define NUSER 16u
-#define USER_MAGIC 0x3255414Du           /* "MAU2" */
+#define USER_MAGIC 0x3355414Du           /* "MAU3" */
+#define USER_MAGIC_2 0x3255414Du         /* "MAU2": before the filter's own envelope */
 #define USER_MAGIC_1 0x3155414Du         /* "MAU1": before the filter and PWM (user1_t) */
 typedef struct {
     uint8_t used, base;
@@ -416,11 +434,7 @@ static struct {
     uint32_t magic;
     user_t u[NUSER];
 } users;
-typedef struct {
-    uint8_t used, base;
-    int16_t p[NSOUNDP1];
-    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
-} user1_t;
+
 
 static uint32_t drift_rng = 0x9E3779B9u;
 static inline uint32_t rnd(void)         /* xorshift32 */
@@ -1116,7 +1130,11 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
     ep.cut = 4.9069f + (float)set.p[P_CUTOFF] * 0.0923f;                 /* log2 Hz */
     ep.res = (float)set.p[P_RES] / 100.0f * 0.95f;
     ep.env = (float)set.p[P_FENV] / 100.0f * 8.0f;                       /* up to 8 octaves */
+    ep.fatt = knob_secs(set.p[P_FATT]) * (set.p[P_FATT] > 0);
     ep.fdec = knob_secs(set.p[P_FDEC]);
+    ep.fsus = (float)set.p[P_FSUS] / 100.0f;
+    ep.frel = knob_secs(set.p[P_FREL]);
+    ep.keytrack = (float)set.p[P_KEYTRK] / 100.0f;
     ep.lfo_cut = (float)set.p[P_LFOCUT] / 100.0f * 3.0f;                 /* up to 3 octaves */
     ep.pwm = (float)set.p[P_PWM] / 100.0f;
     eng_set(&snd, &ep, n);
@@ -1208,6 +1226,16 @@ static void ops_load(const preset_t *pr) /* OP 1-4 as the sound has them */
     }
 }
 
+/* the filter's own envelope as it was before it had one: the amp's attack, no sustain, a release as long as its decay,
+ * half the key (the sounds, and the saves from before, so: they sound as they did) */
+static void fenv_fill(int16_t *p)
+{
+    p[P_FATT] = p[P_ATTACK];
+    p[P_FSUS] = 0;
+    p[P_FREL] = p[P_FDEC];
+    p[P_KEYTRK] = 50;
+}
+
 static void filter_load(const preset_t *pr)   /* FILTER as the sound has it (open, unless it says), LFO 2 still */
 {
     set.p[P_CUTOFF] = pr->f_on ? pr->fcut : 100;
@@ -1216,6 +1244,7 @@ static void filter_load(const preset_t *pr)   /* FILTER as the sound has it (ope
     set.p[P_FDEC] = pr->f_on ? pr->fdec : PAR[P_FDEC].def;
     set.p[P_PWM] = 0;
     set.p[P_LFOCUT] = 0;
+    fenv_fill(set.p);
 }
 
 static void voice_load(const preset_t *pr)   /* VOICE as the sound has it (a mono sound glides legato); and FILTER */
@@ -1345,36 +1374,46 @@ void app_init(void)
     for (i = 0; i < NHELD; i++)
         out_note[i] = -1;
     {                                    /* the user sounds (before the settings: they may name one) */
-        static union {
-            struct {
-                uint32_t magic;
-                user1_t u[NUSER];
-            } o;
-        } ub;
-        int got = plat_store_load(OBJ_USER, &users, sizeof users);
-        if (got != (int)sizeof users || users.magic != USER_MAGIC) {
-            uint32_t k, j;
-            int old = plat_store_load(OBJ_USER, &ub, sizeof ub) == (int)sizeof ub.o && ub.o.magic == USER_MAGIC_1;
-            users.magic = USER_MAGIC;
-            for (k = 0; k < NUSER; k++) {   /* a MAU1 bank brought forward, its filter open; else none yet */
-                users.u[k].used = (uint8_t)(old && ub.o.u[k].used);
-                if (!users.u[k].used)
-                    continue;
-                users.u[k].base = ub.o.u[k].base;
-                for (j = 0; j < NSOUNDP; j++)
-                    users.u[k].p[j] = j < NSOUNDP1 ? ub.o.u[k].p[j] : PAR[SOUND_P[j]].def;
-                for (j = 0; j < 4u; j++) {
-                    users.u[k].op_ratio[j] = ub.o.u[k].op_ratio[j];
-                    users.u[k].op_level[j] = ub.o.u[k].op_level[j];
-                    users.u[k].op_wave[j] = ub.o.u[k].op_wave[j];
-                    users.u[k].op_decay[j] = ub.o.u[k].op_decay[j];
-                }
+        static uint8_t raw[sizeof users];
+        int got = plat_store_load(OBJ_USER, raw, sizeof raw);
+        uint32_t magic = got >= 4 ? (uint32_t)raw[0] | (uint32_t)raw[1] << 8 | (uint32_t)raw[2] << 16 | (uint32_t)raw[3] << 24
+                                  : 0u, n = 0, k, j;
+        if (magic == USER_MAGIC && got == (int)sizeof users)
+            n = NSOUNDP;
+        else if (magic == USER_MAGIC_2 && got == (int)(4u + NUSER * (18u + 2u * NSOUNDP2)))
+            n = NSOUNDP2;
+        else if (magic == USER_MAGIC_1 && got == (int)(4u + NUSER * (18u + 2u * NSOUNDP1)))
+            n = NSOUNDP1;
+        users.magic = USER_MAGIC;
+        for (k = 0; k < NUSER; k++) {    /* each slot read from its bytes, an older bank's brought forward: the
+                                          * knobs it had not, as they then sounded (fenv_fill) */
+            const uint8_t *e = raw + 4u + k * (18u + 2u * n);
+            user_t *u = &users.u[k];
+            int16_t full[NP];
+            u->used = (uint8_t)(n && e[0] == 1u && e[1] < NPRESET);
+            if (!u->used)
+                continue;
+            u->base = e[1];
+            for (j = 0; j < NP; j++)
+                full[j] = PAR[j].def;
+            for (j = 0; j < NSOUNDP; j++)
+                full[SOUND_P[j]] = j < n ? (int16_t)(e[2u + 2u * j] | e[3u + 2u * j] << 8) : PAR[SOUND_P[j]].def;
+            if (n < NSOUNDP)
+                fenv_fill(full);
+            for (j = 0; j < NSOUNDP; j++)
+                u->p[j] = full[SOUND_P[j]];
+            for (j = 0; j < 4u; j++) {
+                u->op_ratio[j] = e[2u + 2u * n + j];
+                u->op_level[j] = e[6u + 2u * n + j];
+                u->op_wave[j] = e[10u + 2u * n + j];
+                u->op_decay[j] = e[14u + 2u * n + j];
             }
         }
     }
     {
         static union {
             settings_t s;
+            settings8_t o8;
             settings7_t o7;
             settings6_t o6;
             settings5_t o;
@@ -1411,6 +1450,22 @@ void app_init(void)
                             set.op_wave[k] = (uint8_t)set.p[P_WAVE];
                 set.magic = SET_MAGIC;
             }
+        } else if (got == (int)sizeof(settings8_t) && ld.o8.magic == SET_MAGIC_8) {
+            settings8_t *o8 = &ld.o8;    /* before the filter's own envelope: as it sounded */
+            for (i = 0; i < NP; i++)
+                set.p[i] = i < NP8 ? o8->p[i] : PAR[i].def;
+            fenv_fill(set.p);
+            set.preset = o8->preset;
+            set.octave = o8->octave;
+            set.arp_on = o8->arp_on;
+            set.hold = o8->hold;
+            for (i = 0; i < 4u; i++) {
+                set.op_ratio[i] = o8->op_ratio[i];
+                set.op_level[i] = o8->op_level[i];
+                set.op_wave[i] = o8->op_wave[i];
+                set.op_decay[i] = o8->op_decay[i];
+            }
+            set.magic = SET_MAGIC;
         } else if (got == (int)sizeof(settings7_t) && ld.o7.magic == SET_MAGIC_7) {
             settings7_t *o7 = &ld.o7;    /* before the filter and PWM: the sound's own filter */
             for (i = 0; i < NP; i++)
@@ -2007,9 +2062,12 @@ static void input(void)
             page_go(ui.page == PG_HOME ? PG_SOUNDS : PG_HOME);
             continue;
         }
-        if (k == B_ENV || k == B_LFO) {      /* ENV: ENVELOPE, again FILTER; LFO: LFO, again LFO 2; and back */
-            uint32_t a = k == B_ENV ? PG_ENV : PG_LFO, b2 = k == B_ENV ? PG_FILTER : PG_LFO2;
-            page_go(ui.page == a ? b2 : a);
+        if (k == B_ENV) {                    /* ENV: the amp's envelope, again FILTER, again its envelope, round */
+            page_go(ui.page == PG_ENV ? PG_FILTER : ui.page == PG_FILTER ? PG_FENV : PG_ENV);
+            continue;
+        }
+        if (k == B_LFO) {                    /* LFO: LFO, again LFO 2, and back */
+            page_go(ui.page == PG_LFO ? PG_LFO2 : PG_LFO);
             continue;
         }
         if (k == B_SEL) {                    /* SEL: SOUND, again VOICE, and back */
@@ -2484,7 +2542,7 @@ static void draw(void)
                 [PG_OP2] = "EDIT AGAIN: OP 3", [PG_OP3] = "EDIT AGAIN: OP 4", [PG_OP4] = "EDIT AGAIN: ALGO",
                 [PG_SOUND] = "SEL AGAIN: VOICE", [PG_VOICE] = "SEL AGAIN: SOUND",
                 [PG_SOUNDS] = "SAVE: INTO THE SLOT", [PG_ENV] = "ENV AGAIN: FILTER",
-                [PG_FILTER] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1"};
+                [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);

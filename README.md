@@ -25,7 +25,8 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Velocity |
 | SEL again: voice | Voices (poly, mono, legato) | Glide (mono and legato) | | |
 | ENV | Attack | Decay | Sustain | Release |
-| ENV again: filter (a low-pass a voice; open on the FM sounds) | Cutoff | Resonance | Env amount (it opens each note) | Env decay |
+| ENV again: filter (a low-pass a voice; open on the FM sounds) | Cutoff | Resonance | Env amount (how far its envelope opens it) | Key track |
+| ENV a third time: filter envelope | Attack | Decay | Sustain | Release |
 | LFO | Rate | Shape (sine, tri, square, S&H, drift) | Vibrato | Tremolo (stereo) |
 | LFO again: LFO 2 | PWM (the square's and pulses' width) | Filter (the cutoff) | | |
 | EDIT | Algorithm (1-8, drawn below: carriers pink, modulators outlined) | Ratio (the modulators') | Feedback (0-7) | Mod wave (every modulator's: W1-W8 the TX81Z's; band-limited W9 saw, W10 square, W11-W12 pulse 25 and 12.5 %, W13 triangle) |

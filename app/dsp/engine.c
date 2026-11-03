@@ -411,7 +411,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     }
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
     v->flt = prm.filter;                 /* the filter: from closed again, the envelope from its start */
-    v->fbase = prm.cut + (float)(note - 60) * (1.0f / 24.0f);   /* half the key's way */
+    v->fbase = prm.cut + (float)(note - 60) * (1.0f / 12.0f) * prm.keytrack;   /* KEY TRACK: the key's way */
     v->famt = prm.env * (0.4f + 0.6f * velf);   /* harder, brighter */
     v->fe = 0.0f;
     v->fatt = 1;
@@ -698,7 +698,8 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
 {
     float d = p->lfo_hz * (float)n / SR, x;
     uint32_t i, k, wrapped;
-    float fdec_k = fm_exp2f(-9.965784f * (float)n / (fm_maxf(p->fdec, 0.001f) * SR));   /* the filter's fall, a block */
+    float fdec_k = fm_exp2f(-9.965784f * (float)n / (fm_maxf(p->fdec, 0.001f) * SR));   /* the filter's decay and */
+    float frel_k = fm_exp2f(-9.965784f * (float)n / (fm_maxf(p->frel, 0.001f) * SR));   /* release, a block */
     snd = s;
     prm = *p;
     lfo_ph += d;
@@ -749,15 +750,18 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         } else
             v->drift_n--;
         v->drift += (v->drift_to - v->drift) * drift_k;
-        if (v->flt) {                    /* the filter's envelope a block on, and its coefficients there by the end */
-            if (v->fatt) {
-                v->fe += p->att > 0.0005f ? (float)n / (p->att * SR) : 1.0f;
+        if (v->flt) {                    /* the filter's ADSR a block on, and its coefficients there by the end */
+            if (v->rel) {                /* released: down to closed over its RELEASE */
+                v->fatt = 0;
+                v->fe *= frel_k;
+            } else if (v->fatt) {
+                v->fe += p->fatt > 0.0005f ? (float)n / (p->fatt * SR) : 1.0f;
                 if (v->fe >= 1.0f) {
                     v->fe = 1.0f;
                     v->fatt = 0;
                 }
             } else
-                v->fe *= fdec_k;
+                v->fe = p->fsus + (v->fe - p->fsus) * fdec_k;
             v->fl1 = fm_flush(v->fl1), v->fl2 = fm_flush(v->fl2), v->fr1 = fm_flush(v->fr1), v->fr2 = fm_flush(v->fr2);
             filter_coefs(v, n);
         }
