@@ -914,7 +914,6 @@ void app_init(void)
  * the rest */
 #define C_BG RGB(16, 10, 32)
 #define C_GHOST RGB(84, 62, 136)
-#define C_BLUE RGB(110, 165, 255)            /* the name's MIGHTY: neon blue */
 static void theme(void)
 {
     pal[0] = RGB(50, 32, 82);            /* C_LINE: rules, the knobs' tracks */
@@ -1353,7 +1352,7 @@ static void header(uint32_t now)
         int32_t x = cv_text(10, 6, &FONT_B, ui.msg[0], C_WHITE);
         cv_text(x + 8, 6, &FONT_B, ui.msg[1], C_HI);
     } else {
-        cv_text(10, 6, &FONT_B, "MIGHTY", C_BLUE);
+        cv_text(10, 6, &FONT_B, "MIGHTY", C_GRAY);
         cv_text(10 + text_w(&FONT_B, "MIGHTY "), 6, &FONT_B, "ARP", C_HI);
         cv_text(230 - text_w(&FONT_B, cur_preset()->name), 6, &FONT_B, cur_preset()->name, C_AMB);
     }
