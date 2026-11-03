@@ -610,7 +610,7 @@ static const preset_t *cur_preset(void)
  * with "U03 " it fits the screen) */
 static const char *const NAME_A[16] = {"LION", "FROG", "CRAB", "OWL", "YAK", "EMU", "BEAR", "WOLF",
                                        "MOLE", "NEWT", "TOAD", "DUCK", "GOAT", "SEAL", "MOTH", "HARE"};
-static const char *const NAME_B[16] = {"AFRO", "MULLET", "MOHAWK", "BOB", "BUN", "PERM", "FADE", "QUIFF",
+static const char *const NAME_B[16] = {"AFRO", "MULLET", "MOHAWK", "BOB", "BUN", "PERM", "FADE", "BANGS",
                                        "MOPTOP", "BOWL", "BRAIDS", "BUZZ", "SHAG", "CURLS", "DREADS", "SPIKES"};
 static void text_cat(char *d, const char *s);
 static void user_name(uint32_t name, char *t)   /* (appended to t) */
