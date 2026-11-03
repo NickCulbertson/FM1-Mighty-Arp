@@ -34,7 +34,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
 | EDIT | ALGO (1-8) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8) |
-| ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB, PINKY, CHORD, RANDOM, WALK) | GATE |
+| ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
 | SEQ | RATCHET (chance) | OCT JUMP (chance) | VEL RAND | SWING |
 | DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | CHORUS |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
@@ -77,7 +77,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 
 - Synthwave colours: a black ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
-- Knobs as smooth arcs round a dark knob cap with a pointer. The name: MIGHTY in the labels' cyan, ARP in pink.
+- Knobs as smooth arcs round a dark knob cap with a pointer; on HOME, the arcs alone. The name: MIGHTY in the labels' cyan, ARP in pink.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.
 

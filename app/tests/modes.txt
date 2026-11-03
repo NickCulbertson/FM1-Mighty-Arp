@@ -11,12 +11,12 @@ tap ARP
 wait 30
 spin K2 -3
 spin K3 -20
-spin K3 3
+spin K3 4
 wait 30
 expect octaves 1
-expect mode 3
+expect mode 4
 shot modes.png
-# AS PLAYED: the high key first, then the low: the high plays first (at once), the low next (1/8 at 90 BPM: 333 ms)
+# AS PLAYED (RANDOM is first): the high key first, then the low: the high plays first (at once), the low next (1/8 at 90 BPM: 333 ms)
 key 14 down 90
 wait 20
 key 7 down 90
@@ -30,9 +30,9 @@ key 14 up
 key 7 up
 wait 30
 # CHORD: both notes every step
-spin K3 5
+spin K3 7
 wait 30
-expect mode 8
+expect mode 11
 expect arp_mark 0
 wait 1000
 expect arp_notes >5
@@ -60,7 +60,11 @@ spin K3 1
 wait 400
 spin K3 1
 wait 400
-expect mode 10
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+expect mode 12
 expect arp_mark 0
 wait 1000
 expect arp_notes >2
@@ -98,3 +102,33 @@ expect arp_mark 0
 wait 2000
 expect arp_notes >2
 expect arp_notes <6
+# THUMB U/D over four notes (one octave): the lowest between the others, they up and down: 60 64 60 67 60 71 60 67
+tap ARP
+wait 30
+spin K3 -20
+spin K3 8
+wait 30
+expect mode 8
+spin K1 1
+wait 30
+expect rate 5
+key 7 down 90
+key 11 down 90
+key 14 down 90
+key 18 down 90
+wait 30
+expect last_note 60
+wait 333
+expect last_note 64
+wait 333
+expect last_note 60
+wait 333
+expect last_note 67
+wait 333
+expect last_note 60
+wait 333
+expect last_note 71
+wait 333
+expect last_note 60
+wait 333
+expect last_note 67

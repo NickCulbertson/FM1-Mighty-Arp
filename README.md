@@ -25,7 +25,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | ENV | Attack | Decay | Sustain | Release |
 | LFO | Rate | Shape (sine, tri, square, S&H, drift) | Vibrato | Tremolo (stereo) |
 | EDIT | Algorithm (1-8) | Ratio (the modulators') | Feedback (0-7) | Wave (W1-W8) |
-| ARP | Rate (1/1 .. 1/32, dotted and triplet) | Octaves | Mode (up, down, up-down, as played, converge, diverge, thumb, pinky, chord, random, walk) | Gate |
+| ARP | Rate (1/1 .. 1/32, dotted and triplet) | Octaves | Mode (random, up, down, up-down, as played, converge, diverge, thumb up, thumb up-down, pinky up, pinky up-down, chord, walk) | Gate |
 | SEQ | Ratchet chance | Octave-jump chance | Velocity random | Swing |
 | FX: delay | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Mix | Chorus |
 | FX again: reverb | Mix | Length (0.5-15 s) | Dark | Shimmer |

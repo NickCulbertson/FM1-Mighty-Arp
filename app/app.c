@@ -32,7 +32,8 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE, U_SECS,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
 /* the arp's modes */
-enum { M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_PINKY, M_CHORD, M_RANDOM, M_WALK, NMODE };
+enum { M_RANDOM, M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_THUMB_UD, M_PINKY, M_PINKY_UD,
+       M_CHORD, M_WALK, NMODE };
 typedef struct {
     const char *name, *id;               /* id: the host tests' name for it */
     int16_t lo, hi, def;
@@ -86,8 +87,8 @@ static const uint8_t DIV_TICKS[11] = {96, 48, 36, 24, 18, 12, 9, 8, 6, 4, 3};
 #define CLK_WRAP 576u                    /* six bars of clocks: every step, and every pair of steps, divides it */
 static const char *const DDIV_NAME[9] = {"1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2"};
 static const float DDIV_BEATS[9] = {0.25f, 0.375f, 1.0f / 3.0f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f, 1.5f, 2.0f};
-static const char *const MODE_NAME[NMODE] = {"UP", "DOWN", "UP-DN", "AS PLAYED", "CONVERGE", "DIVERGE", "THUMB",
-                                             "PINKY", "CHORD", "RANDOM", "WALK"};
+static const char *const MODE_NAME[NMODE] = {"RANDOM", "UP", "DOWN", "UP-DN", "AS PLAYED", "CONVERGE", "DIVERGE",
+                                             "THUMB UP", "THUMB U/D", "PINKY UP", "PINKY U/D", "CHORD", "WALK"};
 static const char *const SHAPE_NAME[LFO_NSHAPE] = {"SINE", "TRI", "SQUARE", "S&H", "DRIFT"};
 static const char *const RATIO_NAME[8] = {"X1/2", "X1", "X2", "X3", "X4", "X5", "X6", "X7"};
 static const float RATIO_MUL[8] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f};
@@ -242,7 +243,10 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3352414Du            /* "MAR3": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x3452414Du            /* "MAR4": the settings record; another magic loads defaults */
+#define SET_MAGIC_3 0x3352414Du          /* "MAR3": the same record, the arp's modes in their old order */
+static const uint8_t MODE_FROM_3[11] = {M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_PINKY,
+                                        M_CHORD, M_RANDOM, M_WALK};
 typedef struct {
     uint32_t magic;
     int16_t p[NP];
@@ -441,35 +445,52 @@ static uint32_t played_index(uint32_t j, uint32_t n)   /* the held note pressed 
     return 0;
 }
 
+/* 0 .. m-1 and back, no repeats at the ends: step j */
+static uint32_t updn(uint32_t j, uint32_t m)
+{
+    uint32_t P, t;
+    if (m < 2u)
+        return 0;
+    P = 2u * m - 2u;
+    t = j % P;
+    return t < m ? t : P - t;
+}
+
 /* the place in the run (the held notes low to high, then an octave up, ...) that step s of the pattern plays */
 static uint32_t pattern_place(uint32_t s, uint32_t L)
 {
-    uint32_t t, P;
+    uint32_t t;
     switch (set.p[P_MODE]) {
     case M_DOWN:
         return L - 1u - s % L;
     case M_UPDN:                         /* no repeats at the ends */
-        if (L < 2u)
-            return 0;
-        P = 2u * L - 2u;
-        t = s % P;
-        return t < L ? t : P - t;
+        return updn(s, L);
     case M_CONVERGE:                     /* the outside in: low, high, next low, next high */
         t = s % L;
         return t & 1u ? L - 1u - t / 2u : t / 2u;
     case M_DIVERGE:                      /* the inside out */
         t = L - 1u - s % L;
         return t & 1u ? L - 1u - t / 2u : t / 2u;
-    case M_THUMB:                        /* the lowest between each of the others */
+    case M_THUMB:                        /* the lowest between each of the others, they going up */
         if (L < 2u)
             return 0;
         t = s % (2u * L - 2u);
         return t & 1u ? 1u + t / 2u : 0;
-    case M_PINKY:                        /* the highest between each of the others */
+    case M_THUMB_UD:                     /* the same, they going up and down */
+        if (L < 2u)
+            return 0;
+        t = s % (2u * (L > 2u ? 2u * L - 4u : 1u));
+        return t & 1u ? 1u + updn(t / 2u, L - 1u) : 0;
+    case M_PINKY:                        /* the highest between each of the others, they going up */
         if (L < 2u)
             return 0;
         t = s % (2u * L - 2u);
         return t & 1u ? t / 2u : L - 1u;
+    case M_PINKY_UD:                     /* the same, they going up and down */
+        if (L < 2u)
+            return 0;
+        t = s % (2u * (L > 2u ? 2u * L - 4u : 1u));
+        return t & 1u ? updn(t / 2u, L - 1u) : L - 1u;
     case M_RANDOM:
         return rnd_n(L);
     case M_WALK:                         /* a step up or down from the last, at random */
@@ -917,7 +938,12 @@ void app_init(void)
     eng_init();
     for (i = 0; i < NHELD; i++)
         out_note[i] = -1;
-    if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) != (int)sizeof set || !settings_ok())
+    if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) == (int)sizeof set && set.magic == SET_MAGIC_3
+        && (uint16_t)set.p[P_MODE] < 11u) {   /* a save from before RANDOM came first: its mode moved */
+        set.p[P_MODE] = MODE_FROM_3[set.p[P_MODE]];
+        set.magic = SET_MAGIC;
+    }
+    if (set.magic != SET_MAGIC || !settings_ok())
         settings_defaults();
 #ifndef PLAT_HOST
     drift_rng ^= plat_ticks24() | 1u;    /* a different piece every power-on (the host's tests repeat) */
@@ -1373,11 +1399,11 @@ static uint16_t mix565(uint16_t a, uint16_t b, uint32_t t)   /* a to b, t of 256
     return (uint16_t)(r << 11 | g << 5 | bl);
 }
 
-/* frac: how far it is turned, 0..240. Inside the ring, the knob itself: a dark cap with a rim, and its pointer
- * from the centre out to the edge, at the value's angle */
+/* frac: how far it is turned, 0..240. Inside the ring (with_cap: the pages; HOME's small ones are rings alone), the
+ * knob itself: a dark cap with a rim, and its pointer from the centre out to the edge, at the value's angle */
 #define KN_CAP RGB(36, 26, 62)
 #define KN_RIM RGB(76, 60, 118)
-static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac, uint16_t c)
+static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac, uint16_t c, int with_cap)
 {
     int32_t x, y, h = m->n / 2;
     uint32_t cap = (uint32_t)(m->r - 6) * 8u;   /* the cap's radius, x 8 */
@@ -1391,7 +1417,7 @@ static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac,
                 uint16_t ring = (int32_t)pos <= frac && frac > 0 ? c : C_LINE;
                 uint32_t cov = d <= 24u ? 256u : (40u - d) * 16u;
                 col = mix565(col, ring, cov);
-            } else if (ce < cap + 8u) {      /* the cap, its rim the last pixel, its edge soft */
+            } else if (with_cap && ce < cap + 8u) {   /* the cap, its rim the last pixel, its edge soft */
                 float dx = (float)(x - h), dy = (float)(y - h), t = dx * ux + dy * uy;
                 float perp = fm_fabsf(dx * uy - dy * ux);
                 col = ce + 12u >= cap ? KN_RIM : KN_CAP;
@@ -1496,7 +1522,7 @@ static void draw(void)
             int32_t cx = 37 + (int32_t)i * 55;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
             const char *nm = par_name(p);
-            knob_draw(&kn_small, cx, 19, par_frac(p, 240), lit ? C_WHITE : C_HI);
+            knob_draw(&kn_small, cx, 19, par_frac(p, 240), lit ? C_WHITE : C_HI, 0);
             param_text(p, t);
             cv_text(cx - text_w(&FONT_B, t) / 2, 34, &FONT_B, t, lit ? C_WHITE : C_HI);
             cv_text(cx - text_w(&FONT_XS, nm) / 2, 52, &FONT_XS, nm, C_GRAY);
@@ -1515,7 +1541,7 @@ static void draw(void)
             uint32_t p = pg->p[i];
             int32_t x = 10 + (int32_t)(i % 2u) * 116, y = 23 + (int32_t)(i / 2u) * 43;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
-            knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI);
+            knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI, 1);
             cv_text(x + 38, y + 1, &FONT_S, par_name(p), C_GRAY);
             param_text(p, t);
             if (text_w(&FONT_M, t) <= (i % 2u ? 66 : 74))   /* a long one (AS PLAYED, LINEAR) smaller */
