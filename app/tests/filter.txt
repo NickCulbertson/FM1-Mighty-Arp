@@ -100,3 +100,23 @@ peakreset
 wait 400
 expect peak_db_max <-40
 key 14 up
+# the filter turned off and on under a held note: no reset to dry and back with a jump (DSP resets none), and
+# its envelope ran on while off
+tap ENV
+tap ENV
+tap ENV
+wait 30
+expect page 17
+spin K1 -100
+spin K3 50
+wait 30
+key 14 down 100
+wait 800
+spin K1 100
+spin K3 -100
+wait 400
+spin K3 50
+spin K1 -60
+wait 400
+expect dsp_resets 0
+key 14 up

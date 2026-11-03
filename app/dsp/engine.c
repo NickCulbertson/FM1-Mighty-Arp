@@ -216,6 +216,7 @@ typedef struct {
      * its state, left and right (Simper's state-variable low-pass, the trapezoidal one: stable at any cutoff) */
     uint8_t flt, fatt;
     float fe, fbase, famt, fvel;         /* fvel: the note's velocity's share of ENV AMOUNT */
+    float fwet, fwet_to;                 /* how much of the filtered sound, fading to fwet_to (the filter on, off) */
     float fa1, fa2, fa3, fd1, fd2, fd3;
     float fl1, fl2, fr1, fr2;
     uint32_t drift_n;
@@ -275,7 +276,8 @@ static void voice_release(voice_t *v)
  * the key it plays now (a legato note moved on) */
 static void filter_follow(voice_t *v)
 {
-    v->fbase = prm.cut + (float)(v->note - 60) * (1.0f / 12.0f) * prm.keytrack;   /* KEY TRACK: the key's way */
+    v->fbase = prm.cut + fm_log2f(fm_maxf(v->f, 1e-6f) * (SR / 261.6256f)) * prm.keytrack;   /* KEY TRACK: the pitch's
+                                                                                        * way (a glide's, as it goes) */
     v->famt = prm.env * v->fvel;
 }
 
@@ -418,7 +420,9 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         v->xf[k] = 0.0f;
     }
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
-    v->flt = prm.filter;                 /* the filter: from closed again, the envelope from its start (at its peak
+    v->flt = prm.filter;
+    v->fwet = v->fwet_to = prm.filter ? 1.0f : 0.0f;
+    /* the filter: from closed again, the envelope from its start (at its peak
                                           * at once with no attack: a short note's first moment is bright too) */
     v->fvel = 0.4f + 0.6f * velf;        /* harder, brighter */
     filter_follow(v);
@@ -527,7 +531,9 @@ uint32_t eng_cap(int up)                 /* one more voice back (up), or just as
  * not computed), with every operator a plain sine (sine 1: no wave to choose) or each its own wave */
 #define AI __attribute__((always_inline)) static inline
 #define XF_STEP (1.0f / 256.0f)                  /* a table change's fade, a sample */
-AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const uint32_t alg, const int sine)
+#define FW_STEP (1.0f / 64.0f)                   /* the filter's on or off, a sample */
+AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const uint32_t alg, const int sine,
+                   const int steady_saws)   /* steady_saws: operators 1 and 2 saws, 3 and 4 sines, no table fading */
 {
     float e0 = v->env[0], e1 = v->env[1], e2 = v->env[2], e3 = v->env[3];
     float ai0 = v->ai[0], ai1 = v->ai[1], ai2 = v->ai[2], ai3 = v->ai[3];
@@ -545,8 +551,13 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     const int16_t *t0 = v->tab[0], *t1 = v->tab[1], *t2 = v->tab[2], *t3 = v->tab[3];
     const int16_t *u0 = v->tab_was[0], *u1 = v->tab_was[1], *u2 = v->tab_was[2], *u3 = v->tab_was[3];
     float xf0 = v->xf[0], xf1 = v->xf[1], xf2 = v->xf[2], xf3 = v->xf[3];
+    if (steady_saws) {                   /* the waves known here: no wave chosen, no fade, a sample */
+        w0 = w1 = 8u;
+        w2 = w3 = 0u;
+        xf0 = xf1 = xf2 = xf3 = 0.0f;
+    }
     float fa1 = v->fa1, fa2 = v->fa2, fa3 = v->fa3, fd1 = v->fd1, fd2 = v->fd2, fd3 = v->fd3;
-    float fl1 = v->fl1, fl2 = v->fl2, fr1 = v->fr1, fr2 = v->fr2;
+    float fl1 = v->fl1, fl2 = v->fl2, fr1 = v->fr1, fr2 = v->fr2, fwet = v->fwet, fwet_to = v->fwet_to;
     uint32_t flt = v->flt;
     int32_t gate = v->gate;
 #define TW(x, w, t, u, xf) ((xf) > 0.0f ? tab_wave((x), (w), (t)) + (tab_wave((x), (w), (u)) - tab_wave((x), (w), (t))) \
@@ -571,7 +582,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
         o1 = e1 * lv1 * W(p1 + m, w1, t1, u1, xf1);
         m = (MODS(0, 1) ? o1 : 0.0f) + (MODS(0, 2) ? o2 : 0.0f) + (MODS(0, 3) ? o3 : 0.0f);
         o0 = e0 * lv0 * W(p0 + m, w0, t0, u0, xf0);
-        if (!sine) {                     /* the table fades, ~6 ms */
+        if (!sine && !steady_saws) {     /* the table fades, ~6 ms */
             xf0 = xf0 > 0.0f ? xf0 - XF_STEP : 0.0f;
             xf1 = xf1 > 0.0f ? xf1 - XF_STEP : 0.0f;
             xf2 = xf2 > 0.0f ? xf2 - XF_STEP : 0.0f;
@@ -584,11 +595,22 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
                 float x3 = vl - fl2, x1 = fa1 * fl1 + fa2 * x3, x2 = fl2 + fa2 * fl1 + fa3 * x3;
                 fl1 = 2.0f * x1 - fl1;
                 fl2 = 2.0f * x2 - fl2;
-                vl = x2;
-                x3 = vr - fr2, x1 = fa1 * fr1 + fa2 * x3, x2 = fr2 + fa2 * fr1 + fa3 * x3;
-                fr1 = 2.0f * x1 - fr1;
-                fr2 = 2.0f * x2 - fr2;
-                vr = x2;
+                x3 = vr - fr2;
+                if (fwet != fwet_to) {   /* switching on or off: dry and filtered blended, ~1.5 ms */
+                    float y = x2;
+                    x1 = fa1 * fr1 + fa2 * x3, x2 = fr2 + fa2 * fr1 + fa3 * x3;
+                    fr1 = 2.0f * x1 - fr1;
+                    fr2 = 2.0f * x2 - fr2;
+                    vl += (y - vl) * fwet;
+                    vr += (x2 - vr) * fwet;
+                    fwet = fwet_to > fwet ? fm_minf(fwet + FW_STEP, fwet_to) : fm_maxf(fwet - FW_STEP, fwet_to);
+                } else {
+                    vl = x2;
+                    x1 = fa1 * fr1 + fa2 * x3, x2 = fr2 + fa2 * fr1 + fa3 * x3;
+                    fr1 = 2.0f * x1 - fr1;
+                    fr2 = 2.0f * x2 - fr2;
+                    vr = x2;
+                }
                 fa1 += fd1;
                 fa2 += fd2;
                 fa3 += fd3;
@@ -632,15 +654,25 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     v->xf[0] = xf0, v->xf[1] = xf1, v->xf[2] = xf2, v->xf[3] = xf3;
     v->fa1 = fa1, v->fa2 = fa2, v->fa3 = fa3;
     v->fl1 = fl1, v->fl2 = fl2, v->fr1 = fr1, v->fr2 = fr2;
+    v->fwet = fwet;
+    if (flt && fwet == 0.0f && fwet_to == 0.0f)   /* faded out: the filter stops (no cost) */
+        v->flt = 0;
     v->gate = gate;
     v->rel = (uint8_t)rel;
 }
 
 #define VL(alg) \
-    case alg * 2u: voice_loop(v, l, r, a, b, alg, 0); break; \
-    case alg * 2u + 1u: voice_loop(v, l, r, a, b, alg, 1); break;
+    case alg * 2u: voice_loop(v, l, r, a, b, alg, 0, 0); break; \
+    case alg * 2u + 1u: voice_loop(v, l, r, a, b, alg, 1, 0); break;
 static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
 {
+    /* ALGO 7 with two saws and two sines (POLY SYNTH, SYNTH BASS, VA BRASS): its own loop (Codex's). A segment that
+     * starts while a saw's table fades takes the general one */
+    if (v->alg == 6u && v->wv[0] == 8u && v->wv[1] == 8u && !(v->wv[2] | v->wv[3]) && v->xf[0] == 0.0f
+        && v->xf[1] == 0.0f) {
+        voice_loop(v, l, r, a, b, 6u, 0, 1);
+        return;
+    }
     switch ((uint32_t)v->alg * 2u + !(v->wv[0] | v->wv[1] | v->wv[2] | v->wv[3])) {
     VL(0u) VL(1u) VL(2u) VL(3u) VL(4u) VL(5u) VL(6u) VL(7u)
     default: break;
@@ -761,15 +793,16 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         } else
             v->drift_n--;
         v->drift += (v->drift_to - v->drift) * drift_k;
-        if (prm.filter && !v->flt) {     /* the filter turned on under a held note: from its state at rest */
+        if (prm.filter && !v->flt) {     /* the filter turned on under a held note: from rest, faded in (fwet) */
             v->fl1 = v->fl2 = v->fr1 = v->fr2 = 0.0f;
-            v->fe = v->fatt ? v->fe : 1.0f;
+            v->fwet = 0.0f;
             filter_follow(v);
             filter_coefs(v, 0u);
+            v->flt = 1;
         }
-        v->flt = prm.filter;
-        if (v->flt) {                    /* the filter's ADSR a block on, and its coefficients there by the end */
-            filter_follow(v);
+        v->fwet_to = prm.filter ? 1.0f : 0.0f;   /* turned off: faded out, then stopped (voice_loop) */
+        {                                /* the filter's ADSR a block on, even bypassed (turned on again later, it is
+                                          * where it would be), its coefficients there by the end */
             if (v->rel) {                /* released: down to closed over its RELEASE */
                 v->fatt = 0;
                 v->fe *= frel_k;
@@ -781,6 +814,9 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
                 }
             } else
                 v->fe = p->fsus + (v->fe - p->fsus) * fdec_k;
+        }
+        if (v->flt) {
+            filter_follow(v);
             v->fl1 = fm_flush(v->fl1), v->fl2 = fm_flush(v->fl2), v->fr1 = fm_flush(v->fr1), v->fr2 = fm_flush(v->fr2);
             filter_coefs(v, n);
         }

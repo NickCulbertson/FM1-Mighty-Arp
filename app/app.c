@@ -346,6 +346,8 @@ static const preset_t PRESET[] = {
      70, 85, 85, 92, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 92},
 };
 #define NPRESET (sizeof PRESET / sizeof PRESET[0])
+/* the bank MAR9 records: another factory sound moves the USER slots' numbers, so bump SET_MAGIC (and migrate) first */
+typedef char npreset_is_mar9s[NPRESET == 60u ? 1 : -1];
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
 static uint32_t preset_wave(const preset_t *pr)
@@ -358,7 +360,9 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3952414Du            /* "MAR9": the settings record; another magic loads defaults */
+/* "MAR9": the settings record; another magic loads defaults. NPRESET is 60 under it: a factory sound added (the USER
+ * slots' numbers move) must bump it, so a record's magic names its bank (MAR5 and MAR7 did not: see app_init) */
+#define SET_MAGIC 0x3952414Du
 #define SET_MAGIC_8 0x3852414Du          /* "MAR8": before the filter's own envelope (settings8_t) */
 #define SET_MAGIC_7 0x3752414Du          /* "MAR7": before the filter and PWM (settings7_t) */
 #define SET_MAGIC_6 0x3652414Du          /* "MAR6": before VOICES and GLIDE (settings6_t) */
@@ -484,6 +488,8 @@ static uint16_t midi_down[128];
 static uint8_t held_src[NHELD];
 static uint16_t held_ch[NHELD];          /* the MIDI channels a held note came in on (a bit a channel) */
 static uint16_t held_by_ch;              /* the note being added's channel bit (MIDI), 0 a key's */
+static uint16_t midi_played[128];        /* the channels that played each note (held or not, maybe still releasing):
+                                          * All Sound Off silences theirs */
 static int is_down(int32_t note) { return (down[note] & DN_KEY) || midi_down[note]; }
 static uint32_t ndown;
 static uint8_t arp_on_now, hold_now, clk_out_now, sync_now, voices_now;   /* what the render last acted on */
@@ -856,8 +862,10 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     was = nheld;
     if (!is_down(note))
         ndown++;
-    if (by == DN_MIDI)
+    if (by == DN_MIDI) {
         midi_down[note] |= (uint16_t)(1u << (ch & 15u));
+        midi_played[note] |= (uint16_t)(1u << (ch & 15u));
+    }
     else
         down[note] |= DN_KEY;
     held_by = (uint8_t)by;
@@ -885,6 +893,12 @@ static void note_up(int32_t note, uint32_t by, uint32_t ch)   /* let go by one o
         if (!(midi_down[note] >> (ch & 15u) & 1u))
             return;
         midi_down[note] &= (uint16_t)~(1u << (ch & 15u));
+        if (hold_now == H_OFF) {         /* no hold: a channel owns a note only while it holds it down */
+            uint32_t i;
+            for (i = 0; i < nheld; i++)
+                if (held[i] == note)
+                    held_ch[i] &= (uint16_t)~(1u << (ch & 15u));
+        }
     } else {
         if (!(down[note] & DN_KEY))
             return;
@@ -913,14 +927,26 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
         int32_t note = held[i];
         if (!(held_src[i] & DN_MIDI) || !(held_ch[i] & chans))
             continue;
-        held_ch[i] &= (uint16_t)~chans;  /* those channels' hold on it gone; another's, or a key's, keeps it */
-        if (!held_ch[i] && !(down[note] & DN_KEY) && !midi_down[note]) {
+        held_ch[i] &= (uint16_t)~chans;  /* those channels' hold on it gone; another's, or a key's, keeps it (with
+                                          * no hold, only one holding it down) */
+        if ((hold_now == H_OFF || !held_ch[i]) && !is_down(note)) {
             held_remove(note);
             if (sound_off)               /* All Sound Off: out fast, not into the release */
                 eng_note_kill(note);
         }
     }
     held_publish();
+    for (i = 0; i < 128u; i++)           /* their notes no longer held, a release still ringing too */
+        if (midi_played[i] & chans) {
+            midi_played[i] &= (uint16_t)~chans;
+            if (sound_off && !is_down((int32_t)i)) {
+                uint32_t h;
+                for (h = 0; h < nheld && held[h] != (int32_t)i; h++)
+                    ;
+                if (h == nheld)
+                    eng_note_kill((int32_t)i);
+            }
+        }
 }
 
 /* the arp, hold, CLOCK, MIDI CH or VOICES switched: what sounds follows */
@@ -1339,6 +1365,29 @@ static uint32_t sound_step(uint32_t n, int32_t d, uint32_t cat)
     return n;
 }
 
+/* how many of the knobs a sound sets (ENV, LFO, ALGO, FEEDBACK) a saved record holds as that sound has them: which
+ * sound an old record (its number ambiguous between banks) was playing */
+static const uint8_t MATCH_P[] = {P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE, P_LRATE, P_LSHAPE, P_VIB, P_TREM, P_ALGO,
+                                  P_FDBK};
+static uint32_t sound_match(const int16_t *p, const preset_t *pr)
+{
+    const int8_t v[] = {pr->a, pr->d, pr->su, pr->r, pr->lrate, pr->lshape, pr->vib, pr->trem, (int8_t)pr->alg,
+                        (int8_t)pr->fb};
+    uint32_t i, n = 0;
+    for (i = 0; i < sizeof MATCH_P; i++)
+        n += p[MATCH_P[i]] == v[i];
+    return n;
+}
+static uint32_t user_match(const int16_t *p, const user_t *u)   /* the same, against a user sound */
+{
+    uint32_t i, j, n = 0;
+    for (i = 0; i < sizeof MATCH_P; i++)
+        for (j = 0; j < NSOUNDP; j++)
+            if (SOUND_P[j] == MATCH_P[i])
+                n += p[MATCH_P[i]] == u->p[j];
+    return n;
+}
+
 static void settings_defaults(void)
 {
     uint32_t i;
@@ -1434,13 +1483,18 @@ void app_init(void)
                 o->p[P_WIDTH] = PAR[P_WIDTH].def;
                 o->magic = SET_MAGIC_5;
             }
-            if (o->magic == SET_MAGIC_5 && o->preset < 37u) {   /* before the chorus's two and the operators: and the
-                                                            * bank before the saws (37 sounds; from GLASS PAD on,
-                                                            * three places further now) */
+            if (o->magic == SET_MAGIC_5 && o->preset < 40u) {   /* before the chorus's two and the operators. MAR5
+                                                            * was written by two banks: 37 sounds (before the
+                                                            * saws), and 40 (the three saws at 32, GLASS PAD on
+                                                            * three places further). 37..39 are the 40's; 32..36
+                                                            * are either: the sound the save's own knobs match */
                 uint32_t k;
                 for (i = 0; i < NP; i++)
                     set.p[i] = i < NP5 ? o->p[i] : PAR[i].def;
-                set.preset = (uint8_t)(o->preset >= 32u ? o->preset + 3u : o->preset);
+                set.preset = o->preset;
+                if (o->preset >= 32u && o->preset < 37u
+                    && sound_match(set.p, &PRESET[o->preset + 3u]) >= sound_match(set.p, &PRESET[o->preset]))
+                    set.preset = (uint8_t)(o->preset + 3u);   /* the 37 bank's (the one an FM-1 had: on a tie) */
                 set.octave = o->octave;
                 set.arp_on = o->arp_on;
                 set.hold = o->hold;
@@ -1474,7 +1528,12 @@ void app_init(void)
                                           * sounds, so a USER slot was 47 on: the 13 VA sounds came after */
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NP7 ? o7->p[i] : PAR[i].def;
-            set.preset = (uint8_t)(o7->preset >= 47u ? o7->preset - 47u + NPRESET : o7->preset);
+            /* MAR7 was written by three banks: 40 sounds, 47 with USER slots from 47, and 60 with them from 60. 60 on is
+             * a USER slot; 47..59, a 47 bank's slot or a 60 bank's VA sound: the one the save's own knobs match */
+            set.preset = o7->preset;
+            if (o7->preset >= 47u && o7->preset < 60u && users.u[o7->preset - 47u].used
+                && user_match(set.p, &users.u[o7->preset - 47u]) > sound_match(set.p, &PRESET[o7->preset]))
+                set.preset = (uint8_t)(o7->preset - 47u + NPRESET);
             set.octave = o7->octave;
             set.arp_on = o7->arp_on;
             set.hold = o7->hold;

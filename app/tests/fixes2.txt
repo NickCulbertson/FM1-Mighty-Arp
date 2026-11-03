@@ -127,3 +127,26 @@ wait 30
 expect preset 32
 expect fatt 70
 expect attack 70
+wait 4000
+# (fifth review) no hold: C4 on channels 1 and 2, channel 1 lets go, All Sound Off on 2: nothing left sounding
+expect voices 0
+midi 90 3C 64
+midi 91 3C 64
+wait 30
+midi 80 3C 00
+wait 30
+expect held 1
+midi B1 78 00
+wait 300
+expect held 0
+expect voices 0
+# All Sound Off while a note is releasing (no longer held): silent at once
+midi 92 40 64
+wait 300
+midi 82 40 00
+wait 30
+expect held 0
+expect voices 1
+midi B2 78 00
+wait 100
+expect voices 0
