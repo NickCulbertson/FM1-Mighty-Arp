@@ -103,6 +103,13 @@ typedef struct {
 } voice_t;
 static voice_t vc[ENG_NVOICE];
 static uint32_t vc_age, vc_cap = ENG_NVOICE;   /* the voices a new note may take: fewer after an overload */
+static int32_t shed_note = -1;           /* the note eng_shed last let go (the host's tests) */
+
+/* the second core (eng_cpu2): it renders voices C2_FIRST.. into its own buffers while this one renders the rest
+ * and then the effects; new notes go to whichever side has fewer (eng_note_on) */
+#define C2_FIRST 4u
+static int (*c2_run)(void (*)(uint32_t), uint32_t);
+static int (*c2_wait)(void);
 
 static const eng_sound_t *snd;
 static eng_params_t prm;
@@ -156,13 +163,20 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         for (i = 0; i < ENG_NVOICE; i++)   /* the same note again: that voice, so it never stacks */
             if (vc[i].on && vc[i].note == note)
                 v = &vc[i];
-        if (!v && eng_active() < vc_cap)
-            for (i = ENG_NVOICE; i-- > 0;)   /* else a free one (under the cap; from the top: the second core's
-                                              * first), else the oldest releasing, else the oldest */
-                if (!vc[i].on) {
-                    v = &vc[i];
-                    break;
-                }
+        if (!v && eng_active() < vc_cap) {   /* else a free one (under the cap) on the side with fewer sounding (the
+                                              * two cores' work overlaps only so), else the oldest releasing, else
+                                              * the oldest */
+            uint32_t lo = 0, hi = 0, first;
+            for (i = 0; i < ENG_NVOICE; i++)
+                if (vc[i].on)
+                    *(i < C2_FIRST ? &lo : &hi) += 1u;
+            first = c2_run && hi <= lo ? C2_FIRST : 0u;
+            for (i = 0; i < ENG_NVOICE && !v; i++) {
+                uint32_t j = (first + i) % ENG_NVOICE;
+                if (!vc[j].on)
+                    v = &vc[j];
+            }
+        }
         if (!v)
             for (i = 0; i < ENG_NVOICE; i++)
                 if (vc[i].on && vc[i].rel && vc[i].age < oldest)
@@ -198,10 +212,13 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     for (k = 0, c = 0; k < 4u; k++) {
         const eng_op_t *o = &s->op[k];
         uint32_t is_car = car >> k & 1u, own = !is_car || o->strike;
-        float a, d, su, pk;
+        float a, d, su, pk, hz, band;
         v->wv[k] = (uint8_t)(is_car || prm.wave > 7u ? o->wave & 7u : prm.wave);
         v->rat[k] = o->ratio * (is_car ? 1.0f : prm.ratio)
                     * fm_exp2f((o->det + DSIGN[k] * prm.detune * 14.0f) * (1.0f / 1200.0f));
+        hz = f * v->rat[k] * SR;          /* high up, a modulator folds back as noise: less of it above 10 kHz,
+                                           * none past 20 (an operator there is silent) */
+        band = hz > 20000.0f ? 0.0f : hz > 10000.0f ? 10000.0f / hz : 1.0f;
         if (own) {
             a = o->att;
             d = o->dec * dscale;
@@ -226,14 +243,14 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
             if (car != 0x1u && car != 0x0u)   /* two or more carriers: spread across the voice's place */
                 sp = (c & 1u ? 0.25f : -0.25f) * (0.4f + prm.detune);
             pp = fm_clampf(pos + sp, -0.9f, 0.9f);
-            a = o->lvl * amp * (o->strike ? prm.strike : 1.0f);
+            a = o->lvl * amp * (o->strike ? prm.strike : 1.0f) * (band > 0.0f ? 1.0f : 0.0f);
             v->lvl[k] = a;
             v->cl[k] = 0.5f - 0.5f * pp;
             v->cr[k] = 0.5f + 0.5f * pp;
             v->ic[k] = 1.0f;
             c++;
         } else {
-            v->lvl[k] = o->lvl * bright;
+            v->lvl[k] = o->lvl * bright * band;
             v->cl[k] = v->cr[k] = v->ic[k] = 0.0f;
         }
     }
@@ -288,9 +305,12 @@ void eng_shed(void)
     for (i = 0; i < ENG_NVOICE; i++)
         if (vc[i].on && !vc[i].shed && vc[i].rel && vc[i].age < oldest)
             oldest = vc[i].age, v = &vc[i];
-    for (i = 0; !v && i < ENG_NVOICE; i++)
-        if (vc[i].on && !vc[i].shed && vc[i].age < oldest)
-            oldest = vc[i].age, v = &vc[i];
+    if (!v)                              /* none releasing: the oldest held */
+        for (i = 0; i < ENG_NVOICE; i++)
+            if (vc[i].on && !vc[i].shed && vc[i].age < oldest)
+                oldest = vc[i].age, v = &vc[i];
+    if (v)
+        shed_note = v->note;
     if (n > 4u && n - 1u < vc_cap)
         vc_cap = n - 1u;
     if (!v || n <= 4u)                   /* four always sound */
@@ -300,6 +320,8 @@ void eng_shed(void)
     for (k = 0; k < 4u; k++)
         v->kk[k] = v->rk[k] = 0.9985f;   /* ~0.1 s */
 }
+
+int32_t eng_shed_note(void) { return shed_note; }
 
 uint32_t eng_cap(int up)                 /* one more voice back (up), or just ask: the cap */
 {
@@ -339,7 +361,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     float fb1 = v->fb1, fb2 = v->fb2, fbk = v->fbk;
     uint32_t w0 = v->wv[0], w1 = v->wv[1], w2 = v->wv[2], w3 = v->wv[3], i, rel = v->rel;
     int32_t gate = v->gate;
-#define W(x, w) (sine ? sin_t(x) : wave((x), (w)))
+#define W(x, w) (sine || !(w) ? sin_t(x) : wave((x), (w)))   /* a plain sine here too, without the call */
 #define MODS(k, j) (MOD[alg][k] >> (j) & 1u)
 #define IS_CAR(k) (CAR[alg] >> (k) & 1u)
     for (i = a; i < b; i++) {
@@ -409,11 +431,6 @@ static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
 }
 #undef VL
 
-/* the second core (eng_cpu2): it renders voices C2_FIRST.. into its own buffers while this one renders the rest
- * and then the effects; new notes take its voices first (eng_note_on looks from the top), as this core has more */
-#define C2_FIRST 4u
-static int (*c2_run)(void (*)(uint32_t), uint32_t);
-static int (*c2_wait)(void);
 static float c2_l[ENG_BLOCK], c2_r[ENG_BLOCK];
 static uint32_t c2_a, c2_b;
 
@@ -452,8 +469,9 @@ void eng_voices(float *l, float *r, uint32_t a, uint32_t b)
             voice_run(&vc[k], l, r, a, b);
     if (!split)
         return;
-    if (c2_wait() != 0)                  /* it was given up, the job dropped: do it here */
-        c2_job(0);
+    if (c2_wait() != 0)                  /* it was given up mid-job: its voices skip this segment (some may have run
+                                          * part of it: run again, they would play it twice). One core from now */
+        return;
     for (i = a; i < b; i++) {
         l[i] += c2_l[i];
         r[i] += c2_r[i];
@@ -536,7 +554,7 @@ static inline float ch_read(float d)
 #define DLY_N 32768u
 static PLAT_POOL int16_t dly_l[DLY_N], dly_r[DLY_N];
 static uint32_t dly_w, dly_odd;          /* the slot being filled, and which of its two samples this is */
-static float dly_t, dly_lp_l, dly_lp_r, dly_acc_l, dly_acc_r, dmix_now, rmix_now;
+static float dly_t, dly_lp_l, dly_lp_r, dly_pre_l, dly_pre_r, dly_acc_l, dly_acc_r, dmix_now, rmix_now;
 
 static inline float dly_read(const int16_t *b, float d)   /* d samples back */
 {
@@ -566,8 +584,7 @@ static uint16_t ap_i[4];
 #define SH_N 4096u
 #define SH_D 2048.0f
 static PLAT_POOL float sh_buf[SH_N];
-static uint32_t sh_w;
-static float sh_p;
+static uint32_t sh_w, sh_n;              /* sh_n: the window's place, 0 .. SH_D - 1 */
 
 /* a number that is not one (infinite or NaN): in a feedback loop it would sound forever, so the output checks */
 static inline int finite_f(float x)
@@ -590,16 +607,15 @@ static inline float rv_read(uint32_t k, float d)   /* line k, d samples back (fr
     return ((float)RV_BUF[k][i] + ((float)RV_BUF[k][j] - (float)RV_BUF[k][i]) * f) * (1.0f / 8192.0f);
 }
 
-static inline float sh_read(float d)
+static inline float rv_at(uint32_t k, uint32_t d)   /* line k, d whole samples back */
 {
-    float p = (float)sh_w - d, f;
-    int32_t i;
-    if (p < 0.0f)
-        p += (float)SH_N;
-    i = (int32_t)p;
-    f = p - (float)i;
-    return sh_buf[i & (SH_N - 1)] + (sh_buf[(i + 1) & (SH_N - 1)] - sh_buf[i & (SH_N - 1)]) * f;
+    int32_t i = (int32_t)rv_w[k] - (int32_t)d;
+    if (i < 0)
+        i += (int32_t)(RV_LEN[k] + RV_PAD);
+    return (float)RV_BUF[k][i] * (1.0f / 8192.0f);
 }
+
+static inline float sh_at(uint32_t d) { return sh_buf[(sh_w - d) & (SH_N - 1u)]; }   /* d whole samples back */
 
 /* m1, m3: lines 2 and 4's movement now, in samples (eng_out steps them across the block) */
 static inline int reverb(float in, float damp, float shim, float m1, float m3, float *ol, float *or_)   /* 0: its
@@ -608,33 +624,31 @@ static inline int reverb(float in, float damp, float shim, float m1, float m3, f
 {
     float x = in, d[4], h[4];
     uint32_t k;
+    int ok;
     for (k = 0; k < 4u; k++) {           /* the input's allpasses */
         float *b = AP_BUF[k], y = b[ap_i[k]];
-        float w = x + y * 0.62f;
+        float w = fm_flush(x + y * 0.62f);
         b[ap_i[k]] = w;
         x = y - w * 0.62f;
         if (++ap_i[k] >= AP_LEN[k])
             ap_i[k] = 0;
     }
-    d[0] = rv_read(0, (float)RV_LEN[0]);
+    d[0] = rv_at(0, RV_LEN[0]);
     d[1] = rv_read(1, (float)RV_LEN[1] - 7.0f + m1);
-    d[2] = rv_read(2, (float)RV_LEN[2]);
+    d[2] = rv_at(2, RV_LEN[2]);
     d[3] = rv_read(3, (float)RV_LEN[3] - 7.0f + m3);
     for (k = 0; k < 4u; k++)
-        rv_lp[k] = d[k] + (rv_lp[k] - d[k]) * damp;
-    if (shim > 0.0f) {                   /* two taps sliding through a window, crossfaded: an octave up */
-        float s, g, p2, y;
-        sh_buf[sh_w] = rv_lp[0];
-        sh_w = (sh_w + 1u) & (SH_N - 1u);
-        sh_p += 1.0f / SH_D;
-        if (sh_p >= 1.0f)
-            sh_p -= 1.0f;
-        p2 = sh_p + 0.5f;
-        if (p2 >= 1.0f)
-            p2 -= 1.0f;
-        s = sin_t(sh_p * 0.5f);
-        g = s * s;
-        y = g * sh_read(2.0f + (1.0f - sh_p) * SH_D) + (1.0f - g) * sh_read(2.0f + (1.0f - p2) * SH_D);
+        rv_lp[k] = fm_flush(d[k] + (rv_lp[k] - d[k]) * damp);
+    /* the shimmer: two taps sliding through a window of SH_D, half a window apart, crossfaded (sin^2 and cos^2):
+     * an octave up. It always runs (so turned up again it holds the tail now, not one from before); every delay is
+     * a whole number of samples */
+    sh_buf[sh_w] = rv_lp[0];
+    sh_w = (sh_w + 1u) & (SH_N - 1u);
+    sh_n = (sh_n + 1u) & ((uint32_t)SH_D - 1u);
+    if (shim > 0.0f) {
+        uint32_t n2 = (sh_n + (uint32_t)SH_D / 2u) & ((uint32_t)SH_D - 1u);
+        float s = sin_tab[sh_n >> 1], g = s * s;   /* sin(pi p), p = sh_n / SH_D: the table's 2 pi over SH_D / 2 */
+        float y = g * sh_at(2u + (uint32_t)SH_D - sh_n) + (1.0f - g) * sh_at(2u + (uint32_t)SH_D - n2);
         rv_lp[0] = rv_lp[0] * (1.0f - shim) + y * shim;
     }
     for (k = 0; k < 4u; k++)
@@ -644,15 +658,65 @@ static inline int reverb(float in, float damp, float shim, float m1, float m3, f
         float c = (h[0] + h[1] - h[2] - h[3]) * 0.5f, e = (h[0] - h[1] - h[2] + h[3]) * 0.5f;
         h[0] = a, h[1] = b, h[2] = c, h[3] = e;
     }
+    for (k = 0; k < 4u; k++)
+        h[k] = (x + h[k]) * 8192.0f;
+    ok = finite_f(h[0] + h[1] + h[2] + h[3]);
+    if (!ok)                             /* a bad number: caught here, before int16 (a NaN there is undefined); the
+                                          * lines get silence, and the output guard clears the rest */
+        h[0] = h[1] = h[2] = h[3] = 0.0f;
     for (k = 0; k < 4u; k++) {
         uint32_t size = RV_LEN[k] + RV_PAD;
-        RV_BUF[k][rv_w[k]] = (int16_t)fm_clampf((x + h[k]) * 8192.0f, -32767.0f, 32767.0f);
+        float q = fm_clampf(h[k], -32767.0f, 32767.0f);
+        RV_BUF[k][rv_w[k]] = (int16_t)(q + (q >= 0.0f ? 0.5f : -0.5f));   /* rounded: truncation would eat quiet
+                                                                             * tails */
         if (++rv_w[k] >= size)
             rv_w[k] = 0;
     }
-    *ol = rv_lp[0] + rv_lp[2] * 0.7f - rv_lp[3] * 0.3f;   /* (the float state, so a bad number shows) */
+    *ol = rv_lp[0] + rv_lp[2] * 0.7f - rv_lp[3] * 0.3f;
     *or_ = rv_lp[1] + rv_lp[3] * 0.7f - rv_lp[2] * 0.3f;
-    return finite_f(x);
+    return ok;
+}
+
+/* after a reset the buffers are cleared a part a block (16 KB: about 15 blocks, 90 ms of silence), never all at once
+ * in the audio interrupt */
+typedef struct {
+    int16_t *w;                          /* 16-bit lines, or */
+    float *f;                            /* float ones */
+    uint32_t n;
+} clr_t;
+static const clr_t CLR[] = {
+    {dly_l, 0, DLY_N}, {dly_r, 0, DLY_N}, {rv_b0, 0, 5623 + RV_PAD}, {rv_b1, 0, 6733 + RV_PAD},
+    {rv_b2, 0, 8111 + RV_PAD}, {rv_b3, 0, 9791 + RV_PAD}, {0, ap_b0, 241}, {0, ap_b1, 167}, {0, ap_b2, 557},
+    {0, ap_b3, 431}, {0, ch_buf, CH_N}, {0, sh_buf, SH_N},
+};
+#define NCLR (sizeof CLR / sizeof CLR[0])
+#define CLR_BYTES 16384u
+static uint32_t clr_i = NCLR, clr_at;    /* the buffer being cleared, and how far: done at NCLR */
+
+static int clearing(void)                /* a part more cleared: 1 while there is more */
+{
+    uint32_t bytes = 0;
+    while (clr_i < NCLR && bytes < CLR_BYTES) {
+        const clr_t *c = &CLR[clr_i];
+        uint32_t i, e = clr_at + (CLR_BYTES - bytes) / (c->w ? 2u : 4u);
+        if (e == clr_at)                 /* less than an element of room left: the next block */
+            break;
+        if (e > c->n)
+            e = c->n;
+        if (c->w)
+            for (i = clr_at; i < e; i++)
+                c->w[i] = 0;
+        else
+            for (i = clr_at; i < e; i++)
+                c->f[i] = 0.0f;
+        bytes += (e - clr_at) * (c->w ? 2u : 4u);
+        clr_at = e;
+        if (clr_at >= c->n) {
+            clr_i++;
+            clr_at = 0;
+        }
+    }
+    return clr_i < NCLR;
 }
 
 static float dc_xl, dc_yl, dc_xr, dc_yr, gain_now;
@@ -693,6 +757,12 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
     }
     if (dly_t <= 0.0f)
         dly_t = dtarget;
+    if (clr_i < NCLR) {                  /* still clearing after a reset: silence meanwhile */
+        clearing();
+        for (i = 0; i < 2u * n; i++)
+            lr[i] = 0;
+        return 0;
+    }
     for (i = 0; i < n; i++) {
         float xl = l[i] * tl, xr = r[i] * tr, dl, dr, rl, rr, outl, outr;
         tl += dtl;
@@ -716,8 +786,11 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
         dr = dly_read(dly_r, dly_t);
         dly_lp_l += (dl - dly_lp_l) * 0.45f;
         dly_lp_r += (dr - dly_lp_r) * 0.45f;
-        dly_acc_l += (xl + xr) * 0.5f + dly_lp_r * fb;
-        dly_acc_r += dly_lp_l * fb;
+        /* into the half-rate line: a low-pass first (~7 kHz), so little folds back below its 11 kHz */
+        dly_pre_l += ((xl + xr) * 0.5f + dly_lp_r * fb - dly_pre_l) * 0.63f;
+        dly_pre_r += (dly_lp_l * fb - dly_pre_r) * 0.63f;
+        dly_acc_l += dly_pre_l;
+        dly_acc_r += dly_pre_r;
         if (dly_odd) {
             dly_l[dly_w] = to16(dly_acc_l * 0.5f);
             dly_r[dly_w] = to16(dly_acc_r * 0.5f);
@@ -741,9 +814,9 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
             outl = outr = 0.0f;
             bad = 1;
         }
-        dc_yl = outl - dc_xl + 0.9995f * dc_yl;   /* no DC (the half-wave waves make some) */
+        dc_yl = fm_flush(outl - dc_xl + 0.9995f * dc_yl);   /* no DC (the half-wave waves make some) */
         dc_xl = outl;
-        dc_yr = outr - dc_xr + 0.9995f * dc_yr;
+        dc_yr = fm_flush(outr - dc_xr + 0.9995f * dc_yr);
         dc_xr = outr;
         gain_now += (gain - gain_now) * 0.004f;   /* ~5 ms: turning MASTER does not click */
         lr[2 * i] = (int32_t)(soft_clip(dc_yl * 0.9f) * gain_now);
@@ -767,21 +840,12 @@ void eng_reset(void)
         vc[i].on = 0;
         vc[i].note = -1;
     }
-    for (i = 0; i < DLY_N; i++)
-        dly_l[i] = dly_r[i] = 0;
-    for (k = 0; k < 4u; k++) {
-        for (i = 0; i < RV_LEN[k] + RV_PAD; i++)
-            RV_BUF[k][i] = 0;
-        for (i = 0; i < AP_LEN[k]; i++)
-            AP_BUF[k][i] = 0.0f;
+    for (k = 0; k < 4u; k++)
         rv_lp[k] = 0.0f;
-    }
-    for (i = 0; i < CH_N; i++)
-        ch_buf[i] = 0.0f;
-    for (i = 0; i < SH_N; i++)
-        sh_buf[i] = 0.0f;
-    dly_lp_l = dly_lp_r = dly_acc_l = dly_acc_r = 0.0f;
+    dly_lp_l = dly_lp_r = dly_pre_l = dly_pre_r = dly_acc_l = dly_acc_r = 0.0f;
     dc_xl = dc_yl = dc_xr = dc_yr = 0.0f;
+    clr_i = 0;
+    clr_at = 0;
 }
 
 void eng_init(void)

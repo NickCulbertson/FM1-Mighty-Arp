@@ -294,7 +294,9 @@ static int32_t held[NHELD];
 static uint8_t held_vel[NHELD];
 static uint32_t held_seq[NHELD], held_seq_n;   /* when each was added: AS PLAYED's order */
 static uint32_t nheld;
-static uint8_t down[128];                /* physically down (keys and MIDI in): HOLD and LATCH keep the rest */
+static uint8_t down[128];                /* held down, and by what (DN_KEY, DN_MIDI): HOLD and LATCH keep the rest */
+#define DN_KEY 1u
+#define DN_MIDI 2u
 static uint32_t ndown;
 static uint8_t arp_on_now, hold_now, clk_out_now, sync_now;   /* what the render last acted on */
 
@@ -305,7 +307,8 @@ static volatile uint32_t viz[VIZ_N];     /* note | vel << 8 (0: the chance skipp
 static volatile uint32_t viz_w, arp_count;
 static volatile uint32_t sample_clock;   /* samples rendered: the falling notes' clock */
 
-static uint32_t out_ch(void) { return set.p[P_MIDICH] ? (uint32_t)set.p[P_MIDICH] - 1u : 0u; }
+static uint8_t midi_ch_now;              /* MIDI CH as the render last acted on: the channel in and out (0 ALL) */
+static uint32_t out_ch(void) { return midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0u; }
 static void midi_note(uint32_t note, uint32_t vel)
 {
     plat_midi_send(0x09u | (0x90u | out_ch()) << 8 | note << 16 | vel << 24, TO_USB);
@@ -313,9 +316,10 @@ static void midi_note(uint32_t note, uint32_t vel)
 static void midi_off(uint32_t note) { plat_midi_send(0x08u | (0x80u | out_ch()) << 8 | note << 16, TO_USB); }
 static void midi_rt(uint32_t st) { plat_midi_send(0x0Fu | st << 8, TO_USB); }   /* clock, start, stop */
 
-/* the arp's MIDI out: each note it sent and the samples left before its note-off */
+/* the arp's MIDI out: each note it sent and the sample clock its note-off is due at */
 static int16_t out_note[NHELD];
-static int32_t out_left[NHELD];
+static uint32_t out_end[NHELD];
+static uint32_t rend_i;                  /* the render's place in the block: where an event falls */
 static void out_all_off(void)
 {
     uint32_t i;
@@ -425,7 +429,7 @@ static void play(int32_t note, uint32_t vel, int32_t gate)   /* one of the arp's
         ;
     if (i < NHELD) {
         out_note[i] = (int16_t)note;
-        out_left[i] = gate;
+        out_end[i] = sample_clock + rend_i + (uint32_t)gate;
         midi_note((uint32_t)note, vel);
     }
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
@@ -588,10 +592,13 @@ static void on_tick(void)                /* a clock tick: MIDI out, and a step w
         arp_step();
 }
 
-static void arp_restart(void)            /* the first note of a new chord: the clock starts with it */
+static void arp_restart(void)            /* the first note of a new chord: the clock starts with it (but sending it
+                                         * out: then it keeps its time, and only the pattern starts again) */
 {
-    tick_n = 0;
-    tick_acc = 0.0f;
+    if (!clk_out_now) {
+        tick_n = 0;
+        tick_acc = 0.0f;
+    }
     swing_wait = hum_wait = 0;
     arp_s = -1;                          /* the pattern from its top */
     arp_step();
@@ -611,7 +618,7 @@ static uint32_t vel_curve(uint32_t v)
     }
 }
 
-static void note_down(int32_t note, uint32_t vel)
+static void note_down(int32_t note, uint32_t vel, uint32_t by)   /* by: DN_KEY or DN_MIDI */
 {
     uint32_t i, was;
     if (note < 0 || note > 127)
@@ -620,10 +627,9 @@ static void note_down(int32_t note, uint32_t vel)
     if (hold_now == H_HOLD && ndown == 0)   /* HOLD: a new chord after every key was let go replaces the last */
         held_clear();
     was = nheld;
-    if (!down[note]) {
-        down[note] = 1;
+    if (!down[note])
         ndown++;
-    }
+    down[note] |= (uint8_t)by;
     if (hold_now == H_LATCH) {           /* LATCH: each key on or off by itself */
         for (i = 0; i < nheld && held[i] != note; i++)
             ;
@@ -639,21 +645,36 @@ static void note_down(int32_t note, uint32_t vel)
         arp_restart();
 }
 
-static void note_up(int32_t note)
+static void note_up(int32_t note, uint32_t by)   /* the note let go by one of what held it; the other may still */
 {
-    if (note < 0 || note > 127 || !down[note])
+    if (note < 0 || note > 127 || !(down[note] & by))
         return;
-    down[note] = 0;
+    down[note] &= (uint8_t)~by;
+    if (down[note])
+        return;
     ndown--;
     if (hold_now == H_OFF)
         held_remove(note);
     held_publish();
 }
 
-/* the arp, HOLD, SYNC or CLOCK OUT switched: what sounds follows */
+/* the arp, hold, CLOCK or MIDI CH switched: what sounds follows */
 static void modes_follow(void)
 {
     uint32_t i;
+    if ((uint8_t)set.p[P_MIDICH] != midi_ch_now) {   /* MIDI CH: what went out on the old channel ends there; what
+                                                      * came in on it is let go (its offs would no longer be heard) */
+        for (i = 0; i < 128u; i++)
+            note_up((int32_t)i, DN_MIDI);
+        if (!arp_on_now)
+            for (i = 0; i < nheld; i++)
+                midi_off((uint32_t)held[i]);
+        out_all_off();
+        midi_ch_now = (uint8_t)set.p[P_MIDICH];
+        if (!arp_on_now)
+            for (i = 0; i < nheld; i++)
+                midi_note((uint32_t)held[i], held_vel[i]);
+    }
     if (set.arp_on != arp_on_now) {
         arp_on_now = set.arp_on;
         eng_release_all();               /* every note let go into its release */
@@ -713,7 +734,7 @@ static void ext_tick(void)               /* a MIDI clock in */
 
 static void midi_in(void)                /* audio interrupt: the packets that came in */
 {
-    uint32_t pkt, ch_want = set.p[P_MIDICH] ? (uint32_t)set.p[P_MIDICH] - 1u : 0xFFu;
+    uint32_t pkt, ch_want = midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0xFFu;
     int port;
     while (plat_midi_in(&pkt, &port)) {
         uint32_t st = (pkt >> 8) & 0xFFu, d1 = (pkt >> 16) & 0x7Fu, d2 = pkt >> 24 & 0x7Fu, ty = st & 0xF0u;
@@ -735,20 +756,17 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
         if (st < 0x80u || st >= 0xF0u || (ch_want != 0xFFu && (st & 0x0Fu) != ch_want))
             continue;
         if (ty == 0x90u && d2) {
-            note_down((int32_t)d1, d2);
+            note_down((int32_t)d1, d2, DN_MIDI);
             midi_count++;
         } else if (ty == 0x80u || ty == 0x90u) {
-            note_up((int32_t)d1);
+            note_up((int32_t)d1, DN_MIDI);
         } else if (ty == 0xB0u && d1 == 1u) {
             modwheel = (float)d2 / 127.0f;
         } else if (ty == 0xE0u) {
             bend = (float)((int32_t)(d2 << 7 | d1) - 8192) * (2.0f / 8192.0f);
-        } else if (ty == 0xB0u && (d1 == 123u || d1 == 120u)) {   /* all notes off, all sound off */
-            ndown = 0;
+        } else if (ty == 0xB0u && (d1 == 123u || d1 == 120u)) {   /* all notes off, all sound off: MIDI's own */
             for (d1 = 0; d1 < 128u; d1++)
-                down[d1] = 0;
-            held_clear();
-            held_publish();
+                note_up((int32_t)d1, DN_MIDI);
         }
     }
     if (sync_now && sample_clock - ext_last < (uint32_t)SR && ext_per > 0.0f)
@@ -764,15 +782,15 @@ static void events_in(void)
         evq_r = evq_r + 1u;
         switch (e & 0xFFu) {
         case KEV_ON:
-            note_down((int32_t)note, e >> 16 & 0xFFu);
+            note_down((int32_t)note, e >> 16 & 0xFFu, DN_KEY);
             break;
         case KEV_OFF:
-            note_up((int32_t)note);
+            note_up((int32_t)note, DN_KEY);
             break;
-        case KEV_ALLOFF:                  /* the octave changed: the keys' notes would not find their offs */
+        case KEV_ALLOFF:                  /* the octave changed: the keys' notes would not find their offs (MIDI's
+                                           * stay) */
             for (note = 0; note < 128u; note++)
-                if (down[note])
-                    note_up((int32_t)note);
+                note_up((int32_t)note, DN_KEY);
             break;
         }
     }
@@ -827,6 +845,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     if (n > ENG_BLOCK)
         n = ENG_BLOCK;
     engine_params(n);
+    rend_i = 0;                          /* (what comes in comes at the block's start) */
     modes_follow();
     midi_in();
     events_in();
@@ -847,6 +866,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             continue;
         eng_voices(buf_l, buf_r, seg, i);
         seg = i;
+        rend_i = i;
         if (ev & 1u)
             on_tick();
         if (ev & 2u && arp_on_now)
@@ -863,7 +883,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         cap_back_at = sample_clock + (uint32_t)(2.0f * SR);
     }
     for (k = 0; k < NHELD; k++)          /* the arp's note-offs, to the block */
-        if (out_note[k] >= 0 && (out_left[k] -= (int32_t)n) <= 0) {
+        if (out_note[k] >= 0 && (int32_t)(sample_clock + n - out_end[k]) >= 0) {
             midi_off((uint32_t)out_note[k]);
             out_note[k] = -1;
         }
@@ -1300,7 +1320,9 @@ static void input(void)
             continue;
         if (k == EN_PRESET) {
             int32_t p = ((int32_t)set.preset + e) % (int32_t)NPRESET;
+            uint32_t f = plat_lock();        /* the whole sound at once: no note between its fields */
             preset_load((uint32_t)(p < 0 ? p + (int32_t)NPRESET : p));
+            plat_unlock(f);
             set_dirty = 1;
             app_say("SOUND", cur_preset()->name);
         } else if (k == EN_SELECT) {         /* the two left encoders: tempo and chance, on every page */
@@ -1688,6 +1710,8 @@ int app_expect(const char *what, int *got)
 #else
         *got = 0;
 #endif
+    else if (!strcmp(what, "shed_note"))     /* the note the last shed let go */
+        *got = (int)eng_shed_note();
     else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */
         *got = (int)sheds;
     else if (!strcmp(what, "cap"))           /* the voices new notes may take */

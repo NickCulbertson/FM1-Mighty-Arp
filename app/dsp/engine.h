@@ -65,6 +65,7 @@ uint32_t eng_active(void);               /* voices sounding */
 int32_t eng_sounding(int32_t note);      /* a voice plays it (not releasing) */
 void eng_shed(void);                     /* the render ran late: a voice out, and one fewer for new notes */
 uint32_t eng_cap(int up);                /* the voices new notes may take; up: one more back */
+int32_t eng_shed_note(void);             /* the note the last shed let go (-1 none) */
 void eng_reset(void);                    /* silence, and every buffer clean */
 void eng_silence(void);                  /* the voices off at once (the buffers as they are) */
 void eng_poison(void);                   /* (the host's test) a NaN into the reverb */
