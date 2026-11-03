@@ -32,5 +32,6 @@ run fixes2 $H app/tests/fixes2.txt $B/host
 run filter $H app/tests/filter.txt $B/host
 run chords $H app/tests/chords.txt $B/host
 run presets $H app/tests/presets.txt $B/host
+run userpeek $H app/tests/userpeek.txt $B/host
 run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL

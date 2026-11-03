@@ -1961,8 +1961,16 @@ static struct {
     uint32_t tempo_at, chance_at;        /* the same, SELECT and ALGO */
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
     uint32_t reset_arm;                  /* GLOBAL's RESET: how far turned toward RESET_TURNS (there: DONE) */
+    uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
     uint8_t redraw;
 } ui;
+
+/* the kind SOUNDS shows: the sound's, or USER while KIND looks at it with none saved */
+static uint32_t shown_cat(void)
+{
+    return ui.user_peek && sound_cat(set.preset) != CAT_USER ? CAT_USER : sound_cat(set.preset);
+}
+static int user_peeking(void) { return shown_cat() != sound_cat(set.preset); }
 
 static void text_cat(char *d, const char *s)
 {
@@ -2056,11 +2064,14 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     int32_t v;
     t[0] = 0;
     if (p == PX_CAT) {                       /* SOUNDS's */
-        text_cat(t, CAT_NAME[sound_cat(set.preset)]);
+        text_cat(t, CAT_NAME[shown_cat()]);
         return;
     }
     if (p == PX_SND) {
-        sound_title(set.preset, t);
+        if (user_peeking())
+            text_cat(t, "EMPTY");
+        else
+            sound_title(set.preset, t);
         return;
     }
     if (p == PX_SLOT) {
@@ -2247,7 +2258,7 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
     uint32_t k = op_now();
     switch (p) {
     case PX_CAT:
-        return (int32_t)sound_cat(set.preset) * w / (int32_t)(NCAT - 1u);
+        return (int32_t)shown_cat() * w / (int32_t)(NCAT - 1u);
     case PX_SND: {
         uint32_t n = 0, at = 0, i;           /* where in its kind */
         for (i = 0; i < NPRESET + NUSER; i++)
@@ -2385,7 +2396,9 @@ static void param_turn(uint32_t p, int32_t d)
         return;
     if (p == PX_CAT || p == PX_SND) {        /* SOUNDS: another kind (its first sound), another sound in this one;
                                               * both stop at their lists' ends, as every knob does */
-        uint32_t c = sound_cat(set.preset), n = set.preset, i, list[NPRESET + NUSER], cnt = 0, at = 0;
+        uint32_t c = shown_cat(), n = set.preset, i, list[NPRESET + NUSER], cnt = 0, at = 0;
+        if (p == PX_SND && user_peeking())   /* USER with none saved: nothing to choose */
+            return;
         if (p == PX_SND) {
             for (i = 0; i < NPRESET + NUSER; i++)
                 if (sound_ok(i) && sound_cat(i) == c) {
@@ -2406,15 +2419,27 @@ static void param_turn(uint32_t p, int32_t d)
                     if (first < NPRESET + NUSER)
                         break;
                 }
-                if (first == NPRESET + NUSER)    /* the end of the kinds */
+                if (first == NPRESET + NUSER) {  /* the end of the kinds: USER shown, empty, if none is saved */
+                    if (step > 0 && cc < (int32_t)CAT_USER && !ui.user_peek) {
+                        ui.user_peek = 1;
+                        ui.redraw = 1;
+                    }
                     break;
+                }
+                if (ui.user_peek) {          /* back from the empty USER */
+                    ui.user_peek = 0;
+                    ui.redraw = 1;
+                }
                 cc = nx;
                 n = first;
                 d -= step;
             }
         }
-        if (n != set.preset)
+        if (n != set.preset) {           /* (passing through the kinds to the empty USER: still shown) */
+            uint8_t pk = ui.user_peek;
             sound_go(n);
+            ui.user_peek = pk;
+        }
         return;
     }
     if (p == PX_SLOT) {
@@ -2497,6 +2522,7 @@ static void sound_go(uint32_t n)          /* to sound n, whole (no note between 
     uint32_t f = plat_lock();
     preset_load(n);
     plat_unlock(f);
+    ui.user_peek = 0;
     set_dirty = 1;
     ui.redraw = 1;
     sound_name(n, nm);
@@ -2507,6 +2533,7 @@ static void page_go(uint32_t pg)
 {
     ui.page = pg;
     ui.reset_arm = 0;
+    ui.user_peek = 0;
     cpu_peak = 0;
     ui.turned_at[0] = ui.turned_at[1] = ui.turned_at[2] = ui.turned_at[3] = 0;
     ui.redraw = 1;
@@ -2856,7 +2883,7 @@ static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
  * dim) */
 static void sounds_view(int32_t h)
 {
-    uint32_t c = sound_cat(set.preset), list[NPRESET + NUSER], n = 0, at = 0, i;
+    uint32_t c = shown_cat(), list[NPRESET + NUSER], n = 0, at = 0, i;
     int32_t first, row;
     char nm[16];
     for (i = 0; i < NPRESET + NUSER; i++)
