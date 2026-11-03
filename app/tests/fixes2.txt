@@ -75,3 +75,25 @@ key 7 up
 key 11 up
 key 14 up
 wait 30
+# SOUNDS: KIND and SOUND stop at their lists' ends
+expect preset 0
+tap HOME
+wait 30
+tap HOME
+wait 30
+expect page 16
+spin K2 -5
+wait 30
+expect preset 0
+spin K1 -3
+wait 30
+expect preset 0
+spin K1 20
+wait 30
+expect preset 60
+spin K1 3
+wait 30
+expect preset 60
+spin K2 5
+wait 30
+expect preset 60

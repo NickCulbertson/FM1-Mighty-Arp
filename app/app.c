@@ -1773,21 +1773,36 @@ static void param_turn(uint32_t p, int32_t d)
     int changed;
     if (p == PX_NONE)
         return;
-    if (p == PX_CAT || p == PX_SND) {        /* SOUNDS: another kind (its first sound), another sound in this one */
-        uint32_t c = sound_cat(set.preset), n = set.preset, i;
-        if (p == PX_SND)
-            n = sound_step(n, d, c);
-        else
-            for (i = 0; i < NCAT && d; i++) {   /* the next kind that has a sound */
-                uint32_t j;
-                c = (c + (d > 0 ? 1u : NCAT - 1u)) % NCAT;
-                for (j = 0; j < NPRESET + NUSER; j++)
-                    if (sound_ok(j) && sound_cat(j) == c) {
-                        n = j;
-                        d = 0;
+    if (p == PX_CAT || p == PX_SND) {        /* SOUNDS: another kind (its first sound), another sound in this one;
+                                              * both stop at their lists' ends, as every knob does */
+        uint32_t c = sound_cat(set.preset), n = set.preset, i, list[NPRESET + NUSER], cnt = 0, at = 0;
+        if (p == PX_SND) {
+            for (i = 0; i < NPRESET + NUSER; i++)
+                if (sound_ok(i) && sound_cat(i) == c) {
+                    if (i == set.preset)
+                        at = cnt;
+                    list[cnt++] = i;
+                }
+            n = list[clamp((int32_t)at + d, 0, (int32_t)cnt - 1)];
+        } else {
+            int32_t step = d > 0 ? 1 : -1, cc = (int32_t)c;
+            while (d) {                      /* a kind further each detent, an empty one (USER) passed over */
+                int32_t nx = cc + step;
+                uint32_t j, first = NPRESET + NUSER;
+                for (; nx >= 0 && nx < (int32_t)NCAT; nx += step) {
+                    for (j = 0; j < NPRESET + NUSER && first == NPRESET + NUSER; j++)
+                        if (sound_ok(j) && sound_cat(j) == (uint32_t)nx)
+                            first = j;
+                    if (first < NPRESET + NUSER)
                         break;
-                    }
+                }
+                if (first == NPRESET + NUSER)    /* the end of the kinds */
+                    break;
+                cc = nx;
+                n = first;
+                d -= step;
             }
+        }
         if (n != set.preset)
             sound_go(n);
         return;
