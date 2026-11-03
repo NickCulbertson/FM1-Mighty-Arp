@@ -45,6 +45,7 @@ typedef struct {
     float trem;                          /* 0 .. 1 */
     float bend;                          /* semitones */
     float chorus;                        /* 0 .. 1 */
+    float chorus_hz, chorus_depth;       /* its sweep: how fast, and how far (samples) */
     float dly_samples, dly_fb, dly_mix, dly_width;   /* width: 0 the echoes in the middle .. 1 full ping-pong */
     float rev_mix, rev_secs, rev_dark, shimmer;
 } eng_params_t;

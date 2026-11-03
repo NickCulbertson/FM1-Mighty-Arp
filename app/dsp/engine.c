@@ -812,16 +812,16 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
     float tl = trem_l, tr = trem_r, dtl = (trem_l_to - trem_l) / (float)n, dtr = (trem_r_to - trem_r) / (float)n;
     float ch_s, ch_ds, rm1, rm1_d, rm3, rm3_d;
     /* the slow movements (the chorus's sweep, the reverb lines'), at the block's two ends and stepped between */
-    ch_s = sin_t(ch_ph) * 170.0f;
+    ch_s = sin_t(ch_ph) * p->chorus_depth;
     rm1 = 6.0f * sin_t(rv_mph1);
     rm3 = 6.0f * sin_t(rv_mph2);
-    ch_ph += 0.55f * (float)n / SR;
+    ch_ph += p->chorus_hz * (float)n / SR;
     rv_mph1 += 0.31f * (float)n / SR;
     rv_mph2 += 0.43f * (float)n / SR;
     if (ch_ph >= 1.0f) ch_ph -= 1.0f;
     if (rv_mph1 >= 1.0f) rv_mph1 -= 1.0f;
     if (rv_mph2 >= 1.0f) rv_mph2 -= 1.0f;
-    ch_ds = (sin_t(ch_ph) * 170.0f - ch_s) / (float)n;
+    ch_ds = (sin_t(ch_ph) * p->chorus_depth - ch_s) / (float)n;
     rm1_d = (6.0f * sin_t(rv_mph1) - rm1) / (float)n;
     rm3_d = (6.0f * sin_t(rv_mph2) - rm3) / (float)n;
     if (fm_fabsf(p->rev_secs - rv_secs_now) > 0.001f) {   /* the decay time: each line's gain for 60 dB in it */

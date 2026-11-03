@@ -19,7 +19,11 @@ expect rev_dark 0
 expect shimmer 100
 tap FX
 wait 30
-spin K2 100
+expect page 10
+tap FX
+wait 30
+expect page 7
+spin K1 100
 spin K3 100
 wait 30
 expect dly_fdbk 95

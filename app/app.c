@@ -17,19 +17,24 @@
 #define NHELD 16
 
 /* ------------------------------------------------------------- parameters --- */
-enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND (VELOCITY: on GLOBAL) */
+enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE,       /* ENVELOPE */
        P_LRATE, P_LSHAPE, P_VIB, P_TREM,              /* LFO */
        P_ALGO, P_RATIO, P_FDBK, P_WAVE,               /* EDIT */
        P_RATE, P_OCTAVES, P_MODE, P_GATE,             /* ARP */
        P_HUMAN, P_OJUMP, P_VRAND, P_SWING,            /* SEQ */
-       P_DTIME, P_DFDBK, P_DMIX, P_CHORUS,            /* DELAY (CHORUS: on SOUND) */
+       P_DTIME, P_DFDBK, P_DMIX, P_CHORUS,            /* DELAY (MIX first on the page; CHORUS: its own page) */
        P_RMIX, P_RLEN, P_RDARK, P_SHIMMER,            /* REVERB */
        P_CLOCK, P_WIDTH, P_MIDICH, P_VCURVE,          /* GLOBAL (WIDTH: on DELAY) */
        P_TEMPO, P_CHANCE,                             /* SELECT and ALGO */
+       P_CRATE, P_CDEPTH,                             /* CHORUS (after the rest: a save's slots keep their place) */
        NP,
-       PX_SPACE = NP };                               /* HOME's macro: the reverb's mix and length together */
-enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE, U_SECS,
+       PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
+       PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
+       PX_NONE = 0xFF };                              /* no knob there */
+#define NP5 (NP - 2u)                    /* the parameters a save had before CHORUS's rate and depth */
+enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
+       U_SECS,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
 /* the arp's modes */
 enum { M_RANDOM, M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_THUMB_UD, M_PINKY, M_PINKY_UD,
@@ -47,38 +52,49 @@ static const param_t PAR[NP] = {
     {"RATE", "lfo_rate", 0, 100, 40, U_HZ},      {"SHAPE", "lfo_shape", 0, LFO_NSHAPE - 1, 0, U_SHAPE},
     {"VIBRATO", "vibrato", 0, 100, 0, U_PCT},    {"TREMOLO", "tremolo", 0, 100, 0, U_PCT},
     {"ALGO", "algo", 0, 7, 4, U_NUM1},           {"RATIO", "ratio", 0, 7, 1, U_RATIO},
-    {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"WAVE", "wave", 0, 8, 0, U_WAVE},
+    {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"MOD WAVE", "wave", 0, 8, 0, U_WAVE},
     {"RATE", "rate", 0, 10, 5, U_DIV},            {"OCTAVES", "octaves", 1, 4, 2, U_OCT},
     {"MODE", "mode", 0, NMODE - 1, M_RANDOM, U_MODE},           {"GATE", "gate", 5, 100, 50, U_PCT},
     {"HUMANIZE", "humanize", 0, 100, 0, U_PCT},  {"OCT JUMP", "oct_jump", 0, 100, 0, U_PCT},
     {"VEL RAND", "vel_rand", 0, 100, 20, U_PCT}, {"SWING", "swing", 0, 100, 0, U_PCT},
     {"TIME", "dly_time", 0, 8, 4, U_DDIV},       {"FEEDBACK", "dly_fdbk", 0, 95, 45, U_PCT},
-    {"MIX", "dly_mix", 0, 100, 30, U_PCT},       {"CHORUS", "chorus", 0, 100, 25, U_PCT},
+    {"MIX", "dly_mix", 0, 100, 30, U_PCT},       {"MIX", "chorus", 0, 100, 25, U_PCT},
     {"MIX", "rev_mix", 0, 100, 40, U_PCT},       {"LENGTH", "rev_len", 0, 100, 55, U_SECS},
     {"DARK", "rev_dark", 0, 100, 40, U_PCT},     {"SHIMMER", "shimmer", 0, 100, 0, U_PCT},
     {"CLOCK", "clock", 0, 2, 0, U_SYNC},         {"WIDTH", "width", 0, 100, 100, U_PCT},
     {"MIDI CH", "midi_ch", 0, 16, 0, U_CH},      {"VEL CURVE", "vel_curve", 0, 3, 1, U_CURVE},
     {"TEMPO", "tempo", 40, 200, 90, U_BPM},      {"CHANCE", "chance", 0, 100, 33, U_PCT},
+    {"RATE", "chorus_rate", 0, 100, 44, U_CHZ},  {"DEPTH", "chorus_depth", 0, 100, 65, U_PCT},
 };
 
 /* the pages: each button's four knobs */
-enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, NPAGE };
+enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, PG_CHORUS,
+       PG_OP1, PG_OP2, PG_OP3, PG_OP4, NPAGE };      /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS */
 typedef struct {
     const char *name;
     uint8_t btn, p[4];
 } page_t;
 static const page_t PAGE[NPAGE] = {
     {"HOME", B_HOME, {P_CHANCE, P_RATE, PX_SPACE, P_VIB}},
-    {"SOUND", B_SEL, {P_TONE, P_STRIKE, P_DETUNE, P_CHORUS}},
+    {"SOUND", B_SEL, {P_TONE, P_STRIKE, P_DETUNE, P_VELO}},
     {"ENVELOPE", B_ENV, {P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE}},
     {"LFO", B_LFO, {P_LRATE, P_LSHAPE, P_VIB, P_TREM}},
     {"EDIT", B_EDIT, {P_ALGO, P_RATIO, P_FDBK, P_WAVE}},
     {"ARP", B_ARP, {P_RATE, P_OCTAVES, P_MODE, P_GATE}},
     {"SEQ", B_SEQ, {P_HUMAN, P_OJUMP, P_VRAND, P_SWING}},
-    {"DELAY", B_FX, {P_DTIME, P_DFDBK, P_DMIX, P_WIDTH}},
+    {"DELAY", B_FX, {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
-    {"GLOBAL", B_GLO, {P_CLOCK, P_VELO, P_MIDICH, P_VCURVE}},
+    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_NONE}},
+    {"CHORUS", B_FX, {P_CHORUS, P_CRATE, P_CDEPTH, PX_NONE}},
+    {"OP 1", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
+    {"OP 2", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
+    {"OP 3", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
+    {"OP 4", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
 };
+/* an operator's ratios, as OP's RATIO knob steps through them (every sound's are among them) */
+static const float OP_RATIO[] = {0.5f, 1.0f, 1.41f, 1.5f, 2.0f, 2.5f, 2.76f, 3.0f, 3.5f, 4.0f, 5.0f, 5.4f, 6.0f, 7.0f,
+                                 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f};
+#define N_OPRATIO (sizeof OP_RATIO / sizeof OP_RATIO[0])
 
 /* the arp's steps (in MIDI clocks: 24 a beat) and the delay's times (in beats) */
 static const char *const DIV_NAME[11] = {"1/1", "1/2", "1/4D", "1/4", "1/8D", "1/8", "1/16D", "1/8T", "1/16", "1/16T",
@@ -253,7 +269,8 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3552414Du            /* "MAR5": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x3652414Du            /* "MAR6": the settings record; another magic loads defaults */
+#define SET_MAGIC_5 0x3552414Du          /* "MAR5": before CHORUS's rate and depth and the operators (settings5_t) */
 #define SET_MAGIC_4 0x3452414Du          /* "MAR4": the same record with RATCHET, SYNC and CLOCK OUT in three slots */
 #define SET_MAGIC_3 0x3352414Du          /* "MAR3": MAR4 with the arp's modes in their old order */
 static const uint8_t MODE_FROM_3[11] = {M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_PINKY,
@@ -264,7 +281,17 @@ typedef struct {
     uint8_t preset;
     int8_t octave;                       /* -2 .. +2 */
     uint8_t arp_on, hold;                /* hold: H_OFF, H_HOLD, H_LATCH */
+    /* the sound's four operators as OP 1-4 left them (the sound sets them): the ratio (OP_RATIO's index), the level
+     * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
+    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
 } settings_t;
+typedef struct {                         /* MAR3..MAR5 */
+    uint32_t magic;
+    int16_t p[NP5];
+    uint8_t preset;
+    int8_t octave;
+    uint8_t arp_on, hold;
+} settings5_t;
 static settings_t set;
 static uint8_t set_dirty;                /* changed since the last save: SAVE is lit */
 
@@ -861,8 +888,17 @@ static uint32_t cap_back_at;             /* the sample clock at which a voice sh
 
 static void engine_params(uint32_t n)    /* the knobs, as the engine takes them */
 {
+    static eng_sound_t snd;              /* the sound with OP 1-4's settings on it */
     const preset_t *pr = cur_preset();
     eng_params_t ep;
+    uint32_t k;
+    snd = pr->s;
+    for (k = 0; k < 4u; k++) {
+        snd.op[k].ratio = OP_RATIO[set.op_ratio[k] < N_OPRATIO ? set.op_ratio[k] : 1u];
+        snd.op[k].lvl = (float)set.op_level[k] / 100.0f;
+        snd.op[k].wave = set.op_wave[k];
+        snd.op[k].dec = knob_secs(set.op_decay[k]);
+    }
     float beat = tick_samples() * 24.0f, v = (float)set.p[P_VIB] / 100.0f;
     ep.tone = fm_exp2f(((float)set.p[P_TONE] - 50.0f) / 25.0f);   /* x0.25 .. x4 */
     ep.strike = (float)set.p[P_STRIKE] / 50.0f;
@@ -874,7 +910,7 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
     ep.rel = knob_secs(set.p[P_RELEASE]);
     ep.alg = (uint8_t)set.p[P_ALGO];
     ep.fb = (uint8_t)set.p[P_FDBK];
-    ep.wave = (uint32_t)set.p[P_WAVE] == preset_wave(pr) ? 0xFFu : (uint8_t)set.p[P_WAVE];
+    ep.wave = 0xFFu;                     /* each operator its own (MOD WAVE sets the modulators', op_wave) */
     ep.ratio = RATIO_MUL[set.p[P_RATIO]];
     ep.lfo_hz = lfo_hz(set.p[P_LRATE]);
     ep.lfo_shape = (uint8_t)set.p[P_LSHAPE];
@@ -882,6 +918,8 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
     ep.trem = (float)set.p[P_TREM] / 100.0f;
     ep.bend = bend;
     ep.chorus = (float)set.p[P_CHORUS] / 100.0f;
+    ep.chorus_hz = 0.1f * fm_exp2f((float)set.p[P_CRATE] * 0.0564386f);   /* 0.1 .. 5 Hz */
+    ep.chorus_depth = 20.0f + (float)set.p[P_CDEPTH] * 2.3f;             /* samples: 0.5 .. 5.7 ms */
     ep.dly_samples = beat * DDIV_BEATS[set.p[P_DTIME]];
     while (ep.dly_samples > ENG_DLY_MAX)    /* longer than the line at a slow tempo: half, still in time */
         ep.dly_samples *= 0.5f;
@@ -892,7 +930,7 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
     ep.rev_secs = rev_secs(set.p[P_RLEN]);
     ep.rev_dark = (float)set.p[P_RDARK] / 100.0f;
     ep.shimmer = (float)set.p[P_SHIMMER] / 100.0f;
-    eng_set(&pr->s, &ep, n);
+    eng_set(&snd, &ep, n);
 }
 
 void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
@@ -965,10 +1003,28 @@ void app_overload(void)                  /* the render ran late (APP_OVERLOAD): 
 
 
 /* --------------------------------------------------------------- settings --- */
-static void preset_load(uint32_t p)      /* a sound: its envelope, LFO and EDIT pages, and SOUND's two at the middle */
+static void ops_load(const preset_t *pr) /* OP 1-4 as the sound has them */
+{
+    uint32_t k, i, best;
+    for (k = 0; k < 4u; k++) {
+        const eng_op_t *o = &pr->s.op[k];
+        for (i = 1, best = 0; i < N_OPRATIO; i++)
+            if (fm_fabsf(OP_RATIO[i] - o->ratio) < fm_fabsf(OP_RATIO[best] - o->ratio))
+                best = i;
+        set.op_ratio[k] = (uint8_t)best;
+        set.op_level[k] = (uint8_t)clamp((int32_t)(o->lvl * 100.0f + 0.5f), 0, 100);
+        set.op_wave[k] = (uint8_t)(o->wave < 9u ? o->wave : 0u);
+        set.op_decay[k] = (uint8_t)clamp((int32_t)(7.5257f * fm_log2f(fm_maxf(o->dec, 0.001f) * 1000.0f) + 0.5f),
+                                         0, 100);   /* knob_secs backwards: 25 log10(ms) */
+    }
+}
+
+static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT and OP pages, and SOUND's two at the
+                                          * middle */
 {
     const preset_t *pr = &PRESET[p];
     set.preset = (uint8_t)p;
+    ops_load(pr);
     set.p[P_ATTACK] = pr->a;
     set.p[P_DECAY] = pr->d;
     set.p[P_SUSTAIN] = pr->su;
@@ -1006,6 +1062,9 @@ static int settings_ok(void)
     for (i = 0; i < NP; i++)
         if (set.p[i] < PAR[i].lo || set.p[i] > PAR[i].hi)
             return 0;
+    for (i = 0; i < 4u; i++)
+        if (set.op_ratio[i] >= N_OPRATIO || set.op_level[i] > 100u || set.op_wave[i] > 8u || set.op_decay[i] > 100u)
+            return 0;
     return 1;
 }
 
@@ -1019,16 +1078,36 @@ void app_init(void)
 #endif
     for (i = 0; i < NHELD; i++)
         out_note[i] = -1;
-    if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) == (int)sizeof set && set.magic == SET_MAGIC_3
-        && (uint16_t)set.p[P_MODE] < 11u) {   /* a save from before RANDOM came first: its mode moved */
-        set.p[P_MODE] = MODE_FROM_3[set.p[P_MODE]];
-        set.magic = SET_MAGIC_4;
-    }
-    if (set.magic == SET_MAGIC_4) {      /* a save from before HUMANIZE, CLOCK and WIDTH: those three slots anew */
-        set.p[P_HUMAN] = 0;              /* (was RATCHET) */
-        set.p[P_CLOCK] = set.p[P_CLOCK] ? 2 : set.p[P_WIDTH] ? 1 : 0;   /* (were SYNC and CLOCK OUT) */
-        set.p[P_WIDTH] = PAR[P_WIDTH].def;
-        set.magic = SET_MAGIC;
+    {
+        static union {
+            settings_t s;
+            settings5_t o;
+        } ld;
+        int got = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
+        settings5_t *o = &ld.o;
+        if (got == (int)sizeof(settings5_t)) {   /* an older save: brought forward */
+            if (o->magic == SET_MAGIC_3 && (uint16_t)o->p[P_MODE] < 11u) {   /* before RANDOM came first */
+                o->p[P_MODE] = MODE_FROM_3[o->p[P_MODE]];
+                o->magic = SET_MAGIC_4;
+            }
+            if (o->magic == SET_MAGIC_4) {   /* before HUMANIZE, CLOCK and WIDTH: those three slots anew */
+                o->p[P_HUMAN] = 0;           /* (was RATCHET) */
+                o->p[P_CLOCK] = o->p[P_CLOCK] ? 2 : o->p[P_WIDTH] ? 1 : 0;   /* (were SYNC and CLOCK OUT) */
+                o->p[P_WIDTH] = PAR[P_WIDTH].def;
+                o->magic = SET_MAGIC_5;
+            }
+            if (o->magic == SET_MAGIC_5 && o->preset < NPRESET) {   /* before the chorus's two and the operators */
+                for (i = 0; i < NP; i++)
+                    set.p[i] = i < NP5 ? o->p[i] : PAR[i].def;
+                set.preset = o->preset;
+                set.octave = o->octave;
+                set.arp_on = o->arp_on;
+                set.hold = o->hold;
+                ops_load(&PRESET[set.preset]);
+                set.magic = SET_MAGIC;
+            }
+        } else if (got == (int)sizeof set)
+            set = ld.s;
     }
     if (set.magic != SET_MAGIC || !settings_ok())
         settings_defaults();
@@ -1098,12 +1177,56 @@ static void dec_text(float x, int places, char *t)   /* x with one or two decima
     text_cat(t, f);
 }
 
-static const char *par_name(uint32_t p) { return p == PX_SPACE ? "SPACE" : p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name; }
+static const char *par_name(uint32_t p)
+{
+    static const char *const OPN[4] = {"RATIO", "LEVEL", "WAVE", "DECAY"};
+    if (p == PX_SPACE)
+        return "SPACE";
+    if (p >= PX_OPR && p <= PX_OPD)
+        return OPN[p - PX_OPR];
+    return p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name;
+}
+
+/* OP 1-4: which operator the page edits, and whether it runs its own envelope (a modulator, or a strike carrier:
+ * DECAY is its) or the ENVELOPE page's */
+static uint32_t op_now(void) { return ui.page >= PG_OP1 ? ui.page - PG_OP1 : 0u; }
+static int op_is_carrier(uint32_t k) { return ENG_CAR[set.p[P_ALGO] & 7] >> k & 1u; }
+static int op_own_env(uint32_t k) { return !op_is_carrier(k) || cur_preset()->s.op[k].strike; }
 
 static void param_text(uint32_t p, char *t)  /* a parameter's value as the screen shows it */
 {
     int32_t v;
     t[0] = 0;
+    if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4's */
+        uint32_t k = op_now();
+        if (p == PX_OPR) {
+            float r = OP_RATIO[set.op_ratio[k]];
+            text_cat(t, "X");
+            if (r == (float)(int32_t)r)
+                int_text((int32_t)r, t + 1);
+            else
+                dec_text(r, r * 10.0f == (float)(int32_t)(r * 10.0f) ? 1 : 2, t + 1);
+        } else if (p == PX_OPL) {
+            int_text(set.op_level[k], t);
+            text_cat(t, "%");
+        } else if (p == PX_OPW) {
+            text_cat(t, "W");
+            int_text(set.op_wave[k] + 1, t + 1);
+            text_cat(t, set.op_wave[k] == 8u ? " SAW" : set.op_wave[k] ? "" : " SINE");
+        } else if (!op_own_env((uint32_t)k)) {
+            text_cat(t, "ENV PAGE");         /* a carrier on the ENVELOPE page: its own decay unused */
+        } else {
+            float sec = knob_secs(set.op_decay[k]);
+            if (sec < 1.0f) {
+                int_text((int32_t)(sec * 1000.0f + 0.5f), t);
+                text_cat(t, " MS");
+            } else {
+                dec_text(sec, 1, t);
+                text_cat(t, " S");
+            }
+        }
+        return;
+    }
     if (p == PX_SPACE)
         p = P_RMIX;
     v = set.p[p];
@@ -1128,8 +1251,9 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         text_cat(t, " S");
         break;
     }
+    case U_CHZ:
     case U_HZ: {
-        float h = lfo_hz(v);
+        float h = PAR[p].unit == U_CHZ ? 0.1f * fm_exp2f((float)v * 0.0564386f) : lfo_hz(v);
         dec_text(h, h < 10.0f ? 2 : 1, t);
         text_cat(t, " HZ");
         break;
@@ -1191,6 +1315,19 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
 
 static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 0 .. w */
 {
+    uint32_t k = op_now();
+    switch (p) {
+    case PX_OPR:
+        return (int32_t)set.op_ratio[k] * w / (int32_t)(N_OPRATIO - 1u);
+    case PX_OPL:
+        return (int32_t)set.op_level[k] * w / 100;
+    case PX_OPW:
+        return (int32_t)set.op_wave[k] * w / 8;
+    case PX_OPD:
+        return op_own_env(k) ? (int32_t)set.op_decay[k] * w / 100 : 0;
+    default:
+        break;
+    }
     if (p == PX_SPACE)
         p = P_RMIX;
     return (set.p[p] - PAR[p].lo) * w / (PAR[p].hi - PAR[p].lo);
@@ -1260,6 +1397,8 @@ static void speak(void)
         text_cat(t, ". ");
         text_cat(t, PAGE[ui.page].name);
         for (i = 0; i < 4u; i++) {
+            if (PAGE[ui.page].p[i] == PX_NONE)
+                continue;
             text_cat(t, ". ");
             text_cat(t, par_name(PAGE[ui.page].p[i]));
             text_cat(t, " ");
@@ -1290,11 +1429,26 @@ static void param_turn(uint32_t p, int32_t d)
 {
     char t[16];
     int changed;
-    if (p == PX_SPACE) {                     /* SPACE: the reverb's mix and its length together */
+    if (p == PX_NONE)
+        return;
+    if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4: the operator's own */
+        uint32_t k = op_now();
+        uint8_t *f = p == PX_OPR ? &set.op_ratio[k] : p == PX_OPL ? &set.op_level[k] : p == PX_OPW ? &set.op_wave[k]
+                                                                                                    : &set.op_decay[k];
+        int32_t hi = p == PX_OPR ? (int32_t)N_OPRATIO - 1 : p == PX_OPW ? 8 : 100, v = clamp((int32_t)*f + d, 0, hi);
+        changed = v != *f;
+        *f = (uint8_t)v;
+    } else if (p == PX_SPACE) {              /* SPACE: the reverb's mix and its length together */
         changed = set_par(P_RMIX, set.p[P_RMIX] + d);
         changed |= set_par(P_RLEN, set.p[P_RLEN] + d);
     } else
         changed = set_par(p, set.p[p] + d);
+    if (changed && p == P_WAVE) {            /* MOD WAVE: every modulator's wave (OP 1-4 show each) */
+        uint32_t k;
+        for (k = 0; k < 4u; k++)
+            if (!op_is_carrier(k))
+                set.op_wave[k] = (uint8_t)set.p[P_WAVE];
+    }
     if (!changed)
         return;
     set_dirty = 1;
@@ -1346,8 +1500,12 @@ static void input(void)
         uint32_t bit = 1u << k, pg;
         if (!(btn & bit) || (ui.btn & bit))
             continue;
-        if (k == B_FX) {                     /* FX: DELAY, again REVERB, and back */
-            page_go(ui.page == PG_DELAY ? PG_REVERB : PG_DELAY);
+        if (k == B_FX) {                     /* FX: DELAY, again REVERB, again CHORUS, and round */
+            page_go(ui.page == PG_DELAY ? PG_REVERB : ui.page == PG_REVERB ? PG_CHORUS : PG_DELAY);
+            continue;
+        }
+        if (k == B_EDIT) {                   /* EDIT: the algorithm, again OP 1, OP 2, OP 3, OP 4, and round */
+            page_go(ui.page == PG_EDIT ? PG_OP1 : ui.page >= PG_OP1 && ui.page < PG_OP4 ? ui.page + 1u : PG_EDIT);
             continue;
         }
         for (pg = 0; pg < NPAGE && PAGE[pg].btn != k; pg++)
@@ -1643,9 +1801,11 @@ static const uint8_t ALG_ROW[8][4] = {   /* and its row, 0 the top, 3 the carrie
     {3, 2, 3, 2}, {3, 3, 3, 2}, {3, 3, 3, 2}, {3, 3, 3, 3},
 };
 
-static void algo_view(int32_t h)
+static void algo_view(int32_t h, int32_t hl)   /* hl: the operator OP is editing, outlined white (-1 none) */
 {
-    uint32_t a = (uint32_t)set.p[P_ALGO] & 7u, w = (uint32_t)set.p[P_WAVE], fb = (uint32_t)set.p[P_FDBK], k, j;
+    uint32_t a = (uint32_t)set.p[P_ALGO] & 7u, fb = (uint32_t)set.p[P_FDBK], k, j;
+    uint32_t w = hl >= 0 ? set.op_wave[hl] : (uint32_t)set.p[P_WAVE];   /* the wave beside: this operator's, or MOD
+                                                                         * WAVE's */
     int32_t x, py = 0, lo = 240, hi = 0, y0 = 44, amp = 16;
     char t[24] = "ALGO ";
 #define OPX(k) ((int32_t)ALG_X[a][k] + 4)
@@ -1668,6 +1828,12 @@ static void algo_view(int32_t h)
     for (k = 0; k < 4u; k++) {           /* the boxes: the carriers filled */
         int32_t bx = OPX(k) - 8, by = OPY(k) - 5;
         char n[2] = {(char)('1' + k), 0};
+        if ((int32_t)k == hl) {          /* the one being edited */
+            cv_rect(bx - 2, by - 2, 21, 1, C_WHITE);
+            cv_rect(bx - 2, by + 12, 21, 1, C_WHITE);
+            cv_rect(bx - 2, by - 2, 1, 15, C_WHITE);
+            cv_rect(bx + 18, by - 2, 1, 15, C_WHITE);
+        }
         if (ENG_CAR[a] >> k & 1u) {
             cv_rect(bx, by, 17, 11, C_HI);
             cv_text(bx + 6, by - 1, &FONT_T, n, C_BLACK);
@@ -1759,15 +1925,22 @@ static void draw(void)
     } else {
         /* a page: its four knobs, two by two */
         cv_begin(240, 108, C_BG);
-        cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
         {
-            const char *h = ui.page == PG_DELAY ? "FX AGAIN: REVERB" : ui.page == PG_REVERB ? "FX AGAIN: DELAY" : "";
-            cv_text(230 - text_w(&FONT_XS, h), 1, &FONT_XS, h, C_DIM);
+            static const char *const NEXT[NPAGE] = {[PG_DELAY] = "FX AGAIN: REVERB", [PG_REVERB] = "FX AGAIN: CHORUS",
+                [PG_CHORUS] = "FX AGAIN: DELAY", [PG_EDIT] = "EDIT AGAIN: OP 1", [PG_OP1] = "EDIT AGAIN: OP 2",
+                [PG_OP2] = "EDIT AGAIN: OP 3", [PG_OP3] = "EDIT AGAIN: OP 4", [PG_OP4] = "EDIT AGAIN: ALGO"};
+            int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
+            if (ui.page >= PG_OP1)           /* the operator's part in the algorithm */
+                cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);
+            if (NEXT[ui.page])
+                cv_text(230 - text_w(&FONT_XS, NEXT[ui.page]), 1, &FONT_XS, NEXT[ui.page], C_DIM);
         }
         cv_rect(10, 18, 220, 1, C_LINE);
         for (i = 0; i < 4u; i++) {
             uint32_t p = pg->p[i];
             int32_t x = 10 + (int32_t)(i % 2u) * 116, y = 23 + (int32_t)(i / 2u) * 43;
+            if (p == PX_NONE)                /* a page with fewer knobs */
+                continue;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
             knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI, 1);
             cv_text(x + 38, y + 1, &FONT_S, par_name(p), C_GRAY);
@@ -1780,8 +1953,8 @@ static void draw(void)
         cv_blit(0, 34);
         cv_begin(240, 70, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
-        if (ui.page == PG_EDIT)
-            algo_view(70);
+        if (ui.page == PG_EDIT || ui.page >= PG_OP1)
+            algo_view(70, ui.page >= PG_OP1 ? (int32_t)op_now() : -1);
         else
             notes_view(70, 400u, 0);
         if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */
@@ -1860,6 +2033,13 @@ int app_expect(const char *what, int *got)
 #else
         *got = 0;
 #endif
+    else if (!strncmp(what, "op", 2) && what[2] >= '1' && what[2] <= '4' && what[3] == '_') {   /* opN_ratio, _level,
+                                                                                              * _wave, _decay */
+        uint32_t k = (uint32_t)(what[2] - '1');
+        const char *f = what + 4;
+        *got = !strcmp(f, "ratio") ? set.op_ratio[k] : !strcmp(f, "level") ? set.op_level[k]
+             : !strcmp(f, "wave") ? set.op_wave[k] : set.op_decay[k];
+    }
     else if (!strcmp(what, "shed_note"))     /* the note the last shed let go */
         *got = (int)eng_shed_note();
     else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */

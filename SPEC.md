@@ -15,10 +15,10 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | SEL | SOUND page |
 | ENV | ENVELOPE page |
 | LFO | LFO page |
-| EDIT | EDIT page: the FM engine underneath |
+| EDIT | EDIT page: the FM engine underneath; EDIT again: OP 1, OP 2, OP 3, OP 4 (and round) |
 | ARP | ARP page |
 | SEQ | SEQ page: the arp's extra chances |
-| FX | DELAY page; FX again: REVERB page (and back) |
+| FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
 | SAVE | saves everything (one slot, as now); lit when something changed |
 | PLAY | arp on / off (keys) |
@@ -30,15 +30,17 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |
 | HOME | CHANCE | RATE | SPACE (reverb mix and length together) | DRIFT (= LFO vibrato) |
-| SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | CHORUS |
+| SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | VELOCITY |
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
-| EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8, W9 SAW) |
+| EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | MOD WAVE (W1-W8, W9 SAW) |
+| OP 1-4 (EDIT again) | RATIO | LEVEL | WAVE | DECAY |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
 | SEQ | HUMANIZE (up to 40 ms late) | OCT JUMP (chance) | VEL RAND | SWING |
-| DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | WIDTH |
+| DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
-| GLOBAL | CLOCK (INT, OUT, EXT) | VELOCITY | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) |
+| CHORUS (FX again) | MIX | RATE | DEPTH | |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
 
 A sound sets the SOUND, ENVELOPE, LFO and EDIT pages. ARP, SEQ, effects and GLOBAL stay as they are, so changing
 sound mid-piece keeps its rhythm and its space.

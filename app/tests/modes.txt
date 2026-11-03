@@ -71,12 +71,12 @@ expect arp_notes >2
 # the delay: 1/16D, and 1/2 at 40 BPM (longer than the line: halved, still in time)
 tap FX
 wait 30
-spin K1 -20
-spin K1 1
+spin K2 -20
+spin K2 1
 wait 30
 expect dly_time 1
 shot delay_dotted.png
-spin K1 20
+spin K2 20
 turn SELECT -60
 wait 30
 expect dly_time 8
