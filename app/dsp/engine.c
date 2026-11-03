@@ -215,7 +215,7 @@ typedef struct {
      * opens (famt: octaves, with the velocity); its coefficients now and their step a sample to the block's end, and
      * its state, left and right (Simper's state-variable low-pass, the trapezoidal one: stable at any cutoff) */
     uint8_t flt, fatt;
-    float fe, fbase, famt;
+    float fe, fbase, famt, fvel;         /* fvel: the note's velocity's share of ENV AMOUNT */
     float fa1, fa2, fa3, fd1, fd2, fd3;
     float fl1, fl2, fr1, fr2;
     uint32_t drift_n;
@@ -269,6 +269,14 @@ static void voice_release(voice_t *v)
         v->tgt[k] = 0.0f;
         v->kk[k] = v->rk[k];
     }
+}
+
+/* where the filter sits for this voice now: from the knobs as they are (so turning CUTOFF sweeps a held note), and
+ * the key it plays now (a legato note moved on) */
+static void filter_follow(voice_t *v)
+{
+    v->fbase = prm.cut + (float)(v->note - 60) * (1.0f / 12.0f) * prm.keytrack;   /* KEY TRACK: the key's way */
+    v->famt = prm.env * v->fvel;
 }
 
 /* the filter's coefficients for where its envelope is now (and the LFO), to step to over the next n samples (0:
@@ -410,13 +418,15 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         v->xf[k] = 0.0f;
     }
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
-    v->flt = prm.filter;                 /* the filter: from closed again, the envelope from its start */
-    v->fbase = prm.cut + (float)(note - 60) * (1.0f / 12.0f) * prm.keytrack;   /* KEY TRACK: the key's way */
-    v->famt = prm.env * (0.4f + 0.6f * velf);   /* harder, brighter */
-    v->fe = 0.0f;
-    v->fatt = 1;
+    v->flt = prm.filter;                 /* the filter: from closed again, the envelope from its start (at its peak
+                                          * at once with no attack: a short note's first moment is bright too) */
+    v->fvel = 0.4f + 0.6f * velf;        /* harder, brighter */
+    filter_follow(v);
+    v->fatt = prm.fatt > 0.0005f;
+    v->fe = v->fatt ? 0.0f : 1.0f;
     v->fl1 = v->fl2 = v->fr1 = v->fr2 = 0.0f;
-    filter_coefs(v, 0u);
+    if (v->flt)
+        filter_coefs(v, 0u);
     v->on = 1;
     v->rel = 0;
     v->shed = 0;
@@ -730,7 +740,8 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         break;
     }
     lfo_val = x;
-    for (i = 0; i < 3u; i++) {           /* PWM: the widths swung by the LFO (half way to the edges at most) */
+    k = p->pwm > 0.0f || pw_d[0] != 0.5f || pw_d[1] != 0.25f || pw_d[2] != 0.125f;   /* PWM on, or just off */
+    for (i = 0; k && i < 3u; i++) {      /* PWM: the widths swung by the LFO (half way to the edges at most) */
         static const float base[3] = {0.5f, 0.25f, 0.125f};
         float dd = fm_clampf(base[i] + p->pwm * x * base[i] * 0.85f, 0.03f, 0.97f);
         pw_d[i] = dd;
@@ -750,7 +761,15 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         } else
             v->drift_n--;
         v->drift += (v->drift_to - v->drift) * drift_k;
+        if (prm.filter && !v->flt) {     /* the filter turned on under a held note: from its state at rest */
+            v->fl1 = v->fl2 = v->fr1 = v->fr2 = 0.0f;
+            v->fe = v->fatt ? v->fe : 1.0f;
+            filter_follow(v);
+            filter_coefs(v, 0u);
+        }
+        v->flt = prm.filter;
         if (v->flt) {                    /* the filter's ADSR a block on, and its coefficients there by the end */
+            filter_follow(v);
             if (v->rel) {                /* released: down to closed over its RELEASE */
                 v->fatt = 0;
                 v->fe *= frel_k;

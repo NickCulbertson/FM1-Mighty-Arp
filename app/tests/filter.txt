@@ -56,7 +56,7 @@ wait 30
 tap ENV
 wait 30
 expect page 19
-expect fatt 0
+expect fatt 70
 spin K3 100
 wait 30
 expect fsus 100
@@ -75,5 +75,28 @@ key 14 down 100
 wait 2500
 peakreset
 wait 500
+expect peak_db_max <-40
+key 14 up
+# CUTOFF sweeps a held note (SAW PAD, open to closed while it sounds)
+tap ENV
+wait 30
+tap ENV
+wait 30
+expect page 17
+spin K1 100
+spin K3 -100
+spin K4 0
+wait 30
+expect cutoff 100
+expect fenv 0
+key 14 down 100
+wait 1500
+peakreset
+wait 400
+expect peak_db_min -30
+spin K1 -100
+wait 1500
+peakreset
+wait 400
 expect peak_db_max <-40
 key 14 up

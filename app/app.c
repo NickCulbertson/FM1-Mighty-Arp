@@ -911,7 +911,10 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
         }
     for (i = nheld; i-- > 0;) {          /* MIDI's held notes from those channels, that nothing else holds now */
         int32_t note = held[i];
-        if (held_src[i] & DN_MIDI && held_ch[i] & chans && !(down[note] & DN_KEY) && !midi_down[note]) {
+        if (!(held_src[i] & DN_MIDI) || !(held_ch[i] & chans))
+            continue;
+        held_ch[i] &= (uint16_t)~chans;  /* those channels' hold on it gone; another's, or a key's, keeps it */
+        if (!held_ch[i] && !(down[note] & DN_KEY) && !midi_down[note]) {
             held_remove(note);
             if (sound_off)               /* All Sound Off: out fast, not into the release */
                 eng_note_kill(note);
@@ -1276,7 +1279,6 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
     pr = &PRESET[p];
     set.preset = (uint8_t)p;
     ops_load(pr);
-    voice_load(pr);
     set.p[P_ATTACK] = pr->a;
     set.p[P_DECAY] = pr->d;
     set.p[P_SUSTAIN] = pr->su;
@@ -1291,6 +1293,7 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
     set.p[P_RATIO] = 1;
     set.p[P_TONE] = 50;
     set.p[P_STRIKE] = 50;
+    voice_load(pr);                      /* last: the filter's envelope follows this sound's amp envelope */
 }
 
 /* the sound now, kept as user sound slot, and that then the one playing; 0 = written. The slot changes only once
@@ -1467,10 +1470,11 @@ void app_init(void)
             }
             set.magic = SET_MAGIC;
         } else if (got == (int)sizeof(settings7_t) && ld.o7.magic == SET_MAGIC_7) {
-            settings7_t *o7 = &ld.o7;    /* before the filter and PWM: the sound's own filter */
+            settings7_t *o7 = &ld.o7;    /* before the filter and PWM: the sound's own filter. Its bank had 47
+                                          * sounds, so a USER slot was 47 on: the 13 VA sounds came after */
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NP7 ? o7->p[i] : PAR[i].def;
-            set.preset = o7->preset;
+            set.preset = (uint8_t)(o7->preset >= 47u ? o7->preset - 47u + NPRESET : o7->preset);
             set.octave = o7->octave;
             set.arp_on = o7->arp_on;
             set.hold = o7->hold;
