@@ -16,7 +16,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | SELECT / ALGORITHM | Tempo (BPM) / arp chance, on every page |
 | HOME, SEL, ENV, LFO, EDIT, ARP, SEQ, FX, GLO | The page K1-K4 edit (below); SEL again: VOICE; FX again: DELAY, REVERB, CHORUS; EDIT again: OP 1-4 |
 | OCT- / OCT+ | Octave |
-| SAVE | Save everything (lit when there are unsaved changes) |
+| SAVE | Save everything |
 
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |

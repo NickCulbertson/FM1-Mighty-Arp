@@ -2147,8 +2147,6 @@ static void lights(void)
         btn |= 1u << B_REC;
     else if (set.hold == H_HOLD)
         mid |= 1u << B_REC;
-    if (set_dirty)
-        btn |= 1u << B_SAVE;
     for (k = 0; k < NKEYS; k++) {
         int32_t note = 53 + (int32_t)k + 12 * set.octave;
         if (note >= 0 && note < 128 && (held_mask[note >> 5] >> (note & 31) & 1u))

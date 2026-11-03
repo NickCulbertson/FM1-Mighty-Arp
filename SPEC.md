@@ -20,7 +20,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | SEQ | SEQ page: the arp's extra chances |
 | FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
-| SAVE | saves everything (one slot, as now); lit when something changed |
+| SAVE | saves everything (one slot); SAVE on SOUNDS: the sound into a USER slot |
 | PLAY | arp on / off (keys) |
 | REC | hold: OFF -> HOLD -> LATCH -> OFF |
 | OCT- / OCT+ | octave |
