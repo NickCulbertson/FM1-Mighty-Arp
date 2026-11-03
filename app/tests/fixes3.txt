@@ -146,3 +146,66 @@ expect arp_notes >50
 midi 80 3C 00
 wait 30
 expect dsp_resets 0
+# All Sound Off on channel 1 mid-strum, channel 2 still holding: C's E and G never play; D's chord plays on
+tap GLO
+wait 30
+spin K4 -1
+wait 30
+spin K4 1
+wait 30
+turn ALGO 40
+wait 30
+expect chance 100
+tap ARP
+wait 30
+expect page 5
+spin K2 -3
+spin K3 -20
+spin K3 1
+spin K4 50
+wait 30
+expect octaves 1
+expect mode 1
+expect gate 100
+tap ARP
+wait 30
+expect page 20
+spin K1 1
+spin K2 100
+wait 30
+expect chord 1
+expect strum 100
+midi 90 3C 64
+midi 91 4A 64
+wait 340
+midi B0 78 00
+expect arp_mark 0
+wait 1500
+expect held 1
+expect note1 >70
+expect note2 >70
+expect note3 >70
+expect note4 >70
+midi 81 4A 00
+wait 1500
+# All Notes Off with RELEASE at its shortest, 1/2 notes at GATE 100: the arp's long-gated chord releases at once (inside, not only on MIDI)
+tap ENV
+wait 30
+expect page 2
+spin K4 -100
+wait 30
+expect release 0
+tap ARP
+wait 30
+expect page 5
+spin K1 -4
+wait 30
+expect rate 1
+midi 90 3C 64
+wait 1500
+expect voices >0
+midi B0 7B 00
+wait 350
+expect voices 0
+expect held 0
+expect dsp_resets 0

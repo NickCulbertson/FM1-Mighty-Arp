@@ -443,6 +443,14 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     voice_pitch(v);
 }
 
+void eng_note_release(int32_t note)      /* its voices into their release, an arp's gated ones too */
+{
+    uint32_t i;
+    for (i = 0; i < ENG_NVOICE; i++)
+        if (vc[i].on && vc[i].note == note)
+            voice_release(&vc[i]);
+}
+
 void eng_note_off(int32_t note)
 {
     uint32_t i;

@@ -67,6 +67,7 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n);   /* the 
 void eng_note_on(int32_t note, uint32_t vel, int32_t gate);   /* gate: samples before it releases; -1, a key holds */
 void eng_note_off(int32_t note);         /* a key let go: the voices it holds release */
 void eng_release_all(void);
+void eng_note_release(int32_t note);     /* its voices release, the arp's gated ones too (All Notes Off) */
 void eng_note_kill(int32_t note);        /* its voices out in a few ms (All Sound Off) */
 void eng_voices(float *l, float *r, uint32_t a, uint32_t b);  /* the voices, added into l, r [a, b) */
 /* the second core: plat_cpu2_run and plat_cpu2_wait, once it runs (app_init); without, one core does it all */

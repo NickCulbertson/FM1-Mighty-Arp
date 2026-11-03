@@ -8,6 +8,8 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 
 - [x] GPT's seventh review (`2fb4dd1..ce7429c`): all five findings fixed in `2539d9b` (release workflow, panic and
       the arp's chords, RESET mid-strum, swung strums, the names' generator); tests green
+- [x] GPT's eighth review (`ce7429c..8ce5404`): both panic findings fixed (a channel's queued and sounding arp
+      notes stop, another's play on; All Notes Off releases the arp's gated voices)
 - [ ] GPT's suggested beta test on the FM-1: ten VA notes, long releases, shimmer up, a swung strum, MIDI in and out
 - [ ] Open from before: MONO's fade-then-restart (decide: fix for 0.1, or later)
 - [ ] Open from before: migration fixtures from real old firmware (decide: worth it before 0.1, now that there
@@ -41,10 +43,10 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 
 ## 4. Documentation
 
-- [ ] `app/docs/MANUAL.md`: Mighty Arp's own manual (now the template's): what it is, the buttons, every page
+- [x] `app/docs/MANUAL.md`: Mighty Arp's own manual (now the template's): what it is, the buttons, every page
       and knob, the chance arp, CHORDS and STRUM, USER presets and PARAMS, RESET, MIDI and clock, installing and
       going back to stock. SPEC.md and README.md have most of it
-- [ ] Manual screenshots (`app/docs/img/`, now the template's): from the host simulator's `shot`
+- [x] Manual screenshots (`app/docs/img/`, now the template's): from the host simulator's `shot`
 - [ ] README: a short "what it is" at the top for someone arriving from GitHub, and the install steps
 
 ## 5. Release

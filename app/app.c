@@ -577,6 +577,8 @@ static void midi_rt(uint32_t st) { plat_midi_send(0x0Fu | st << 8, TO_USB); }   
 /* the arp's MIDI out: each note it sent and the sample clock its note-off is due at */
 static int16_t out_note[NHELD];
 static uint32_t out_end[NHELD];
+static int16_t out_root[NHELD];          /* the held note it came from (a chord's root, a tone's), and the MIDI */
+static uint16_t out_chs[NHELD];           /* channels holding that then: a panic stops only its channels' */
 static uint32_t rend_i;                  /* the render's place in the block: where an event falls */
 static void out_all_off(void)
 {
@@ -693,6 +695,14 @@ static void held_add(int32_t note, uint32_t vel)
 }
 
 static void arp_cancel(void);
+static int held_has(int32_t note)         /* held now: in the arp's notes */
+{
+    uint32_t i;
+    for (i = 0; i < nheld; i++)
+        if (held[i] == note)
+            return 1;
+    return 0;
+}
 static void held_remove(int32_t note)
 {
     uint32_t i;
@@ -731,6 +741,7 @@ static int32_t swing_wait, hum_wait;     /* samples to a swung step, and to a st
 static int32_t hum_gate;
 static int32_t arp_s = -1, arp_k;        /* steps since the pattern began; WALK's place */
 static int32_t st_note[NHELD];           /* the step's notes (one, or CHORD's), for HUMANIZE to play late */
+static int32_t st_root[NHELD];           /* and the held note each came from */
 static uint8_t st_vel[NHELD];
 static uint32_t st_n;
 static volatile int32_t last_played = -1;
@@ -747,9 +758,10 @@ static float tick_samples(void)          /* how long a tick is now */
 }
 static float step_samples(void) { return tick_samples() * (float)DIV_TICKS[set.p[P_RATE]]; }
 
-static void play(int32_t note, uint32_t vel, int32_t gate)   /* one of the arp's notes: the engine, MIDI, the screen */
+static void play(int32_t note, uint32_t vel, int32_t gate, int32_t root)   /* one of the arp's notes: the engine,
+                                                                          * MIDI, the screen (root: the held note) */
 {
-    uint32_t i, now = sample_clock + rend_i, old = 0;
+    uint32_t i, now = sample_clock + rend_i, old = 0, h;
     eng_note_on(note, vel, gate);
     for (i = 0; i < NHELD; i++)          /* its MIDI: the same note sounding, and those whose time is up, ended first */
         if (out_note[i] >= 0 && (out_note[i] == note || (int32_t)(now - out_end[i]) >= 0)) {
@@ -767,6 +779,10 @@ static void play(int32_t note, uint32_t vel, int32_t gate)   /* one of the arp's
     }
     out_note[i] = (int16_t)note;
     out_end[i] = now + (uint32_t)gate;
+    out_root[i] = (int16_t)root;
+    for (h = 0; h < nheld && held[h] != root; h++)
+        ;
+    out_chs[i] = h < nheld && held_src[h] & DN_MIDI ? held_ch[h] : 0u;
     midi_note((uint32_t)note, vel);
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
     viz_w = viz_w + 1u;
@@ -960,13 +976,13 @@ static void chord_play(void)             /* the step's notes: all at once, or th
     uint32_t i;
     st_room = step_samples() - (float)(int32_t)(sample_clock + rend_i - step_at);
     if (st_n > 1u && strum_samples() > 0) {
-        play(st_note[0], st_vel[0], hum_gate);
+        play(st_note[0], st_vel[0], hum_gate, st_root[0]);
         st_i = 1;
         strum_wait = strum_samples();
         return;
     }
     for (i = 0; i < st_n; i++)
-        play(st_note[i], st_vel[i], hum_gate);
+        play(st_note[i], st_vel[i], hum_gate, st_root[i]);
 }
 
 static void arp_cancel(void) { swing_wait = hum_wait = strum_wait = 0; }   /* what the arp had queued: gone */
@@ -974,12 +990,12 @@ static void arp_cancel(void) { swing_wait = hum_wait = strum_wait = 0; }   /* wh
 static void strummed(void)               /* the strum's next note (STRUM turned off meanwhile: the rest now) */
 {
     if (st_i < st_n)
-        play(st_note[st_i], st_vel[st_i], hum_gate);
+        play(st_note[st_i], st_vel[st_i], hum_gate, st_root[st_i]);
     if (++st_i < st_n) {
         strum_wait = strum_samples();
         if (strum_wait <= 0)
             for (; st_i < st_n; st_i++)
-                play(st_note[st_i], st_vel[st_i], hum_gate);
+                play(st_note[st_i], st_vel[st_i], hum_gate, st_root[st_i]);
     }
 }
 
@@ -987,6 +1003,7 @@ static void arp_step(void)
 {
     static int32_t pool[NHELD * 8];      /* CHORDS ..TONES: the held notes' chords' tones, low to high */
     static uint8_t pool_vel[NHELD * 8];
+    static int32_t pool_root[NHELD * 8];  /* the held note whose chord it is */
     const int32_t *hn = held;
     const uint8_t *hv = held_vel;
     uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], s, i, k, idx, kind = (uint32_t)set.p[P_CHORD];
@@ -1009,9 +1026,11 @@ static void arp_step(void)
                 for (k = m; k > at; k--) {
                     pool[k] = pool[k - 1];
                     pool_vel[k] = pool_vel[k - 1];
+                    pool_root[k] = pool_root[k - 1];
                 }
                 pool[at] = t[i];
                 pool_vel[at] = held_vel[h];
+                pool_root[at] = held[h];
                 m++;
             }
         }
@@ -1024,6 +1043,7 @@ static void arp_step(void)
         for (i = 0; i < n && i < NHELD; i++) {
             st_note[i] = hn[i] + 12 * (int32_t)(s % oct);
             st_vel[i] = hv[i];
+            st_root[i] = hn == pool ? pool_root[i] : hn[i];
         }
         st_n = i;
     } else {
@@ -1031,6 +1051,7 @@ static void arp_step(void)
         idx = set.p[P_MODE] == M_PLAYED && hn == held ? played_index(k % n, n) : k % n;
         st_note[0] = hn[idx] + 12 * (int32_t)(k / n);
         st_vel[0] = hv[idx];
+        st_root[0] = hn == pool ? pool_root[idx] : hn[idx];
         st_n = 1;
         if (kind != CH_OFF && !CH_TONES(kind)) {   /* the note a chord's root */
             int32_t t[8];
@@ -1038,6 +1059,7 @@ static void arp_step(void)
             for (i = 0; i < c; i++) {
                 st_note[i] = t[i];
                 st_vel[i] = st_vel[0];
+                st_root[i] = st_root[0];
             }
             st_n = c;
         }
@@ -1185,7 +1207,7 @@ static void note_up(int32_t note, uint32_t by, uint32_t ch)   /* let go by one o
  * MIDI CH changed: every one); a key's notes, and other channels', stay. sound_off: and quickly silent */
 static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels (a bit each; 0xFFFF all) */
 {
-    uint32_t i, had = nheld;
+    uint32_t i;
     for (i = 0; i < 128u; i++)
         if (midi_down[i] & chans) {
             midi_down[i] &= (uint16_t)~chans;
@@ -1205,17 +1227,34 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
         }
     }
     held_publish();
-    if (arp_on_now && had && !nheld) {   /* the arp left with nothing (its queue went with the last, held_remove): the
-                                          * notes it made from them stop too, the chords' tones as well (out_note: the
-                                          * arp's notes sounding); with notes still held the arp plays on, its own */
+    if (arp_on_now) {                    /* the arp's notes from what these channels let go (each note knows the held
+                                          * note it came from): those queued never play, those sounding stop. Another
+                                          * channel's, or a key's, play on */
+        uint32_t from = hum_wait > 0 ? 0u : st_i, k = from;   /* (a late step: all its notes still to come) */
+        if (hum_wait > 0 || strum_wait > 0) {
+            for (i = from; i < st_n; i++)
+                if (held_has(st_root[i])) {
+                    st_note[k] = st_note[i];
+                    st_vel[k] = st_vel[i];
+                    st_root[k] = st_root[i];
+                    k++;
+                }
+            st_n = k;
+            if (st_n <= st_i)
+                strum_wait = 0;
+            if (!st_n)
+                hum_wait = 0;
+        }
         for (i = 0; i < NHELD; i++)
-            if (out_note[i] >= 0) {
-                if (!sound_off)
-                    eng_note_off(out_note[i]);
+            if (out_note[i] >= 0 && out_chs[i] & chans && !held_has(out_root[i])) {
+                if (sound_off)
+                    eng_note_kill(out_note[i]);
+                else
+                    eng_note_release(out_note[i]);   /* (its gate aside: the arp's notes have one) */
                 midi_off((uint32_t)out_note[i]);
                 out_note[i] = -1;
             }
-        if (sound_off)                   /* All Sound Off: every voice (the arp's all, with nothing held), the earlier
+        if (sound_off && !nheld)         /* All Sound Off, nothing left held: every voice is the arp's, the earlier
                                           * steps' releases too */
             for (i = 0; i < 128u; i++)
                 eng_note_kill((int32_t)i);
