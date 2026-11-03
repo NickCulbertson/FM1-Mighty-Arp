@@ -28,4 +28,8 @@ fi
 if ! command -v emcc >/dev/null 2>&1 && [ -f "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" ]; then
     . "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" >/dev/null 2>&1
 fi
-exec "$PY" base/tools/build.py app "$@"
+"$PY" base/tools/build.py app "$@"
+case " $* " in                           # the emulator page shows the name with its space (fm1.toml's has none: it
+*" --web "*)                             # names the build's files)
+    sed -i.bak 's/MightyArp/Mighty Arp/g' app/build/emu/index.html && rm -f app/build/emu/index.html.bak ;;
+esac

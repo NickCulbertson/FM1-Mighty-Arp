@@ -94,7 +94,7 @@ typedef struct {
     uint8_t on, rel, shed, wv[4], att[4];   /* att[k]: operator k still rising; shed: fading out for the CPU */
     float env[4], pk[4], ai[4], tgt[4], kk[4], sus[4], dk[4], rk[4];
     float lvl[4], cl[4], cr[4], ic[4];   /* ic: 1 a carrier (its envelope ends the voice) */
-    float mw[6];                         /* the modulation: 2>1 3>1 4>1 3>2 4>2 4>3 */
+    uint8_t alg;                         /* its algorithm, from the note on */
     float ph[4], inc[4], rat[4];
     float fb1, fb2, fbk;
     float f, f_to;                       /* the note, turns a sample, gliding to f_to */
@@ -157,8 +157,8 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
             if (vc[i].on && vc[i].note == note)
                 v = &vc[i];
         if (!v && eng_active() < vc_cap)
-            for (i = 0; i < ENG_NVOICE; i++)   /* else a free one (under the cap), else the oldest releasing, else
-                                                * the oldest */
+            for (i = ENG_NVOICE; i-- > 0;)   /* else a free one (under the cap; from the top: the second core's
+                                              * first), else the oldest releasing, else the oldest */
                 if (!vc[i].on) {
                     v = &vc[i];
                     break;
@@ -237,12 +237,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
             v->cl[k] = v->cr[k] = v->ic[k] = 0.0f;
         }
     }
-    v->mw[0] = (float)(MOD[prm.alg & 7u][0] >> 1 & 1u);
-    v->mw[1] = (float)(MOD[prm.alg & 7u][0] >> 2 & 1u);
-    v->mw[2] = (float)(MOD[prm.alg & 7u][0] >> 3 & 1u);
-    v->mw[3] = (float)(MOD[prm.alg & 7u][1] >> 2 & 1u);
-    v->mw[4] = (float)(MOD[prm.alg & 7u][1] >> 3 & 1u);
-    v->mw[5] = (float)(MOD[prm.alg & 7u][2] >> 3 & 1u);
+    v->alg = (uint8_t)(prm.alg & 7u);
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
     v->on = 1;
     v->rel = 0;
@@ -325,7 +320,10 @@ uint32_t eng_cap(int up)                 /* one more voice back (up), or just as
             e##k = tg##k + (e##k - tg##k) * kk##k;           \
     } while (0)
 
-static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
+/* a voice over samples [a, b), one version for each algorithm (alg a constant: what does not modulate or sound is
+ * not computed), with every operator a plain sine (sine 1: no wave to choose) or each its own wave */
+#define AI __attribute__((always_inline)) static inline
+AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const uint32_t alg, const int sine)
 {
     float e0 = v->env[0], e1 = v->env[1], e2 = v->env[2], e3 = v->env[3];
     float ai0 = v->ai[0], ai1 = v->ai[1], ai2 = v->ai[2], ai3 = v->ai[3];
@@ -336,28 +334,32 @@ static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
     float p0 = v->ph[0], p1 = v->ph[1], p2 = v->ph[2], p3 = v->ph[3];
     float n0 = v->inc[0], n1 = v->inc[1], n2 = v->inc[2], n3 = v->inc[3];
     float lv0 = v->lvl[0], lv1 = v->lvl[1], lv2 = v->lvl[2], lv3 = v->lvl[3];
-    float m21 = v->mw[0], m31 = v->mw[1], m41 = v->mw[2], m32 = v->mw[3], m42 = v->mw[4], m43 = v->mw[5];
     float cl0 = v->cl[0], cl1 = v->cl[1], cl2 = v->cl[2], cl3 = v->cl[3];
     float cr0 = v->cr[0], cr1 = v->cr[1], cr2 = v->cr[2], cr3 = v->cr[3];
-    float ic0 = v->ic[0], ic1 = v->ic[1], ic2 = v->ic[2], ic3 = v->ic[3];
     float fb1 = v->fb1, fb2 = v->fb2, fbk = v->fbk;
     uint32_t w0 = v->wv[0], w1 = v->wv[1], w2 = v->wv[2], w3 = v->wv[3], i, rel = v->rel;
     int32_t gate = v->gate;
+#define W(x, w) (sine ? sin_t(x) : wave((x), (w)))
+#define MODS(k, j) (MOD[alg][k] >> (j) & 1u)
+#define IS_CAR(k) (CAR[alg] >> (k) & 1u)
     for (i = a; i < b; i++) {
-        float o0, o1, o2, o3, raw;
+        float o0, o1 = 0.0f, o2, o3, raw, m;
         ENV_STEP(3);
         ENV_STEP(2);
         ENV_STEP(1);
         ENV_STEP(0);
-        raw = e3 * wave(p3 + fbk * (fb1 + fb2), w3);
+        raw = e3 * W(p3 + fbk * (fb1 + fb2), w3);
         fb2 = fb1;
         fb1 = raw;
         o3 = raw * lv3;
-        o2 = e2 * lv2 * wave(p2 + m43 * o3, w2);
-        o1 = e1 * lv1 * wave(p1 + m32 * o2 + m42 * o3, w1);
-        o0 = e0 * lv0 * wave(p0 + m21 * o1 + m31 * o2 + m41 * o3, w0);
-        l[i] += cl0 * o0 + cl1 * o1 + cl2 * o2 + cl3 * o3;
-        r[i] += cr0 * o0 + cr1 * o1 + cr2 * o2 + cr3 * o3;
+        m = MODS(2, 3) ? o3 : 0.0f;
+        o2 = e2 * lv2 * W(p2 + m, w2);
+        m = (MODS(1, 2) ? o2 : 0.0f) + (MODS(1, 3) ? o3 : 0.0f);
+        o1 = e1 * lv1 * W(p1 + m, w1);
+        m = (MODS(0, 1) ? o1 : 0.0f) + (MODS(0, 2) ? o2 : 0.0f) + (MODS(0, 3) ? o3 : 0.0f);
+        o0 = e0 * lv0 * W(p0 + m, w0);
+        l[i] += cl0 * o0 + (IS_CAR(1) ? cl1 * o1 : 0.0f) + (IS_CAR(2) ? cl2 * o2 : 0.0f) + (IS_CAR(3) ? cl3 * o3 : 0.0f);
+        r[i] += cr0 * o0 + (IS_CAR(1) ? cr1 * o1 : 0.0f) + (IS_CAR(2) ? cr2 * o2 : 0.0f) + (IS_CAR(3) ? cr3 * o3 : 0.0f);
         p0 += n0;
         p1 += n1;
         p2 += n2;
@@ -375,12 +377,16 @@ static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
             kk2 = v->rk[2];
             kk3 = v->rk[3];
         }
-        if (rel && e0 * ic0 + e1 * ic1 + e2 * ic2 + e3 * ic3 < 0.001f) {   /* -60 dB: done */
+        if (rel && !(i & 15u)                    /* -60 dB: done (looked at every 16 samples) */
+            && e0 + (IS_CAR(1) ? e1 : 0.0f) + (IS_CAR(2) ? e2 : 0.0f) + (IS_CAR(3) ? e3 : 0.0f) < 0.001f) {
             v->on = 0;
             v->note = -1;
             break;
         }
     }
+#undef W
+#undef MODS
+#undef IS_CAR
     v->env[0] = e0, v->env[1] = e1, v->env[2] = e2, v->env[3] = e3;
     v->tgt[0] = tg0, v->tgt[1] = tg1, v->tgt[2] = tg2, v->tgt[3] = tg3;
     v->kk[0] = kk0, v->kk[1] = kk1, v->kk[2] = kk2, v->kk[3] = kk3;
@@ -391,12 +397,67 @@ static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
     v->rel = (uint8_t)rel;
 }
 
+#define VL(alg) \
+    case alg * 2u: voice_loop(v, l, r, a, b, alg, 0); break; \
+    case alg * 2u + 1u: voice_loop(v, l, r, a, b, alg, 1); break;
+static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
+{
+    switch ((uint32_t)v->alg * 2u + !(v->wv[0] | v->wv[1] | v->wv[2] | v->wv[3])) {
+    VL(0u) VL(1u) VL(2u) VL(3u) VL(4u) VL(5u) VL(6u) VL(7u)
+    default: break;
+    }
+}
+#undef VL
+
+/* the second core (eng_cpu2): it renders voices C2_FIRST.. into its own buffers while this one renders the rest
+ * and then the effects; new notes take its voices first (eng_note_on looks from the top), as this core has more */
+#define C2_FIRST 4u
+static int (*c2_run)(void (*)(uint32_t), uint32_t);
+static int (*c2_wait)(void);
+static float c2_l[ENG_BLOCK], c2_r[ENG_BLOCK];
+static uint32_t c2_a, c2_b;
+
+static void c2_job(uint32_t arg)
+{
+    uint32_t i, k;
+    (void)arg;
+    for (i = c2_a; i < c2_b; i++)
+        c2_l[i] = c2_r[i] = 0.0f;
+    for (k = C2_FIRST; k < ENG_NVOICE; k++)
+        if (vc[k].on)
+            voice_run(&vc[k], c2_l, c2_r, c2_a, c2_b);
+}
+
+void eng_cpu2(int (*run)(void (*)(uint32_t), uint32_t), int (*wait)(void))
+{
+    c2_run = run;
+    c2_wait = wait;
+}
+
 void eng_voices(float *l, float *r, uint32_t a, uint32_t b)
 {
-    uint32_t k;
-    for (k = 0; k < ENG_NVOICE; k++)
+    uint32_t i, k, split = 0;
+    if (a >= b)
+        return;
+    for (k = C2_FIRST; k < ENG_NVOICE && !split; k++)
+        split = vc[k].on;
+    if (split && c2_run) {
+        c2_a = a;
+        c2_b = b;
+        split = (uint32_t)c2_run(c2_job, 0);
+    } else
+        split = 0;
+    for (k = 0; k < (split ? C2_FIRST : ENG_NVOICE); k++)
         if (vc[k].on)
             voice_run(&vc[k], l, r, a, b);
+    if (!split)
+        return;
+    if (c2_wait() != 0)                  /* it was given up, the job dropped: do it here */
+        c2_job(0);
+    for (i = a; i < b; i++) {
+        l[i] += c2_l[i];
+        r[i] += c2_r[i];
+    }
 }
 
 /* ------------------------------------------------------------------ the LFO --- */
@@ -540,7 +601,10 @@ static inline float sh_read(float d)
     return sh_buf[i & (SH_N - 1)] + (sh_buf[(i + 1) & (SH_N - 1)] - sh_buf[i & (SH_N - 1)]) * f;
 }
 
-static inline int reverb(float in, float damp, float shim, float *ol, float *or_)   /* 0: its input went bad */
+/* m1, m3: lines 2 and 4's movement now, in samples (eng_out steps them across the block) */
+static inline int reverb(float in, float damp, float shim, float m1, float m3, float *ol, float *or_)   /* 0: its
+                                                                                                         * input went
+                                                                                                         * bad */
 {
     float x = in, d[4], h[4];
     uint32_t k;
@@ -552,14 +616,10 @@ static inline int reverb(float in, float damp, float shim, float *ol, float *or_
         if (++ap_i[k] >= AP_LEN[k])
             ap_i[k] = 0;
     }
-    rv_mph1 += 0.31f / SR;
-    rv_mph2 += 0.43f / SR;
-    if (rv_mph1 >= 1.0f) rv_mph1 -= 1.0f;
-    if (rv_mph2 >= 1.0f) rv_mph2 -= 1.0f;
     d[0] = rv_read(0, (float)RV_LEN[0]);
-    d[1] = rv_read(1, (float)RV_LEN[1] - 7.0f + 6.0f * sin_t(rv_mph1));
+    d[1] = rv_read(1, (float)RV_LEN[1] - 7.0f + m1);
     d[2] = rv_read(2, (float)RV_LEN[2]);
-    d[3] = rv_read(3, (float)RV_LEN[3] - 7.0f + 6.0f * sin_t(rv_mph2));
+    d[3] = rv_read(3, (float)RV_LEN[3] - 7.0f + m3);
     for (k = 0; k < 4u; k++)
         rv_lp[k] = d[k] + (rv_lp[k] - d[k]) * damp;
     if (shim > 0.0f) {                   /* two taps sliding through a window, crossfaded: an octave up */
@@ -597,6 +657,13 @@ static inline int reverb(float in, float damp, float shim, float *ol, float *or_
 
 static float dc_xl, dc_yl, dc_xr, dc_yr, gain_now;
 
+/* the output's soft limit: a cubic, flat from 1.5 (cheaper than tanh, which it follows to a few percent) */
+static inline float soft_clip(float x)
+{
+    x = fm_clampf(x, -1.5f, 1.5f);
+    return x - 0.148148f * x * x * x;
+}
+
 int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
 {
     const eng_params_t *p = &prm;
@@ -605,6 +672,20 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
     float dtarget = fm_clampf(p->dly_samples, 8.0f, ENG_DLY_MAX), fb = p->dly_fb;
     float damp = 0.05f + 0.85f * p->rev_dark, shim = p->shimmer * 0.7f;
     float tl = trem_l, tr = trem_r, dtl = (trem_l_to - trem_l) / (float)n, dtr = (trem_r_to - trem_r) / (float)n;
+    float ch_s, ch_ds, rm1, rm1_d, rm3, rm3_d;
+    /* the slow movements (the chorus's sweep, the reverb lines'), at the block's two ends and stepped between */
+    ch_s = sin_t(ch_ph) * 170.0f;
+    rm1 = 6.0f * sin_t(rv_mph1);
+    rm3 = 6.0f * sin_t(rv_mph2);
+    ch_ph += 0.55f * (float)n / SR;
+    rv_mph1 += 0.31f * (float)n / SR;
+    rv_mph2 += 0.43f * (float)n / SR;
+    if (ch_ph >= 1.0f) ch_ph -= 1.0f;
+    if (rv_mph1 >= 1.0f) rv_mph1 -= 1.0f;
+    if (rv_mph2 >= 1.0f) rv_mph2 -= 1.0f;
+    ch_ds = (sin_t(ch_ph) * 170.0f - ch_s) / (float)n;
+    rm1_d = (6.0f * sin_t(rv_mph1) - rm1) / (float)n;
+    rm3_d = (6.0f * sin_t(rv_mph2) - rm3) / (float)n;
     if (fm_fabsf(p->rev_secs - rv_secs_now) > 0.001f) {   /* the decay time: each line's gain for 60 dB in it */
         rv_secs_now = p->rev_secs;
         for (k = 0; k < 4u; k++)
@@ -623,12 +704,9 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
         /* the chorus */
         ch_buf[ch_w] = (xl + xr) * 0.5f;
         ch_w = (ch_w + 1u) & (CH_N - 1u);
-        ch_ph += 0.55f / SR;
-        if (ch_ph >= 1.0f)
-            ch_ph -= 1.0f;
         ch_now += (p->chorus - ch_now) * 0.001f;
         if (ch_now > 0.001f) {
-            float c = ch_now, s = sin_t(ch_ph) * 170.0f;
+            float c = ch_now, s = ch_s;
             xl = xl * (1.0f - 0.4f * c) + ch_read(530.0f + s) * 0.8f * c;
             xr = xr * (1.0f - 0.4f * c) + ch_read(530.0f - s) * 0.8f * c;
         }
@@ -652,7 +730,7 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
         outl = xl + dl * dmix_now;
         outr = xr + dr * dmix_now;
         /* the reverb, fed the voices and the delay */
-        if (!reverb((outl + outr) * 0.25f, damp, shim, &rl, &rr))
+        if (!reverb((outl + outr) * 0.25f, damp, shim, rm1, rm3, &rl, &rr))
             bad = 1;
         outl += rl * rmix_now;
         outr += rr * rmix_now;
@@ -665,8 +743,11 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
         dc_yr = outr - dc_xr + 0.9995f * dc_yr;
         dc_xr = outr;
         gain_now += (gain - gain_now) * 0.004f;   /* ~5 ms: turning MASTER does not click */
-        lr[2 * i] = (int32_t)(fm_tanhf(dc_yl * 0.9f) * gain_now);
-        lr[2 * i + 1] = (int32_t)(fm_tanhf(dc_yr * 0.9f) * gain_now);
+        lr[2 * i] = (int32_t)(soft_clip(dc_yl * 0.9f) * gain_now);
+        lr[2 * i + 1] = (int32_t)(soft_clip(dc_yr * 0.9f) * gain_now);
+        ch_s += ch_ds;
+        rm1 += rm1_d;
+        rm3 += rm3_d;
     }
     trem_l = trem_l_to;
     trem_r = trem_r_to;

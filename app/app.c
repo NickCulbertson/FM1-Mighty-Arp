@@ -936,6 +936,10 @@ void app_init(void)
 {
     uint32_t i;
     eng_init();
+#if defined(FM1B_CPU2) && FM1B_CPU2
+    if (plat_cpu2_set(1) == 0)           /* the second core takes part of the voices (fm1.toml cpu2) */
+        eng_cpu2(plat_cpu2_run, plat_cpu2_wait);
+#endif
     for (i = 0; i < NHELD; i++)
         out_note[i] = -1;
     if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) == (int)sizeof set && set.magic == SET_MAGIC_3
@@ -1124,7 +1128,11 @@ static void load_text(char *t)
     text_cat(t, "% PEAK ");
     int_text((int32_t)cpu_peak, v);
     text_cat(t, v);
-    text_cat(t, "% DROPS ");
+#if defined(FM1B_CPU2) && FM1B_CPU2
+    text_cat(t, plat_cpu2_on() ? "% 2 CORES  DROPS " : "% 1 CORE  DROPS ");
+#else
+    text_cat(t, "%  DROPS ");
+#endif
     int_text((int32_t)sheds, v);
     text_cat(t, v);
     text_cat(t, " RESETS ");
@@ -1555,7 +1563,7 @@ static void draw(void)
         notes_view(70, 400u, 0);
         if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */
             load_text(t);
-            cv_text(10, 4, &FONT_XS, t, C_DIM);
+            cv_text(10, 4, &FONT_T, t, C_DIM);
         }
         cv_blit(0, 142);
     }
@@ -1623,6 +1631,12 @@ int app_expect(const char *what, int *got)
         *got = (int)eng_active();
     else if (!strcmp(what, "dirty"))
         *got = set_dirty;
+    else if (!strcmp(what, "cpu2"))          /* the second core takes voices */
+#if defined(FM1B_CPU2) && FM1B_CPU2
+        *got = plat_cpu2_on();
+#else
+        *got = 0;
+#endif
     else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */
         *got = (int)sheds;
     else if (!strcmp(what, "cap"))           /* the voices new notes may take */

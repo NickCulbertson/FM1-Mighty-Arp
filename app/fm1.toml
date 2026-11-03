@@ -6,6 +6,8 @@ usb_product = "Mighty Arp FM-1"
 o2 = ["dsp/engine.c"]          # the sound, compiled at -O2 (the unity build is -Os)
 words = "words.tsv"
 ble = false                    # Bluetooth MIDI: off for now (true adds it, with OBJ_BLE in app.h)
+cpu2 = true                    # the second core renders part of the voices
+cpu2_fallback = true           # a unit whose second core misreads: one core until power-off, not a restart
 # the site (tools/make_site.py, tools/publish_site.sh)
 tagline = "An FM synth with a chance arpeggiator, for generative playing"
 repo = ""                      # TODO: this firmware's repository

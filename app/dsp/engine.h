@@ -56,6 +56,8 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate);   /* gate: samples b
 void eng_note_off(int32_t note);         /* a key let go: the voices it holds release */
 void eng_release_all(void);
 void eng_voices(float *l, float *r, uint32_t a, uint32_t b);  /* the voices, added into l, r [a, b) */
+/* the second core: plat_cpu2_run and plat_cpu2_wait, once it runs (app_init); without, one core does it all */
+void eng_cpu2(int (*run)(void (*)(uint32_t), uint32_t), int (*wait)(void));
 /* the effects over a block of voices, then out: lr 24-bit stereo at gain. 1 = a number went bad (and everything
  * that feeds back was cleared) */
 int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain);

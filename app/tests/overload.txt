@@ -14,6 +14,7 @@ key 11 down 100
 key 12 down 100
 wait 100
 expect voices 8
+expect cpu2 1
 expect overload 0
 expect overload 0
 expect overload 0
