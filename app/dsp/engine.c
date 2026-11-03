@@ -604,6 +604,8 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
                     vl += (y - vl) * fwet;
                     vr += (x2 - vr) * fwet;
                     fwet = fwet_to > fwet ? fm_minf(fwet + FW_STEP, fwet_to) : fm_maxf(fwet - FW_STEP, fwet_to);
+                    if (fwet == 0.0f && fwet_to == 0.0f)   /* faded out: dry from the next sample, not filtered */
+                        flt = 0;
                 } else {
                     vl = x2;
                     x1 = fa1 * fr1 + fa2 * x3, x2 = fr2 + fa2 * fr1 + fa3 * x3;
@@ -655,7 +657,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     v->fa1 = fa1, v->fa2 = fa2, v->fa3 = fa3;
     v->fl1 = fl1, v->fl2 = fl2, v->fr1 = fr1, v->fr2 = fr2;
     v->fwet = fwet;
-    if (flt && fwet == 0.0f && fwet_to == 0.0f)   /* faded out: the filter stops (no cost) */
+    if (!flt || (fwet == 0.0f && fwet_to == 0.0f))   /* faded out: the filter stops (no cost) */
         v->flt = 0;
     v->gate = gate;
     v->rel = (uint8_t)rel;

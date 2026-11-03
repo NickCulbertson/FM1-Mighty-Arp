@@ -119,3 +119,45 @@ expect arp_mark 0
 wait 2700
 expect arp_notes >7
 expect dsp_resets 0
+# High: LUSH on MIDI C8 (120) goes down an octave as a whole, its notes kept apart (96 115 120 122 124)
+tap ARP
+wait 30
+expect page 20
+spin K2 -100
+wait 30
+expect strum 0
+tap REC
+wait 30
+tap REC
+wait 30
+expect hold 0
+expect arp_mark 0
+midi 90 78 64
+wait 1500
+expect note1 96
+expect note2 115
+expect note3 120
+expect note4 122
+expect note5 124
+midi 80 78 00
+wait 1500
+# Panic mid-strum: a long strum, All Notes Off, then nothing more plays
+spin K2 100
+wait 30
+midi 90 3C 64
+wait 400
+midi B0 7B 00
+wait 30
+expect arp_mark 0
+wait 1500
+expect arp_notes 0
+# ...and a new note right after: the old strum's C chord must not come back into it (its first note D's chord's)
+midi 90 3C 64
+wait 400
+midi B0 7B 00
+expect arp_mark 0
+midi 90 3E 64
+wait 2000
+expect note1 50
+midi 80 3E 00
+expect dsp_resets 0

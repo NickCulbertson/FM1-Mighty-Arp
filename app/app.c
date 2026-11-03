@@ -642,6 +642,7 @@ static void held_add(int32_t note, uint32_t vel)
     }
 }
 
+static void arp_cancel(void);
 static void held_remove(int32_t note)
 {
     uint32_t i;
@@ -657,6 +658,8 @@ static void held_remove(int32_t note)
         held_ch[i] = held_ch[i + 1];
     }
     nheld--;
+    if (!nheld)                          /* nothing held: what the arp had queued (a strum's notes, a late step) goes */
+        arp_cancel();
     if (!arp_on_now) {
         if (set.p[P_VOICES] != V_POLY && nheld && eng_sounding(note))   /* mono: back to the top note still held */
             eng_note_on(held[nheld - 1], held_vel[nheld - 1], -1);
@@ -696,20 +699,25 @@ static float step_samples(void) { return tick_samples() * (float)DIV_TICKS[set.p
 
 static void play(int32_t note, uint32_t vel, int32_t gate)   /* one of the arp's notes: the engine, MIDI, the screen */
 {
-    uint32_t i;
+    uint32_t i, now = sample_clock + rend_i, old = 0;
     eng_note_on(note, vel, gate);
-    for (i = 0; i < NHELD; i++)          /* its MIDI: the same note sounding is ended first */
-        if (out_note[i] == note) {
-            midi_off((uint32_t)note);
+    for (i = 0; i < NHELD; i++)          /* its MIDI: the same note sounding, and those whose time is up, ended first */
+        if (out_note[i] >= 0 && (out_note[i] == note || (int32_t)(now - out_end[i]) >= 0)) {
+            midi_off((uint32_t)out_note[i]);
             out_note[i] = -1;
         }
     for (i = 0; i < NHELD && out_note[i] >= 0; i++)
         ;
-    if (i < NHELD) {
-        out_note[i] = (int16_t)note;
-        out_end[i] = sample_clock + rend_i + (uint32_t)gate;
-        midi_note((uint32_t)note, vel);
+    if (i == NHELD) {                    /* all 16 sounding: the one due soonest ends now, so MIDI plays what we do */
+        for (i = 1; i < NHELD; i++)
+            if ((int32_t)(out_end[i] - out_end[old]) < 0)
+                old = i;
+        midi_off((uint32_t)out_note[old]);
+        i = old;
     }
+    out_note[i] = (int16_t)note;
+    out_end[i] = now + (uint32_t)gate;
+    midi_note((uint32_t)note, vel);
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
     viz_w = viz_w + 1u;
     if (arp_count - arp_mark_at < 16u)   /* (the host's tests: the notes since arp_mark, in order) */
@@ -797,6 +805,32 @@ static uint32_t pattern_place(uint32_t s, uint32_t L)
 /* the diatonic chord on root, snapped down into the key's scale (so major, minor or diminished as the scale makes it):
  * low to high in out, its count returned. TRIAD 1 3 5; 7TH 1 3 5 7; LUSH, OPEN, OMNI Nick's voicings where his pad
  * had them for the scale (LUSH: MAJOR, MINOR, HARM MINOR; OPEN, OMNI: MAJOR), else stacked thirds spread out */
+/* a chord kept in MIDI's range: down (or up) by octaves as a whole, its intervals kept; then any notes still
+ * outside clamped, and repeats dropped (low to high) */
+static uint32_t chord_fit(int32_t *out, uint32_t n)
+{
+    uint32_t i, j, m = 0;
+    int32_t lo = 127, hi = 0;
+    for (i = 0; i < n; i++) {
+        lo = out[i] < lo ? out[i] : lo;
+        hi = out[i] > hi ? out[i] : hi;
+    }
+    for (; hi > 127 && lo >= 12; hi -= 12, lo -= 12)
+        for (i = 0; i < n; i++)
+            out[i] -= 12;
+    for (; lo < 0 && hi <= 115; hi += 12, lo += 12)
+        for (i = 0; i < n; i++)
+            out[i] += 12;
+    for (i = 0; i < n; i++) {
+        int32_t x = clamp(out[i], 0, 127);
+        for (j = 0; j < m && out[j] != x; j++)
+            ;
+        if (j == m)
+            out[m++] = x;
+    }
+    return m;
+}
+
 static uint32_t chord_of(int32_t root, uint32_t kind, int32_t *out)
 {
     const int8_t *nv = 0;
@@ -826,9 +860,7 @@ static uint32_t chord_of(int32_t root, uint32_t kind, int32_t *out)
         for (i = 0; i < nn; i++)
             if (nv[i] != NV)
                 out[n++] = key_root + nv[i];
-        for (i = 0; i < n; i++)
-            out[i] = clamp(out[i], 0, 127);
-        return n;
+        return chord_fit(out, n);
     }
 #define STEP(k) (base - sc[deg] + sc[(deg + (k)) % 7] + 12 * ((deg + (k)) / 7))
     if (kind == CH_OMNI_T) {             /* eight, spread: the bass, then 1 3 5 over two octaves, the top root */
@@ -854,9 +886,7 @@ static uint32_t chord_of(int32_t root, uint32_t kind, int32_t *out)
             out[n++] = STEP(6);
     }
 #undef STEP
-    for (i = 0; i < n; i++)
-        out[i] = clamp(out[i], 0, 127);
-    return n;
+    return chord_fit(out, n);
 }
 
 /* the strum: a chord's notes after its first, STRUM apart (st_i the next, strum_wait the samples to it) */
@@ -886,12 +916,18 @@ static void chord_play(void)             /* the step's notes: all at once, or th
         play(st_note[i], st_vel[i], hum_gate);
 }
 
-static void strummed(void)               /* the strum's next note */
+static void arp_cancel(void) { swing_wait = hum_wait = strum_wait = 0; }   /* what the arp had queued: gone */
+
+static void strummed(void)               /* the strum's next note (STRUM turned off meanwhile: the rest now) */
 {
     if (st_i < st_n)
         play(st_note[st_i], st_vel[st_i], hum_gate);
-    if (++st_i < st_n)
+    if (++st_i < st_n) {
         strum_wait = strum_samples();
+        if (strum_wait <= 0)
+            for (; st_i < st_n; st_i++)
+                play(st_note[st_i], st_vel[st_i], hum_gate);
+    }
 }
 
 static void arp_step(void)
@@ -945,7 +981,7 @@ static void arp_step(void)
         st_n = 1;
         if (kind != CH_OFF && !CH_TONES(kind)) {   /* the note a chord's root */
             int32_t t[8];
-            uint32_t c = chord_of(st_note[0] > 127 ? 127 : st_note[0], kind, t);
+            uint32_t c = chord_of(st_note[0], kind, t);   /* (an octave above 127: chord_fit brings it down) */
             for (i = 0; i < c; i++) {
                 st_note[i] = t[i];
                 st_vel[i] = st_vel[0];
@@ -1039,12 +1075,14 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     was = nheld;
     if (!is_down(note))
         ndown++;
-    if (by == DN_MIDI) {
+    if (by == DN_MIDI) {                 /* the note's sound now this channel's (a channel already holding it shares
+                                          * it; one that let go no longer owns its new tail) */
+        midi_played[note] = (uint16_t)((midi_down[note] ? midi_played[note] : 0u) | 1u << (ch & 15u));
         midi_down[note] |= (uint16_t)(1u << (ch & 15u));
-        midi_played[note] |= (uint16_t)(1u << (ch & 15u));
-    }
-    else
+    } else {
+        midi_played[note] = 0;           /* a key's now */
         down[note] |= DN_KEY;
+    }
     held_by = (uint8_t)by;
     held_by_ch = (uint16_t)(by == DN_MIDI ? 1u << (ch & 15u) : 0u);
     if (hold_now == H_LATCH) {           /* LATCH: each key on or off by itself */
@@ -1094,6 +1132,7 @@ static void note_up(int32_t note, uint32_t by, uint32_t ch)   /* let go by one o
 static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels (a bit each; 0xFFFF all) */
 {
     uint32_t i;
+    arp_cancel();                        /* the arp's queued notes may be these channels': none play after a panic */
     for (i = 0; i < 128u; i++)
         if (midi_down[i] & chans) {
             midi_down[i] &= (uint16_t)~chans;
@@ -1377,14 +1416,16 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         eng_voices(buf_l, buf_r, seg, i);
         seg = i;
         rend_i = i;
-        if (ev & 1u)
-            on_tick();
-        if (ev & 2u && arp_on_now)
-            arp_step();
-        if (ev & 4u && arp_on_now && nheld)
-            humanized();
+        /* what an earlier step queued first (its strum's next note, its late start, its swing), then the clock: a new
+         * step may replace the step's notes, and an old timer must never play the new ones */
         if (ev & 8u && arp_on_now)
             strummed();
+        if (ev & 4u && arp_on_now && nheld)
+            humanized();
+        if (ev & 2u && arp_on_now)
+            arp_step();
+        if (ev & 1u)
+            on_tick();
     }
     eng_voices(buf_l, buf_r, seg, n);
     if (eng_out(buf_l, buf_r, lr, n, gain))   /* a bad number: silence, then everything starts clean */
@@ -1655,6 +1696,7 @@ void app_init(void)
         int got = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
         settings5_t *o = &ld.o;
         if (got == (int)sizeof(settings5_t)) {   /* an older save: brought forward */
+            int before_saws = o->magic == SET_MAGIC_3 || o->magic == SET_MAGIC_4;   /* MAR3/4: the 37 bank, surely */
             if (o->magic == SET_MAGIC_3 && (uint16_t)o->p[P_MODE] < 11u) {   /* before RANDOM came first */
                 o->p[P_MODE] = MODE_FROM_3[o->p[P_MODE]];
                 o->magic = SET_MAGIC_4;
@@ -1675,8 +1717,9 @@ void app_init(void)
                     set.p[i] = i < NP5 ? o->p[i] : PAR[i].def;
                 set.preset = o->preset;
                 if (o->preset >= 32u && o->preset < 37u
-                    && sound_match(set.p, &PRESET[o->preset + 3u]) >= sound_match(set.p, &PRESET[o->preset]))
-                    set.preset = (uint8_t)(o->preset + 3u);   /* the 37 bank's (the one an FM-1 had: on a tie) */
+                    && (before_saws
+                        || sound_match(set.p, &PRESET[o->preset + 3u]) >= sound_match(set.p, &PRESET[o->preset])))
+                    set.preset = (uint8_t)(o->preset + 3u);   /* the 37 bank's (an FM-1's: on a tie, too) */
                 set.octave = o->octave;
                 set.arp_on = o->arp_on;
                 set.hold = o->hold;
@@ -1731,6 +1774,15 @@ void app_init(void)
             if (o7->preset >= 47u && o7->preset < 60u && users.u[o7->preset - 47u].used
                 && user_match(set.p, &users.u[o7->preset - 47u]) > sound_match(set.p, &PRESET[o7->preset]))
                 set.preset = (uint8_t)(o7->preset - 47u + NPRESET);
+            else if (o7->preset >= 60u && o7->preset < 63u) {   /* 60..62: the 47 bank's U14..U16, or the 60 bank's
+                                                              * U01..U03: the one that holds a sound (both: the closer) */
+                const user_t *a = &users.u[o7->preset - 47u], *b = &users.u[o7->preset - 60u];
+                if (a->used && (!b->used || user_match(set.p, a) > user_match(set.p, b)))
+                    set.preset = (uint8_t)(o7->preset - 47u + NPRESET);
+                else
+                    set.preset = (uint8_t)(o7->preset - 60u + NPRESET);
+            } else if (o7->preset >= 63u)
+                set.preset = (uint8_t)(o7->preset - 60u + NPRESET);
             set.octave = o7->octave;
             set.arp_on = o7->arp_on;
             set.hold = o7->hold;
