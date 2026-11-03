@@ -843,16 +843,17 @@ void app_init(void)
 }
 
 /* --------------------------------------------------------------------- UI --- */
-/* the colours: Mighty Sampler's. A deep slate-navy ground, lavender labels, orange values, yellow notes */
-#define C_BG RGB(14, 16, 30)
-#define C_GHOST RGB(70, 76, 120)
+/* the colours: synthwave. A deep violet ground, lavender labels, hot pink values and new notes, electric purple
+ * for the rest */
+#define C_BG RGB(16, 10, 32)
+#define C_GHOST RGB(84, 62, 136)
 static void theme(void)
 {
-    pal[0] = RGB(38, 42, 68);            /* C_LINE: rules, the knobs' tracks */
-    pal[1] = RGB(84, 90, 132);           /* C_DIM: inactive, units */
-    pal[2] = RGB(178, 190, 255);         /* C_GRAY: labels, lavender */
-    pal[3] = RGB(255, 214, 10);          /* C_AMB: the notes the arp plays, yellow */
-    pal[4] = RGB(255, 158, 10);          /* C_HI: values, orange */
+    pal[0] = RGB(50, 32, 82);            /* C_LINE: rules, the knobs' tracks */
+    pal[1] = RGB(104, 78, 156);          /* C_DIM: inactive, units */
+    pal[2] = RGB(200, 178, 255);         /* C_GRAY: labels, lavender */
+    pal[3] = RGB(178, 96, 255);          /* C_AMB: the sound, the tempo, notes as they age: electric purple */
+    pal[4] = RGB(255, 46, 151);          /* C_HI: values, the knobs, new notes: hot pink */
 }
 
 static struct {
@@ -1238,8 +1239,8 @@ static void header(uint32_t now)
     cv_blit(0, 0);
 }
 
-/* the arp's steps over the last seconds: time across (newest at the right), pitch up; played notes yellow, then
- * orange as they age; the steps the chance skipped as faint lavender ghosts. The held notes at the right edge. The
+/* the arp's steps over the last seconds: time across (newest at the right), pitch up; played notes pink, then
+ * purple as they age; the steps the chance skipped as faint lavender ghosts. The held notes at the right edge. The
  * pitch range stays put: the keys at this octave, and the octaves the arp climbs above them */
 static void notes_view(int32_t h, uint32_t secs_cs, int big)
 {
@@ -1266,7 +1267,7 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
             continue;
         }
         s = (big ? 2 : 1) + (int32_t)(vel / 43u);
-        cv_rect(x - s, y - s, 2 * s + 1, 2 * s + 1, age < 25u ? C_WHITE : age < secs_cs / 4u ? C_AMB : age < secs_cs / 2u ? C_HI : C_DIM);
+        cv_rect(x - s, y - s, 2 * s + 1, 2 * s + 1, age < 25u ? C_WHITE : age < secs_cs / 4u ? C_HI : age < secs_cs / 2u ? C_AMB : C_DIM);
     }
 }
 

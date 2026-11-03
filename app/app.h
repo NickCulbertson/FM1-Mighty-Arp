@@ -7,7 +7,7 @@
 #include "plat.h"
 
 #define APP_NAME "MIGHTY ARP"
-#define APP_SPLASH_RGB RGB(255, 158, 10)
+#define APP_SPLASH_RGB RGB(255, 46, 151)
 #define APP_BLOCK 256u                   /* frames per audio block: 5.8 ms at 44.1 kHz */
 #define APP_TOUCH                        /* velocity and pressure from the keys (lib/touch.h) */
 #define APP_OVERLOAD                     /* the render ran late: app_overload sheds voices */

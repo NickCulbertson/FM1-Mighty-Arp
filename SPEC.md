@@ -73,8 +73,8 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 
 ## Screen
 
-- Colours from Mighty Sampler: a deep slate-navy ground, lavender labels, orange values and the knob being turned,
-  yellow for notes the arp plays, faint lavender ghosts for the steps the chance skipped.
+- Synthwave colours: a deep violet ground, lavender labels, hot pink values, knobs and new notes, electric purple for
+  the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as arcs.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, ARP CHANCE.
