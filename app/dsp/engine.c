@@ -79,6 +79,59 @@ static inline float saw_t(float ph, const int16_t *t)   /* ph as sin_t's */
     return ((float)t[i] + ((float)t[i + 1] - (float)t[i]) * f) * (1.0f / 32000.0f);
 }
 
+/* W13, the triangle: odd harmonics at 1/h^2, so few that a table an octave is enough (its top harmonic at a table's
+ * edge is 40 dB down); the saw's 512 points, its format */
+#define TRI_BANDS 10u
+static PLAT_POOL int16_t tri_tab[TRI_BANDS][SAW_N + 1];
+
+static void tri_init(void)
+{
+    static float acc[SAW_N];
+    uint32_t b, i, h;
+    for (b = 0; b < TRI_BANDS; b++) {
+        float top = SAW_TOP0 * (float)(1u << b), peak = 0.0f;
+        uint32_t nh = (uint32_t)(18000.0f / top);
+        if (nh > SAW_N / 4u)
+            nh = SAW_N / 4u;
+        for (i = 0; i < SAW_N; i++)
+            acc[i] = 0.0f;
+        for (h = 1; h <= (nh ? nh : 1u); h += 2u) {   /* odd ones, alternating */
+            float g = (h & 2u ? -1.0f : 1.0f) / (float)(h * h);
+            for (i = 0; i < SAW_N; i++)
+                acc[i] += sin_tab[(h * i * (SIN_N / SAW_N)) & (SIN_N - 1u)] * g;
+        }
+        for (i = 0; i < SAW_N; i++)
+            peak = fm_maxf(peak, fm_fabsf(acc[i]));
+        for (i = 0; i < SAW_N; i++)
+            tri_tab[b][i] = (int16_t)(acc[i] / peak * 32000.0f);
+        tri_tab[b][SAW_N] = tri_tab[b][0];
+    }
+}
+
+static const int16_t *tri_band(float hz)
+{
+    uint32_t b = 0;
+    while (b + 1u < TRI_BANDS && hz > SAW_TOP0 * (float)(1u << b))
+        b++;
+    return tri_tab[b];
+}
+
+/* the table waves, W9..W13: the saw; the square and the pulses, each a saw less the same saw moved on by the pulse's
+ * width (so they are band-limited too, and need no tables of their own); the triangle (t is then its table) */
+static inline float tab_wave(float x, uint32_t w, const int16_t *t)
+{
+    switch (w) {
+    case 9:                              /* W10 SQUARE */
+        return (saw_t(x, t) - saw_t(x + 0.5f, t)) * 0.5f;
+    case 10:                             /* W11 PULSE 25% (x 1.15: as loud as the square, sqrt(0.25 / (d (1 - d)))) */
+        return (saw_t(x, t) - saw_t(x + 0.25f, t)) * 0.577f;
+    case 11:                             /* W12 PULSE 12.5% (x 1.51) */
+        return (saw_t(x, t) - saw_t(x + 0.125f, t)) * 0.756f;
+    default:                             /* W9 SAW, W13 TRIANGLE */
+        return saw_t(x, t);
+    }
+}
+
 /* the eight waves, as the TX81Z's: W1 the sine, W2 its halves squared, W3 W4 their positive halves, W5..W8 the same
  * at twice the speed in the first half of the turn and silent in the second */
 static inline float wave(float ph, uint32_t w)
@@ -188,7 +241,7 @@ static void voice_pitch(voice_t *v)
     for (k = 0; k < 4u; k++) {
         float hz = m * v->rat[k] * SR, lo = v->ic[k] > 0.0f ? 16000.0f : 8000.0f;
         v->inc[k] = m * v->rat[k];
-        v->tab[k] = saw_band(hz);
+        v->tab[k] = v->wv[k] == 12u ? tri_band(hz) : saw_band(hz);
         v->lvl[k] = hz <= lo ? v->lvl0[k] : hz >= 20000.0f ? 0.0f : v->lvl0[k] * (20000.0f - hz) / (20000.0f - lo);
     }
 }
@@ -282,7 +335,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         const eng_op_t *o = &s->op[k];
         uint32_t is_car = car >> k & 1u, own = !is_car || o->strike;
         float a, d, su, pk;
-        v->wv[k] = (uint8_t)(is_car || prm.wave == 0xFFu ? o->wave : prm.wave);   /* 0..8 (8: the saw) */
+        v->wv[k] = (uint8_t)(is_car || prm.wave == 0xFFu ? o->wave : prm.wave);   /* 0..12 (8..12: the tables') */
         v->rat[k] = o->ratio * (is_car ? 1.0f : prm.ratio)
                     * fm_exp2f((o->det + DSIGN[k] * prm.detune * 14.0f) * (1.0f / 1200.0f));
 
@@ -428,8 +481,8 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     uint32_t w0 = v->wv[0], w1 = v->wv[1], w2 = v->wv[2], w3 = v->wv[3], i, rel = v->rel;
     const int16_t *t0 = v->tab[0], *t1 = v->tab[1], *t2 = v->tab[2], *t3 = v->tab[3];
     int32_t gate = v->gate;
-#define W(x, w, t) (sine || !(w) ? sin_t(x) : (w) == 8u ? saw_t((x), (t)) : wave((x), (w)))   /* a plain sine,
-                                                                                        * the saw, or a TX81Z wave */
+#define W(x, w, t) (sine || !(w) ? sin_t(x) : (w) >= 8u ? tab_wave((x), (w), (t)) : wave((x), (w)))   /* a plain
+                                                                         * sine, a table wave, or a TX81Z wave */
 #define MODS(k, j) (MOD[alg][k] >> (j) & 1u)
 #define IS_CAR(k) (CAR[alg] >> (k) & 1u)
     for (i = a; i < b; i++) {
@@ -940,6 +993,7 @@ void eng_init(void)
     for (i = 0; i <= SIN_N; i++)
         sin_tab[i] = fm_sinf((float)i * FM_TWO_PI / (float)SIN_N);
     saw_init();
+    tri_init();
     for (i = 0; i < ENG_NVOICE; i++)
         vc[i].note = -1;
 #ifndef PLAT_HOST
