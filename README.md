@@ -37,7 +37,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | FX: delay | Mix | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Width |
 | FX again: reverb | Mix | Length (0.5-15 s) | Dark | Shimmer |
 | FX again: chorus | Mix | Rate | Depth | |
-| GLO | Clock (int, int sent out, ext MIDI clock) | MIDI channel | Velocity curve | Reset (turn right one detent, TURN to DONE: the arp, seq, chords, chance and effects as new) |
+| GLO | Clock (int, int sent out, ext MIDI clock) | MIDI channel | Velocity curve | Params (keep; turn right one detent to reset: the arp, seq, chords, chance and effects as new) |
 
 Every note the arp plays also goes out over USB MIDI; MIDI notes in feed the arp like the keys. The mod wheel adds
 vibrato; pitch bend is two semitones.

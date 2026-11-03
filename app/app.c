@@ -1951,7 +1951,7 @@ static void theme(void)
     pal[4] = RGB(255, 46, 151);          /* C_HI: values, the knobs, new notes: hot pink */
 }
 
-#define RESET_TURNS 1u                   /* RESET: TURN, then DONE (a detent right) */
+#define RESET_TURNS 1u                   /* GLOBAL's PARAMS: KEEP, then RESET (a detent right) */
 static struct {
     char msg[2][24];                     /* a short message over the header */
     uint32_t msg_until;
@@ -1960,7 +1960,7 @@ static struct {
     uint32_t turned_at[4];               /* when each knob was last turned: its value lit for a moment */
     uint32_t tempo_at, chance_at;        /* the same, SELECT and ALGO */
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
-    uint32_t reset_arm;                  /* GLOBAL's RESET: how far turned toward RESET_TURNS (there: DONE) */
+    uint32_t reset_arm;                  /* GLOBAL's PARAMS: KEEP, or turned right RESET (done) */
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
     uint8_t redraw;
 } ui;
@@ -2021,7 +2021,7 @@ static const char *par_name(uint32_t p)
     if (p == PX_SLOT)
         return "SAVE TO";
     if (p == PX_RESET)
-        return "RESET";
+        return "PARAMS";
     if (p >= PX_OPR && p <= PX_OPD)
         return OPN[p - PX_OPR];
     return p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name;
@@ -2081,7 +2081,7 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         return;
     }
     if (p == PX_RESET) {                     /* GLOBAL's RESET: turn right until it goes */
-        text_cat(t, ui.reset_arm ? "DONE" : "TURN");
+        text_cat(t, ui.reset_arm ? "RESET" : "KEEP");
         return;
     }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4's */
