@@ -39,7 +39,7 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
        PX_CAT, PX_SND, PX_SLOT,                       /* SOUNDS: the kind, the sound, the USER slot SAVE writes */
-       PX_RESET,                                      /* GLOBAL's fourth: DEFAULTS, turned right all the way */
+       PX_RESET,                                      /* GLOBAL's fourth: RESET, turned right all the way */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 13u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE */
 static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI"};
@@ -94,7 +94,7 @@ static const param_t PAR[NP] = {
     {"RELEASE", "frel", 0, 100, 60, U_TIME},     {"KEY TRACK", "keytrack", 0, 100, 50, U_PCT},
     {"CHORD", "chord", 0, NCHORD - 1, 0, U_CHORD}, {"STRUM", "strum", 0, 100, 0, U_STRUM},
     {"KEY", "key", 0, 11, 0, U_KEY},             {"SCALE", "scale", 0, NSCALE - 1, 0, U_SCALE},
-    {"LOADS", "loads", 0, 1, 0, U_LOADS},
+    {"PARAMS", "loads", 0, 1, 0, U_LOADS},
 };
 
 /* the pages: each button's four knobs */
@@ -1908,6 +1908,7 @@ static void theme(void)
     pal[4] = RGB(255, 46, 151);          /* C_HI: values, the knobs, new notes: hot pink */
 }
 
+#define RESET_TURNS 8u                   /* RESET: detents right before it goes (no slip of a finger) */
 static struct {
     char msg[2][24];                     /* a short message over the header */
     uint32_t msg_until;
@@ -1916,7 +1917,7 @@ static struct {
     uint32_t turned_at[4];               /* when each knob was last turned: its value lit for a moment */
     uint32_t tempo_at, chance_at;        /* the same, SELECT and ALGO */
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
-    uint32_t reset_arm;                  /* GLOBAL's DEFAULTS: how far turned toward RESET_TURNS */
+    uint32_t reset_arm;                  /* GLOBAL's RESET: how far turned toward RESET_TURNS (there: DONE) */
     uint8_t redraw;
 } ui;
 
@@ -1969,7 +1970,7 @@ static const char *par_name(uint32_t p)
     if (p == PX_SLOT)
         return "SAVE TO";
     if (p == PX_RESET)
-        return "DEFAULTS";
+        return "RESET";
     if (p >= PX_OPR && p <= PX_OPD)
         return OPN[p - PX_OPR];
     return p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name;
@@ -2025,8 +2026,15 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         text_cat(t, users.u[ui.save_slot].used ? " USED" : " FREE");
         return;
     }
-    if (p == PX_RESET) {                     /* GLOBAL's DEFAULTS: turn right until it goes */
-        text_cat(t, ui.reset_arm ? "MORE" : "TURN");
+    if (p == PX_RESET) {                     /* GLOBAL's RESET: turn right until it goes */
+        if (!ui.reset_arm)
+            text_cat(t, "TURN");
+        else if (ui.reset_arm >= RESET_TURNS)
+            text_cat(t, "DONE");
+        else {                               /* the detents still to go */
+            int_text((int32_t)(RESET_TURNS - ui.reset_arm), t);
+            text_cat(t, " LEFT");
+        }
         return;
     }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4's */
@@ -2164,8 +2172,8 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     case U_ONOFF:
         text_cat(t, v ? "ON" : "OFF");
         break;
-    case U_LOADS:                        /* a sound change: the sound only, or everything a preset has */
-        text_cat(t, v ? "ALL" : "SOUND");
+    case U_LOADS:                        /* PARAMS on a sound change: KEEP the arp and effects, or CHANGE them */
+        text_cat(t, v ? "CHANGE" : "KEEP");
         break;
     case U_CH:
         if (v)
@@ -2198,7 +2206,6 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     }
 }
 
-#define RESET_TURNS 8u                   /* DEFAULTS: detents right before it goes (no slip of a finger) */
 static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 0 .. w */
 {
     uint32_t k = op_now();
@@ -2379,16 +2386,20 @@ static void param_turn(uint32_t p, int32_t d)
         ui.redraw = 1;
         return;
     }
-    if (p == PX_RESET) {                     /* DEFAULTS: the arp, SEQ, CHORDS, CHANCE and the effects as new */
-        ui.reset_arm = (uint32_t)clamp((int32_t)ui.reset_arm + d, 0, (int32_t)RESET_TURNS);
+    if (p == PX_RESET) {                     /* RESET: the arp, SEQ, CHORDS, CHANCE and the effects as new. Once
+                                              * done it stays DONE (turned on, nothing more); back left, it starts over */
+        uint32_t was = ui.reset_arm;
+        if (was >= RESET_TURNS && d < 0)
+            ui.reset_arm = 0;
+        else
+            ui.reset_arm = (uint32_t)clamp((int32_t)ui.reset_arm + d, 0, (int32_t)RESET_TURNS);
         ui.redraw = 1;
-        if (ui.reset_arm == RESET_TURNS) {
+        if (ui.reset_arm == RESET_TURNS && was < RESET_TURNS) {
             uint32_t f = plat_lock();
             patch_defaults();
             plat_unlock(f);
-            ui.reset_arm = 0;
             set_dirty = 1;
-            app_say("DEFAULTS", "ARP AND FX");
+            app_say("RESET", "ARP AND FX");
         }
         return;
     }

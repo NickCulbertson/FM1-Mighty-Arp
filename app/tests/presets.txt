@@ -82,7 +82,7 @@ wait 30
 spin PRESET 1
 wait 30
 expect strum 30
-# DEFAULTS: seven detents nothing, the eighth the arp and effects as new (the sound and TEMPO kept)
+# RESET: seven detents nothing, the eighth the arp and effects as new (the sound and TEMPO kept)
 spin SELECT 10
 wait 30
 expect tempo 100
@@ -99,3 +99,18 @@ expect chord 0
 expect tempo 100
 expect preset 60
 expect loads 1
+# DONE holds: turned on further nothing more happens; back left, it starts over
+turn ALGO -10
+wait 30
+expect chance 13
+spin K4 3
+wait 30
+expect chance 13
+spin K4 -1
+wait 30
+spin K4 7
+wait 30
+expect chance 13
+spin K4 1
+wait 30
+expect chance 33
