@@ -293,10 +293,16 @@ static void ev_push(uint32_t type, uint32_t note, uint32_t vel)
 static int32_t held[NHELD];
 static uint8_t held_vel[NHELD];
 static uint32_t held_seq[NHELD], held_seq_n;   /* when each was added: AS PLAYED's order */
+static uint8_t held_by;                  /* who the note being added comes from (DN_KEY, DN_MIDI) */
 static uint32_t nheld;
-static uint8_t down[128];                /* held down, and by what (DN_KEY, DN_MIDI): HOLD and LATCH keep the rest */
+/* what holds each note down: a key (down), MIDI on which channels (midi_down, a bit a channel). HOLD and LATCH keep
+ * the rest; held_src remembers who a held note came from, so MIDI's can go when MIDI says so */
+static uint8_t down[128];
+static uint16_t midi_down[128];
 #define DN_KEY 1u
 #define DN_MIDI 2u
+static uint8_t held_src[NHELD];
+static int is_down(int32_t note) { return (down[note] & DN_KEY) || midi_down[note]; }
 static uint32_t ndown;
 static uint8_t arp_on_now, hold_now, clk_out_now, sync_now;   /* what the render last acted on */
 
@@ -347,6 +353,7 @@ static void held_add(int32_t note, uint32_t vel)
     for (i = 0; i < nheld; i++)
         if (held[i] == note) {
             held_vel[i] = (uint8_t)vel;
+            held_src[i] |= held_by;
             return;
         }
     if (nheld >= NHELD)
@@ -357,10 +364,12 @@ static void held_add(int32_t note, uint32_t vel)
         held[j] = held[j - 1];
         held_vel[j] = held_vel[j - 1];
         held_seq[j] = held_seq[j - 1];
+        held_src[j] = held_src[j - 1];
     }
     held[i] = note;
     held_vel[i] = (uint8_t)vel;
     held_seq[i] = ++held_seq_n;
+    held_src[i] = held_by;
     nheld++;
     if (!arp_on_now) {
         eng_note_on(note, vel, -1);
@@ -379,6 +388,7 @@ static void held_remove(int32_t note)
         held[i] = held[i + 1];
         held_vel[i] = held_vel[i + 1];
         held_seq[i] = held_seq[i + 1];
+        held_src[i] = held_src[i + 1];
     }
     nheld--;
     if (!arp_on_now) {
@@ -592,15 +602,16 @@ static void on_tick(void)                /* a clock tick: MIDI out, and a step w
         arp_step();
 }
 
-static void arp_restart(void)            /* the first note of a new chord: the clock starts with it (but sending it
-                                         * out: then it keeps its time, and only the pattern starts again) */
+static void arp_restart(void)            /* the first note of a new chord: the clock starts with it, the pattern from
+                                         * its top. With CLOCK OUT the clock keeps its time, and the first note waits
+                                         * for the grid (played now, the grid's next step could land just after) */
 {
-    if (!clk_out_now) {
-        tick_n = 0;
-        tick_acc = 0.0f;
-    }
     swing_wait = hum_wait = 0;
-    arp_s = -1;                          /* the pattern from its top */
+    arp_s = -1;
+    if (clk_out_now)
+        return;
+    tick_n = 0;
+    tick_acc = 0.0f;
     arp_step();
 }
 
@@ -618,7 +629,7 @@ static uint32_t vel_curve(uint32_t v)
     }
 }
 
-static void note_down(int32_t note, uint32_t vel, uint32_t by)   /* by: DN_KEY or DN_MIDI */
+static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /* by: DN_KEY, or DN_MIDI on ch */
 {
     uint32_t i, was;
     if (note < 0 || note > 127)
@@ -627,9 +638,13 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by)   /* by: DN_KEY o
     if (hold_now == H_HOLD && ndown == 0)   /* HOLD: a new chord after every key was let go replaces the last */
         held_clear();
     was = nheld;
-    if (!down[note])
+    if (!is_down(note))
         ndown++;
-    down[note] |= (uint8_t)by;
+    if (by == DN_MIDI)
+        midi_down[note] |= (uint16_t)(1u << (ch & 15u));
+    else
+        down[note] |= DN_KEY;
+    held_by = (uint8_t)by;
     if (hold_now == H_LATCH) {           /* LATCH: each key on or off by itself */
         for (i = 0; i < nheld && held[i] != note; i++)
             ;
@@ -645,17 +660,46 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by)   /* by: DN_KEY o
         arp_restart();
 }
 
-static void note_up(int32_t note, uint32_t by)   /* the note let go by one of what held it; the other may still */
+static void note_up(int32_t note, uint32_t by, uint32_t ch)   /* let go by one of what held it; another may still */
 {
-    if (note < 0 || note > 127 || !(down[note] & by))
+    if (note < 0 || note > 127)
         return;
-    down[note] &= (uint8_t)~by;
-    if (down[note])
+    if (by == DN_MIDI) {
+        if (!(midi_down[note] >> (ch & 15u) & 1u))
+            return;
+        midi_down[note] &= (uint16_t)~(1u << (ch & 15u));
+    } else {
+        if (!(down[note] & DN_KEY))
+            return;
+        down[note] = 0;
+    }
+    if (is_down(note))
         return;
     ndown--;
     if (hold_now == H_OFF)
         held_remove(note);
     held_publish();
+}
+
+/* MIDI's notes all let go, those HOLD or LATCH kept too (All Notes Off, All Sound Off, MIDI CH changed); a key's
+ * notes stay. sound_off: and silence now */
+static void midi_let_go(int sound_off)
+{
+    uint32_t i;
+    for (i = 0; i < 128u; i++)
+        if (midi_down[i]) {
+            midi_down[i] = 0;
+            if (!is_down((int32_t)i))
+                ndown--;
+        }
+    for (i = nheld; i-- > 0;)
+        if (held_src[i] & DN_MIDI && !(down[held[i]] & DN_KEY))
+            held_remove(held[i]);
+    held_publish();
+    if (sound_off) {
+        eng_silence();
+        out_all_off();
+    }
 }
 
 /* the arp, hold, CLOCK or MIDI CH switched: what sounds follows */
@@ -664,8 +708,7 @@ static void modes_follow(void)
     uint32_t i;
     if ((uint8_t)set.p[P_MIDICH] != midi_ch_now) {   /* MIDI CH: what went out on the old channel ends there; what
                                                       * came in on it is let go (its offs would no longer be heard) */
-        for (i = 0; i < 128u; i++)
-            note_up((int32_t)i, DN_MIDI);
+        midi_let_go(0);
         if (!arp_on_now)
             for (i = 0; i < nheld; i++)
                 midi_off((uint32_t)held[i]);
@@ -696,7 +739,7 @@ static void modes_follow(void)
         hold_now = set.hold;
         if (hold_now == H_OFF) {         /* hold off: what no key holds goes */
             for (i = nheld; i-- > 0;)
-                if (!down[held[i]])
+                if (!is_down(held[i]))
                     held_remove(held[i]);
             held_publish();
         }
@@ -756,17 +799,17 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
         if (st < 0x80u || st >= 0xF0u || (ch_want != 0xFFu && (st & 0x0Fu) != ch_want))
             continue;
         if (ty == 0x90u && d2) {
-            note_down((int32_t)d1, d2, DN_MIDI);
+            note_down((int32_t)d1, d2, DN_MIDI, st & 0x0Fu);
             midi_count++;
         } else if (ty == 0x80u || ty == 0x90u) {
-            note_up((int32_t)d1, DN_MIDI);
+            note_up((int32_t)d1, DN_MIDI, st & 0x0Fu);
         } else if (ty == 0xB0u && d1 == 1u) {
             modwheel = (float)d2 / 127.0f;
         } else if (ty == 0xE0u) {
             bend = (float)((int32_t)(d2 << 7 | d1) - 8192) * (2.0f / 8192.0f);
-        } else if (ty == 0xB0u && (d1 == 123u || d1 == 120u)) {   /* all notes off, all sound off: MIDI's own */
-            for (d1 = 0; d1 < 128u; d1++)
-                note_up((int32_t)d1, DN_MIDI);
+        } else if (ty == 0xB0u && (d1 == 123u || d1 == 120u)) {   /* All Notes Off, All Sound Off (that silent now):
+                                                                 * MIDI's notes, kept or not */
+            midi_let_go(d1 == 120u);
         }
     }
     if (sync_now && sample_clock - ext_last < (uint32_t)SR && ext_per > 0.0f)
@@ -782,15 +825,15 @@ static void events_in(void)
         evq_r = evq_r + 1u;
         switch (e & 0xFFu) {
         case KEV_ON:
-            note_down((int32_t)note, e >> 16 & 0xFFu, DN_KEY);
+            note_down((int32_t)note, e >> 16 & 0xFFu, DN_KEY, 0);
             break;
         case KEV_OFF:
-            note_up((int32_t)note, DN_KEY);
+            note_up((int32_t)note, DN_KEY, 0);
             break;
         case KEV_ALLOFF:                  /* the octave changed: the keys' notes would not find their offs (MIDI's
                                            * stay) */
             for (note = 0; note < 128u; note++)
-                note_up((int32_t)note, DN_KEY);
+                note_up((int32_t)note, DN_KEY, 0);
             break;
         }
     }

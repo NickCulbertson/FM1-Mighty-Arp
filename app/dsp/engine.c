@@ -93,7 +93,8 @@ typedef struct {
     uint32_t age;
     uint8_t on, rel, shed, wv[4], att[4];   /* att[k]: operator k still rising; shed: fading out for the CPU */
     float env[4], pk[4], ai[4], tgt[4], kk[4], sus[4], dk[4], rk[4];
-    float lvl[4], cl[4], cr[4], ic[4];   /* ic: 1 a carrier (its envelope ends the voice) */
+    float lvl[4], lvl0[4], cl[4], cr[4], ic[4];   /* lvl0: before the high-note taper (voice_pitch); ic: 1 a
+                                                   * carrier (its envelope ends the voice) */
     uint8_t alg;                         /* its algorithm, from the note on */
     float ph[4], inc[4], rat[4];
     float fb1, fb2, fbk;
@@ -116,13 +117,19 @@ static eng_params_t prm;
 static float lfo_ph, lfo_val, lfo_sh, lfo_dg, lfo_dg_to, glide_k, drift_k;
 static float trem_l = 1.0f, trem_r = 1.0f, trem_l_to = 1.0f, trem_r_to = 1.0f;
 
-static void voice_pitch(voice_t *v)      /* the operators' speeds from the note, the glide and the LFO */
+/* the operators' speeds from the note, the glide and the LFO; and their levels, tapered high up: there a modulator's
+ * sidebands fold back past half the sample rate as noise. A modulator fades from 8 kHz to nothing at 20, a carrier from
+ * 16 to 20, smoothly (no cliff between neighbouring notes), and as the pitch moves (glides, bends, legato) */
+static void voice_pitch(voice_t *v)
 {
     float x = prm.lfo_shape == LFO_DRIFT ? v->drift : lfo_val;
     float m = v->f * fm_exp2f((x * prm.vib + prm.bend) * (1.0f / 12.0f));
     uint32_t k;
-    for (k = 0; k < 4u; k++)
+    for (k = 0; k < 4u; k++) {
+        float hz = m * v->rat[k] * SR, lo = v->ic[k] > 0.0f ? 16000.0f : 8000.0f;
         v->inc[k] = m * v->rat[k];
+        v->lvl[k] = hz <= lo ? v->lvl0[k] : hz >= 20000.0f ? 0.0f : v->lvl0[k] * (20000.0f - hz) / (20000.0f - lo);
+    }
 }
 
 static void voice_release(voice_t *v)
@@ -212,13 +219,11 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     for (k = 0, c = 0; k < 4u; k++) {
         const eng_op_t *o = &s->op[k];
         uint32_t is_car = car >> k & 1u, own = !is_car || o->strike;
-        float a, d, su, pk, hz, band;
+        float a, d, su, pk;
         v->wv[k] = (uint8_t)(is_car || prm.wave > 7u ? o->wave & 7u : prm.wave);
         v->rat[k] = o->ratio * (is_car ? 1.0f : prm.ratio)
                     * fm_exp2f((o->det + DSIGN[k] * prm.detune * 14.0f) * (1.0f / 1200.0f));
-        hz = f * v->rat[k] * SR;          /* high up, a modulator folds back as noise: less of it above 10 kHz,
-                                           * none past 20 (an operator there is silent) */
-        band = hz > 20000.0f ? 0.0f : hz > 10000.0f ? 10000.0f / hz : 1.0f;
+
         if (own) {
             a = o->att;
             d = o->dec * dscale;
@@ -243,14 +248,14 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
             if (car != 0x1u && car != 0x0u)   /* two or more carriers: spread across the voice's place */
                 sp = (c & 1u ? 0.25f : -0.25f) * (0.4f + prm.detune);
             pp = fm_clampf(pos + sp, -0.9f, 0.9f);
-            a = o->lvl * amp * (o->strike ? prm.strike : 1.0f) * (band > 0.0f ? 1.0f : 0.0f);
-            v->lvl[k] = a;
+            a = o->lvl * amp * (o->strike ? prm.strike : 1.0f);
+            v->lvl0[k] = a;
             v->cl[k] = 0.5f - 0.5f * pp;
             v->cr[k] = 0.5f + 0.5f * pp;
             v->ic[k] = 1.0f;
             c++;
         } else {
-            v->lvl[k] = o->lvl * bright * band;
+            v->lvl0[k] = o->lvl * bright;
             v->cl[k] = v->cr[k] = v->ic[k] = 0.0f;
         }
     }
@@ -309,12 +314,11 @@ void eng_shed(void)
         for (i = 0; i < ENG_NVOICE; i++)
             if (vc[i].on && !vc[i].shed && vc[i].age < oldest)
                 oldest = vc[i].age, v = &vc[i];
-    if (v)
-        shed_note = v->note;
     if (n > 4u && n - 1u < vc_cap)
         vc_cap = n - 1u;
     if (!v || n <= 4u)                   /* four always sound */
         return;
+    shed_note = v->note;
     voice_release(v);
     v->shed = 1;
     for (k = 0; k < 4u; k++)
@@ -451,10 +455,13 @@ void eng_cpu2(int (*run)(void (*)(uint32_t), uint32_t), int (*wait)(void))
     c2_wait = wait;
 }
 
+static uint8_t eng_clearing;             /* the buffers being cleared after a reset (eng_out): the voices wait,
+                                          * so a note played meanwhile keeps its attack */
+
 void eng_voices(float *l, float *r, uint32_t a, uint32_t b)
 {
     uint32_t i, k, split = 0;
-    if (a >= b)
+    if (a >= b || eng_clearing)
         return;
     for (k = C2_FIRST; k < ENG_NVOICE && !split; k++)
         split = vc[k].on;
@@ -469,9 +476,14 @@ void eng_voices(float *l, float *r, uint32_t a, uint32_t b)
             voice_run(&vc[k], l, r, a, b);
     if (!split)
         return;
-    if (c2_wait() != 0)                  /* it was given up mid-job: its voices skip this segment (some may have run
-                                          * part of it: run again, they would play it twice). One core from now */
+    if (c2_wait() != 0) {                /* it was given up mid-job (and stopped): its voices' state may be half
+                                          * written, so they end here, never run twice or resumed. One core from now */
+        for (k = C2_FIRST; k < ENG_NVOICE; k++) {
+            vc[k].on = 0;
+            vc[k].note = -1;
+        }
         return;
+    }
     for (i = a; i < b; i++) {
         l[i] += c2_l[i];
         r[i] += c2_r[i];
@@ -482,7 +494,7 @@ void eng_voices(float *l, float *r, uint32_t a, uint32_t b)
 void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
 {
     float d = p->lfo_hz * (float)n / SR, x;
-    uint32_t i, wrapped;
+    uint32_t i, k, wrapped;
     snd = s;
     prm = *p;
     lfo_ph += d;
@@ -527,6 +539,9 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         } else
             v->drift_n--;
         v->drift += (v->drift_to - v->drift) * drift_k;
+        for (k = 0; k < 4u; k++)         /* an envelope fallen to nothing stays nothing (no denormals) */
+            if (!v->att[k] && v->env[k] < 1e-7f)
+                v->env[k] = 0.0f;
         voice_pitch(v);
     }
 }
@@ -666,9 +681,11 @@ static inline int reverb(float in, float damp, float shim, float m1, float m3, f
         h[0] = h[1] = h[2] = h[3] = 0.0f;
     for (k = 0; k < 4u; k++) {
         uint32_t size = RV_LEN[k] + RV_PAD;
-        float q = fm_clampf(h[k], -32767.0f, 32767.0f);
-        RV_BUF[k][rv_w[k]] = (int16_t)(q + (q >= 0.0f ? 0.5f : -0.5f));   /* rounded: truncation would eat quiet
-                                                                             * tails */
+        float q = fm_clampf(h[k], -32767.0f, 32767.0f), r = q >= 0.0f ? 0.5f : -0.5f;
+        if (q < 4.0f && q > -4.0f)       /* rounded (truncation would eat quiet tails), but the last few steps
+                                          * truncated, so a tail never rests at +-1 for ever */
+            r = 0.0f;
+        RV_BUF[k][rv_w[k]] = (int16_t)(q + r);
         if (++rv_w[k] >= size)
             rv_w[k] = 0;
     }
@@ -757,8 +774,12 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
     }
     if (dly_t <= 0.0f)
         dly_t = dtarget;
+    dly_lp_l = fm_flush(dly_lp_l);       /* the delay's filters: no denormals once it has gone quiet */
+    dly_lp_r = fm_flush(dly_lp_r);
+    dly_pre_l = fm_flush(dly_pre_l);
+    dly_pre_r = fm_flush(dly_pre_r);
     if (clr_i < NCLR) {                  /* still clearing after a reset: silence meanwhile */
-        clearing();
+        eng_clearing = (uint8_t)clearing();
         for (i = 0; i < 2u * n; i++)
             lr[i] = 0;
         return 0;
@@ -846,6 +867,7 @@ void eng_reset(void)
     dc_xl = dc_yl = dc_xr = dc_yr = 0.0f;
     clr_i = 0;
     clr_at = 0;
+    eng_clearing = 1;
 }
 
 void eng_init(void)
