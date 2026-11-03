@@ -1400,7 +1400,7 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
     cv_text(10, 12, &FONT_B, set.arp_on ? "ARP" : "KEYS", set.arp_on ? C_HI : C_GRAY);
     cv_text(52, 0, &FONT_XS, "REC", C_DIM);
     cv_text(52, 12, &FONT_B, HOLD_NAME[set.hold], set.hold ? C_HI : C_GRAY);
-    cv_text(120, 0, &FONT_XS, "SELECT", C_DIM);
+    cv_text(120, 0, &FONT_XS, "TEMPO", C_DIM);
     if (set.p[P_SYNC]) {
         t[0] = 0;
         if (ext_bpm_x10) {
