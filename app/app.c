@@ -57,7 +57,7 @@ static const param_t PAR[NP] = {
     {"DARK", "rev_dark", 0, 100, 40, U_PCT},     {"SHIMMER", "shimmer", 0, 100, 0, U_PCT},
     {"SYNC", "sync", 0, 1, 0, U_SYNC},           {"CLOCK OUT", "clock_out", 0, 1, 0, U_ONOFF},
     {"MIDI CH", "midi_ch", 0, 16, 0, U_CH},      {"VEL CURVE", "vel_curve", 0, 3, 1, U_CURVE},
-    {"TEMPO", "tempo", 40, 200, 90, U_BPM},      {"ARP CHANCE", "chance", 0, 100, 33, U_PCT},
+    {"TEMPO", "tempo", 40, 200, 90, U_BPM},      {"CHANCE", "chance", 0, 100, 33, U_PCT},
 };
 
 /* the pages: each button's four knobs */
@@ -914,7 +914,7 @@ void app_init(void)
  * the rest */
 #define C_BG RGB(16, 10, 32)
 #define C_GHOST RGB(84, 62, 136)
-#define C_BLUE RGB(70, 130, 255)             /* the name's MIGHTY */
+#define C_BLUE RGB(110, 165, 255)            /* the name's MIGHTY: neon blue */
 static void theme(void)
 {
     pal[0] = RGB(50, 32, 82);            /* C_LINE: rules, the knobs' tracks */
@@ -1336,9 +1336,9 @@ static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac,
         for (x = 0; x < m->n; x++) {
             uint32_t i = (uint32_t)(y * m->n + x), d = m->dist[i], pos = m->pos[i];
             uint16_t col = C_BG;
-            if (d < 32u && pos <= 240u) {    /* the ring: 2 px wide, its edges soft */
+            if (d < 40u && pos <= 240u) {    /* the ring: about 4 px wide, its edges soft */
                 uint16_t ring = (int32_t)pos <= frac && frac > 0 ? c : C_LINE;
-                uint32_t cov = d <= 16u ? 256u : (32u - d) * 16u;
+                uint32_t cov = d <= 24u ? 256u : (40u - d) * 16u;
                 col = mix565(col, ring, cov);
             }
             if (col != C_BG)
@@ -1396,12 +1396,12 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
 static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC, then tempo and chance */
 {
     char t[24];
-    cv_begin(240, 24, C_BG);
-    cv_text(10, 0, &FONT_T, "PLAY", C_DIM);
-    cv_text(10, 10, &FONT_XS, set.arp_on ? "ARP" : "KEYS", set.arp_on ? C_HI : C_GRAY);
-    cv_text(48, 0, &FONT_T, "REC", C_DIM);
-    cv_text(48, 10, &FONT_XS, HOLD_NAME[set.hold], set.hold ? C_HI : C_GRAY);
-    cv_text(110, 0, &FONT_T, "SELECT", C_DIM);
+    cv_begin(240, 28, C_BG);
+    cv_text(10, 0, &FONT_XS, "PLAY", C_DIM);
+    cv_text(10, 12, &FONT_B, set.arp_on ? "ARP" : "KEYS", set.arp_on ? C_HI : C_GRAY);
+    cv_text(52, 0, &FONT_XS, "REC", C_DIM);
+    cv_text(52, 12, &FONT_B, HOLD_NAME[set.hold], set.hold ? C_HI : C_GRAY);
+    cv_text(120, 0, &FONT_XS, "SELECT", C_DIM);
     if (set.p[P_SYNC]) {
         t[0] = 0;
         if (ext_bpm_x10) {
@@ -1411,12 +1411,12 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
             text_cat(t, "EXT WAIT");
     } else
         param_text(P_TEMPO, t);
-    cv_text(110, 10, &FONT_XS, t, ui.tempo_at && now - ui.tempo_at < 400u ? C_WHITE : C_AMB);
-    cv_text(172, 0, &FONT_T, "ARP CHANCE", C_DIM);
+    cv_text(120, 12, &FONT_B, t, ui.tempo_at && now - ui.tempo_at < 400u ? C_WHITE : C_AMB);
+    cv_text(184, 0, &FONT_XS, "CHANCE", C_DIM);
     int_text(set.p[P_CHANCE], t);
     text_cat(t, "%");
-    cv_text(172, 10, &FONT_XS, t, ui.chance_at && now - ui.chance_at < 400u ? C_WHITE : C_AMB);
-    cv_blit(0, 216);
+    cv_text(184, 12, &FONT_B, t, ui.chance_at && now - ui.chance_at < 400u ? C_WHITE : C_AMB);
+    cv_blit(0, 212);
 }
 
 static void draw(void)
@@ -1427,10 +1427,10 @@ static void draw(void)
     header(now);
     if (ui.page == PG_HOME) {
         /* HOME: the arp large, then the four macros in a row */
-        cv_begin(240, 114, C_BG);
-        notes_view(114, 600u, 1);
+        cv_begin(240, 110, C_BG);
+        notes_view(110, 600u, 1);
         cv_blit(0, 34);
-        cv_begin(240, 66, C_BG);
+        cv_begin(240, 68, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
         for (i = 0; i < 4u; i++) {
             uint32_t p = pg->p[i];
@@ -1439,35 +1439,35 @@ static void draw(void)
             const char *nm = par_name(p);
             knob_draw(&kn_small, cx, 19, par_frac(p, 240), lit ? C_WHITE : C_HI);
             param_text(p, t);
-            cv_text(cx - text_w(&FONT_XS, t) / 2, 34, &FONT_XS, t, lit ? C_WHITE : C_HI);
-            cv_text(cx - text_w(&FONT_T, nm) / 2, 51, &FONT_T, nm, C_GRAY);
+            cv_text(cx - text_w(&FONT_B, t) / 2, 34, &FONT_B, t, lit ? C_WHITE : C_HI);
+            cv_text(cx - text_w(&FONT_XS, nm) / 2, 52, &FONT_XS, nm, C_GRAY);
         }
-        cv_blit(0, 148);
+        cv_blit(0, 144);
     } else {
         /* a page: its four knobs, two by two */
         cv_begin(240, 108, C_BG);
-        cv_text(10, 0, &FONT_XS, pg->name, C_GRAY);
+        cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
         {
             const char *h = ui.page == PG_DELAY ? "FX AGAIN: REVERB" : ui.page == PG_REVERB ? "FX AGAIN: DELAY" : "";
-            cv_text(230 - text_w(&FONT_T, h), 3, &FONT_T, h, C_DIM);
+            cv_text(230 - text_w(&FONT_XS, h), 1, &FONT_XS, h, C_DIM);
         }
-        cv_rect(10, 15, 220, 1, C_LINE);
+        cv_rect(10, 18, 220, 1, C_LINE);
         for (i = 0; i < 4u; i++) {
             uint32_t p = pg->p[i];
-            int32_t x = 10 + (int32_t)(i % 2u) * 116, y = 22 + (int32_t)(i / 2u) * 44;
+            int32_t x = 10 + (int32_t)(i % 2u) * 116, y = 23 + (int32_t)(i / 2u) * 43;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
-            knob_draw(&kn_big, x + 16, y + 19, par_frac(p, 240), lit ? C_WHITE : C_HI);
-            cv_text(x + 38, y + 2, &FONT_XS, par_name(p), C_GRAY);
+            knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI);
+            cv_text(x + 38, y + 1, &FONT_S, par_name(p), C_GRAY);
             param_text(p, t);
-            if (text_w(&FONT_M, t) <= 76)      /* a long one (AS PLAYED) smaller */
+            if (text_w(&FONT_M, t) <= (i % 2u ? 66 : 74))   /* a long one (AS PLAYED, LINEAR) smaller */
                 cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
             else
                 cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_WHITE : C_HI);
         }
         cv_blit(0, 34);
-        cv_begin(240, 72, C_BG);
+        cv_begin(240, 70, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
-        notes_view(72, 400u, 0);
+        notes_view(70, 400u, 0);
         cv_blit(0, 142);
     }
     state_line(now);

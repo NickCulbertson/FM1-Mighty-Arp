@@ -9,7 +9,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | --- | --- |
 | MASTER | volume |
 | SELECT | tempo, shown as BPM (as now) |
-| ALGO | arp chance, labelled ARP CHANCE |
+| ALGO | arp chance, labelled CHANCE |
 | PRESET | the sound |
 | HOME | the performance screen: the arp's notes large, and four macros (below) |
 | SEL | SOUND page |
@@ -79,7 +79,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as smooth arcs. The name: MIGHTY in blue, ARP in pink.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.
-- The state line: PLAY ARP/KEYS, REC hold mode, BPM, ARP CHANCE.
+- The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.
 
 ## Sounds (about 32)
 
