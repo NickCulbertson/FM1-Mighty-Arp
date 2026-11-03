@@ -914,6 +914,7 @@ void app_init(void)
  * the rest */
 #define C_BG RGB(16, 10, 32)
 #define C_GHOST RGB(84, 62, 136)
+#define C_BLUE RGB(70, 130, 255)             /* the name's MIGHTY */
 static void theme(void)
 {
     pal[0] = RGB(50, 32, 82);            /* C_LINE: rules, the knobs' tracks */
@@ -1268,10 +1269,9 @@ static void lights(void)
 void app_input_only(void) { input(); }
 
 /* a knob: a smooth arc of 270 degrees, from the lower left round to the lower right, its track dim and its value
- * pink, over a purple glow that brightens as the knob turns up. Each size's pixels are worked out once: where along
- * the sweep each lies (0..240; in the gap at the bottom 241..255, further from the ring's ends) and how far it is from
- * the ring's centre line (x 16) */
-#define KN_GLOW 7                            /* the glow's reach past the ring */
+ * pink. Each size's pixels are worked out once: where along the sweep each lies (0..240; 241.. the gap at the
+ * bottom) and how far it is from the ring's centre line (x 16) */
+#define KN_GLOW 1                            /* the box's margin past the ring */
 #define KN_MAX (2 * (15 + KN_GLOW + 1) + 1)
 typedef struct {
     int32_t r, n;
@@ -1332,17 +1332,10 @@ static uint16_t mix565(uint16_t a, uint16_t b, uint32_t t)   /* a to b, t of 256
 static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac, uint16_t c)
 {
     int32_t x, y, h = m->n / 2;
-    uint32_t glow = 30u + (uint32_t)frac * 190u / 240u;   /* the glow's strength, of 256: dim at 0, bright at full */
     for (y = 0; y < m->n; y++)
         for (x = 0; x < m->n; x++) {
             uint32_t i = (uint32_t)(y * m->n + x), d = m->dist[i], pos = m->pos[i];
             uint16_t col = C_BG;
-            if (d < (KN_GLOW + 1) * 16u) {   /* the glow, fading away from the ring, and round its ends */
-                uint32_t f = (KN_GLOW + 1) * 16u - d, t = glow * f * f / ((KN_GLOW + 1) * 16u * (KN_GLOW + 1) * 16u);
-                if (pos > 240u)
-                    t = t * (255u - pos) / 14u;
-                col = mix565(C_BG, C_AMB, t);
-            }
             if (d < 32u && pos <= 240u) {    /* the ring: 2 px wide, its edges soft */
                 uint16_t ring = (int32_t)pos <= frac && frac > 0 ? c : C_LINE;
                 uint32_t cov = d <= 16u ? 256u : (32u - d) * 16u;
@@ -1360,7 +1353,7 @@ static void header(uint32_t now)
         int32_t x = cv_text(10, 6, &FONT_B, ui.msg[0], C_WHITE);
         cv_text(x + 8, 6, &FONT_B, ui.msg[1], C_HI);
     } else {
-        cv_text(10, 6, &FONT_B, "MIGHTY", C_GRAY);
+        cv_text(10, 6, &FONT_B, "MIGHTY", C_BLUE);
         cv_text(10 + text_w(&FONT_B, "MIGHTY "), 6, &FONT_B, "ARP", C_HI);
         cv_text(230 - text_w(&FONT_B, cur_preset()->name), 6, &FONT_B, cur_preset()->name, C_AMB);
     }
