@@ -1,0 +1,103 @@
+# CHORDS (ARP again): a diatonic chord a step, strummed; the chords' tones as the notes (tests/run_tests.sh)
+wait 600
+turn ALGO 40
+wait 30
+expect chance 100
+tap REC
+wait 30
+expect hold 1
+tap ARP
+wait 30
+spin K2 -3
+spin K3 -20
+spin K3 1
+wait 30
+expect octaves 1
+expect mode 1
+tap ARP
+wait 30
+expect page 20
+shot chords.png
+# TRIAD in C major: C4 plays C E G every step (3 notes a step, 1/8 at 90 BPM: 333 ms)
+spin K1 1
+wait 30
+expect chord 1
+key 7 down 90
+wait 30
+key 7 up
+wait 30
+expect arp_mark 0
+wait 1000
+expect arp_notes >7
+expect arp_notes <11
+# D4 in C major: a minor chord, D F A (its last note A, 69)
+key 9 down 90
+wait 30
+key 9 up
+wait 400
+expect last_note 69
+# LUSH: Nick's voicing, C in C major: C3 G4 C5 D5 E5 (five a step, the last E5)
+spin K1 2
+wait 30
+expect chord 3
+key 7 down 90
+wait 30
+key 7 up
+wait 30
+expect last_note 76
+expect arp_mark 0
+wait 1000
+expect arp_notes >13
+spin K1 -2
+wait 30
+expect chord 1
+# STRUM: the chord's notes spread out (all still play)
+spin K2 50
+wait 30
+expect strum 50
+expect arp_mark 0
+wait 1000
+expect arp_notes >7
+# TRIAD TONES: C4 held, UP: C E G C E G (the pool C's triad)
+spin K2 -100
+spin K1 4
+wait 30
+expect chord 5
+key 7 down 90
+wait 20
+key 7 up
+wait 20
+expect last_note 60
+wait 333
+expect last_note 64
+wait 333
+expect last_note 67
+wait 333
+expect last_note 60
+# G MAJOR, MIXOLYDIAN on: all sound (no stuck notes, nothing bad)
+spin K3 7
+spin K4 3
+wait 30
+expect key 7
+expect scale 3
+wait 1000
+expect dsp_resets 0
+# OMNI TONES: C4 held, the pool is Nick's eight-note C spread (C3 C4 E4 G4 C5 E5 G5 C6)
+spin K4 -3
+spin K3 -7
+spin K1 2
+wait 30
+expect chord 7
+expect key 0
+expect scale 0
+key 7 down 90
+wait 20
+key 7 up
+wait 20
+expect last_note 48
+wait 333
+expect last_note 60
+wait 333
+expect last_note 64
+wait 333
+expect last_note 67

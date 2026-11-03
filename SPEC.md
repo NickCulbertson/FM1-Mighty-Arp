@@ -40,6 +40,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | MOD WAVE (W1-W8, W9 SAW) |
 | OP 1-4 (EDIT again) | RATIO | LEVEL | WAVE | DECAY |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
+| CHORDS (ARP again) | CHORD (OFF; TRIAD, 7TH, LUSH, OPEN: a diatonic chord a step; TRIAD, 7TH, OMNI TONES: the chords' tones the notes) | STRUM (0 .. 80 ms) | KEY | SCALE |
 | SEQ | HUMANIZE (up to 40 ms late) | OCT JUMP (chance) | VEL RAND | SWING |
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
@@ -68,6 +69,7 @@ sound mid-piece keeps its rhythm and its space.
 - HUMANIZE: each step up to 40 ms late, at random. OCT JUMP: a note an octave up or down. VEL RAND: velocity spread.
   SWING: every second step late.
 - Hold: OFF (a key let go stops), HOLD (a new chord replaces the last), LATCH (each key on / off by itself).
+- CHORDS: LUSH, OPEN and OMNI use Nick's voicings from his Macro MIDI Pad (MacroPicoMIDI) where it had them.
 - MIDI in on MIDI CH; the arp's notes out on it (ALL: channel 1).
 
 ## Effects

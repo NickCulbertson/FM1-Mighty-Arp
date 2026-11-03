@@ -33,6 +33,7 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_PWM, P_LFOCUT,                               /* LFO 2 (LFO again) */
        P_FATT, P_FSUS, P_FREL, P_KEYTRK,              /* FILTER ENVELOPE (ENV a third time; its DECAY is P_FDEC),
                                                        * FILTER's KEY TRACK */
+       P_CHORD, P_STRUM, P_KEY, P_SCALE,              /* CHORDS (ARP again) */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
@@ -40,13 +41,19 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 13u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE */
 static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI"};
-#define NP5 (NP - 14u)                   /* the parameters a save had before CHORUS's rate and depth */
-#define NP6 (NP - 12u)                   /* and before VOICES and GLIDE */
-#define NP7 (NP - 10u)                   /* and before the filter and PWM */
-#define NP8 (NP - 4u)                    /* and before the filter's own envelope */
+#define NP5 (NP - 18u)                   /* the parameters a save had before CHORUS's rate and depth */
+#define NP6 (NP - 16u)                   /* and before VOICES and GLIDE */
+#define NP7 (NP - 14u)                   /* and before the filter and PWM */
+#define NP8 (NP - 8u)                    /* and before the filter's own envelope */
+#define NP9 (NP - 4u)                    /* and before CHORDS */
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
-       U_SECS, U_VOICES, U_GLIDE, U_CUT,
+       U_SECS, U_VOICES, U_GLIDE, U_CUT, U_CHORD, U_STRUM, U_KEY, U_SCALE,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
+/* CHORDS: what the arp makes of a note (a diatonic chord on it, or its chord's tones as the notes to play from), in
+ * a key and a scale */
+enum { CH_OFF, CH_TRIAD, CH_7TH, CH_LUSH, CH_OPEN, CH_TRIAD_T, CH_7TH_T, CH_OMNI_T, NCHORD };
+#define CH_TONES(k) ((k) >= CH_TRIAD_T)     /* the chords' tones the notes to play from, not a chord a step */
+#define NSCALE 5u
 /* the arp's modes */
 enum { M_RANDOM, M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_THUMB_UD, M_PINKY, M_PINKY_UD,
        M_CHORD, M_WALK, NMODE };
@@ -82,11 +89,13 @@ static const param_t PAR[NP] = {
     {"PWM", "pwm", 0, 100, 0, U_PCT},            {"FILTER", "lfo_cut", 0, 100, 0, U_PCT},
     {"ATTACK", "fatt", 0, 100, 0, U_TIME},       {"SUSTAIN", "fsus", 0, 100, 0, U_PCT},
     {"RELEASE", "frel", 0, 100, 60, U_TIME},     {"KEY TRACK", "keytrack", 0, 100, 50, U_PCT},
+    {"CHORD", "chord", 0, NCHORD - 1, 0, U_CHORD}, {"STRUM", "strum", 0, 100, 0, U_STRUM},
+    {"KEY", "key", 0, 11, 0, U_KEY},             {"SCALE", "scale", 0, NSCALE - 1, 0, U_SCALE},
 };
 
 /* the pages: each button's four knobs */
 enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, PG_CHORUS,
-       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
+       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, PG_CHORDS, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
                                                              * again: VOICE */
 typedef struct {
     const char *name;
@@ -113,7 +122,32 @@ static const page_t PAGE[NPAGE] = {
     {"FILTER", B_ENV, {P_CUTOFF, P_RES, P_FENV, P_KEYTRK}},
     {"LFO 2", B_LFO, {P_PWM, P_LFOCUT, PX_NONE, PX_NONE}},
     {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
+    {"CHORDS", B_ARP, {P_CHORD, P_STRUM, P_KEY, P_SCALE}},
 };
+static const char *const CHORD_NAME[NCHORD] = {"OFF", "TRIAD", "7TH", "LUSH", "OPEN", "TRIAD TONES", "7TH TONES",
+                                               "OMNI TONES"};
+/* Nick's voicings, from his Macro MIDI Pad (MacroPicoMIDI): for each degree of the scale, the notes from the key's
+ * root (127: none). LUSH: the major key's (with their ninths and the tones they share), the minor's, the harmonic
+ * minor's; OPEN: the wide, cinematic ones (a major key's); OMNI: eight notes spread over the chord, to pluck from */
+#define NV 127
+static const int8_t LUSH_MAJ[7][5] = {{-12, 7, 12, 14, 16}, {-10, 5, 7, 12, 16}, {-8, 7, 11, 12, 16},
+                                      {-7, 7, 9, 12, 16}, {-5, 7, 11, 12, 14}, {-3, 7, 11, 12, 16},
+                                      {-1, 7, 11, 12, 14}};
+static const int8_t LUSH_MIN[7][5] = {{0, 7, 12, 15, NV}, {2, 10, 14, 17, NV}, {3, 7, 10, 15, NV}, {5, 8, 12, 17, NV},
+                                      {7, 10, 14, 19, NV}, {3, 8, 12, 15, NV}, {5, 10, 14, 17, NV}};
+static const int8_t LUSH_HARM[7][5] = {{0, 3, 7, 11, NV}, {2, 5, 8, 12, NV}, {3, 7, 11, 14, NV}, {5, 8, 12, 15, NV},
+                                       {7, 11, 14, 17, NV}, {8, 12, 15, 19, NV}, {11, 14, 17, 20, NV}};
+static const int8_t OPEN_MAJ[7][5] = {{-12, 0, 7, 16, 19}, {-10, 2, 9, 17, 21}, {-8, 4, 11, 19, 23},
+                                      {-7, 5, 12, 21, 24}, {-5, 7, 14, 23, 26}, {-3, 9, 16, 24, 28},
+                                      {-1, 12, 18, 26, 31}};
+static const int8_t OMNI_MAJ[7][8] = {{-12, 0, 4, 7, 12, 16, 19, 24}, {-10, 2, 5, 9, 14, 17, 21, 26},
+                                      {-8, 4, 7, 11, 16, 19, 23, 28}, {-7, 5, 9, 12, 17, 21, 24, 29},
+                                      {-5, 7, 11, 14, 19, 23, 26, 31}, {-3, 9, 12, 16, 21, 24, 28, 33},
+                                      {-1, 11, 14, 18, 23, 26, 30, 35}};
+static const uint8_t SCALE_STEPS[NSCALE][7] = {{0, 2, 4, 5, 7, 9, 11}, {0, 2, 3, 5, 7, 8, 10}, {0, 2, 3, 5, 7, 9, 10},
+                                               {0, 2, 4, 5, 7, 9, 10}, {0, 2, 3, 5, 7, 8, 11}};
+static const char *const SCALE_NAME[NSCALE] = {"MAJOR", "MINOR", "DORIAN", "MIXOLYDIAN", "HARM MINOR"};
+static const char *const KEY_NAME[12] = {"C", "C#", "D", "EB", "E", "F", "F#", "G", "AB", "A", "BB", "B"};
 #define IS_OP_PAGE(pg) ((pg) >= PG_OP1 && (pg) <= PG_OP4)
 enum { V_POLY, V_MONO, V_LEGATO };       /* VOICES: MONO starts each note afresh, LEGATO only glides to it */
 /* an operator's ratios, as OP's RATIO knob steps through them (every sound's are among them) */
@@ -346,7 +380,8 @@ static const preset_t PRESET[] = {
      70, 85, 85, 92, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 92},
 };
 #define NPRESET (sizeof PRESET / sizeof PRESET[0])
-/* the bank MAR9 records: another factory sound moves the USER slots' numbers, so bump SET_MAGIC (and migrate) first */
+/* the bank MAR9 and MARA record: another factory sound moves the USER slots' numbers, so bump SET_MAGIC (and migrate)
+ * first */
 typedef char npreset_is_mar9s[NPRESET == 60u ? 1 : -1];
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
@@ -360,9 +395,10 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-/* "MAR9": the settings record; another magic loads defaults. NPRESET is 60 under it: a factory sound added (the USER
- * slots' numbers move) must bump it, so a record's magic names its bank (MAR5 and MAR7 did not: see app_init) */
-#define SET_MAGIC 0x3952414Du
+/* "MARA": the settings record; another magic loads defaults. NPRESET is 60 under it (and MAR9): a factory sound added
+ * (the USER slots' numbers move) must bump it, so a record's magic names its bank (MAR5 and MAR7 did not: app_init) */
+#define SET_MAGIC 0x4152414Du
+#define SET_MAGIC_9 0x3952414Du          /* "MAR9": before CHORDS (settings9_t) */
 #define SET_MAGIC_8 0x3852414Du          /* "MAR8": before the filter's own envelope (settings8_t) */
 #define SET_MAGIC_7 0x3752414Du          /* "MAR7": before the filter and PWM (settings7_t) */
 #define SET_MAGIC_6 0x3652414Du          /* "MAR6": before VOICES and GLIDE (settings6_t) */
@@ -381,6 +417,14 @@ typedef struct {
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
 } settings_t;
+typedef struct {                         /* MAR9 */
+    uint32_t magic;
+    int16_t p[NP9];
+    uint8_t preset;
+    int8_t octave;
+    uint8_t arp_on, hold;
+    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
+} settings9_t;
 typedef struct {                         /* MAR8 */
     uint32_t magic;
     int16_t p[NP8];
@@ -746,26 +790,155 @@ static uint32_t pattern_place(uint32_t s, uint32_t L)
     }
 }
 
+/* the diatonic chord on root, snapped down into the key's scale (so major, minor or diminished as the scale makes it):
+ * low to high in out, its count returned. TRIAD 1 3 5; 7TH 1 3 5 7; LUSH, OPEN, OMNI Nick's voicings where his pad
+ * had them for the scale (LUSH: MAJOR, MINOR, HARM MINOR; OPEN, OMNI: MAJOR), else stacked thirds spread out */
+static uint32_t chord_of(int32_t root, uint32_t kind, int32_t *out)
+{
+    const int8_t *nv = 0;
+    uint32_t nn = 5;
+    const uint8_t *sc = SCALE_STEPS[set.p[P_SCALE] % NSCALE];
+    int32_t rel = ((root - set.p[P_KEY]) % 12 + 12) % 12, deg = 0, base, d;
+    uint32_t n = 0, i;
+    for (d = 6; d >= 0; d--)
+        if (sc[d] <= rel) {
+            deg = d;
+            break;
+        }
+    base = root - (rel - sc[deg]);
+    {                                    /* Nick's, where there are some: from the key's root at this octave */
+        uint32_t scale = (uint32_t)set.p[P_SCALE] % NSCALE;
+        if (kind == CH_LUSH)
+            nv = scale == 0 ? LUSH_MAJ[deg] : scale == 1 ? LUSH_MIN[deg] : scale == 4 ? LUSH_HARM[deg] : 0;
+        else if (kind == CH_OPEN && scale == 0)
+            nv = OPEN_MAJ[deg];
+        else if (kind == CH_OMNI_T && scale == 0) {
+            nv = OMNI_MAJ[deg];
+            nn = 8;
+        }
+    }
+    if (nv) {
+        int32_t key_root = base - sc[deg];
+        for (i = 0; i < nn; i++)
+            if (nv[i] != NV)
+                out[n++] = key_root + nv[i];
+        for (i = 0; i < n; i++)
+            out[i] = clamp(out[i], 0, 127);
+        return n;
+    }
+#define STEP(k) (base - sc[deg] + sc[(deg + (k)) % 7] + 12 * ((deg + (k)) / 7))
+    if (kind == CH_OMNI_T) {             /* eight, spread: the bass, then 1 3 5 over two octaves, the top root */
+        out[n++] = base - 12;
+        out[n++] = base;
+        out[n++] = STEP(2);
+        out[n++] = STEP(4);
+        out[n++] = base + 12;
+        out[n++] = STEP(9);
+        out[n++] = STEP(11);
+        out[n++] = base + 24;
+    } else if (kind == CH_LUSH || kind == CH_OPEN) {
+        out[n++] = base - 12;
+        out[n++] = STEP(4);
+        out[n++] = base + 12;
+        out[n++] = STEP(8);
+        out[n++] = STEP(9);
+    } else {
+        out[n++] = base;
+        out[n++] = STEP(2);
+        out[n++] = STEP(4);
+        if (kind == CH_7TH || kind == CH_7TH_T)
+            out[n++] = STEP(6);
+    }
+#undef STEP
+    for (i = 0; i < n; i++)
+        out[i] = clamp(out[i], 0, 127);
+    return n;
+}
+
+/* the strum: a chord's notes after its first, STRUM apart (st_i the next, strum_wait the samples to it) */
+static uint32_t st_i;
+static int32_t strum_wait;
+static int32_t strum_samples(void) { return (int32_t)((float)set.p[P_STRUM] * 0.0008f * SR); }   /* 0.8 ms a step */
+
+static void chord_play(void)             /* the step's notes: all at once, or the first now and the rest strummed */
+{
+    uint32_t i;
+    if (st_n > 1u && strum_samples() > 0) {
+        play(st_note[0], st_vel[0], hum_gate);
+        st_i = 1;
+        strum_wait = strum_samples();
+        return;
+    }
+    for (i = 0; i < st_n; i++)
+        play(st_note[i], st_vel[i], hum_gate);
+}
+
+static void strummed(void)               /* the strum's next note */
+{
+    if (st_i < st_n)
+        play(st_note[st_i], st_vel[st_i], hum_gate);
+    if (++st_i < st_n)
+        strum_wait = strum_samples();
+}
+
 static void arp_step(void)
 {
-    uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], s, i, k, idx;
+    static int32_t pool[NHELD * 8];      /* CHORDS ..TONES: the held notes' chords' tones, low to high */
+    static uint8_t pool_vel[NHELD * 8];
+    const int32_t *hn = held;
+    const uint8_t *hv = held_vel;
+    uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], s, i, k, idx, kind = (uint32_t)set.p[P_CHORD];
     int32_t gate, vr, j;
     float step = step_samples();
     if (!n)
         return;
+    strum_wait = 0;
+    if (CH_TONES(kind)) {                /* the chords' tones the notes to play from */
+        uint32_t m = 0, h, c;
+        int32_t t[8];
+        for (h = 0; h < nheld; h++) {
+            c = chord_of(held[h], kind, t);
+            for (i = 0; i < c; i++) {
+                uint32_t at;
+                for (at = 0; at < m && pool[at] < t[i]; at++)
+                    ;
+                if (at < m && pool[at] == t[i])
+                    continue;
+                for (k = m; k > at; k--) {
+                    pool[k] = pool[k - 1];
+                    pool_vel[k] = pool_vel[k - 1];
+                }
+                pool[at] = t[i];
+                pool_vel[at] = held_vel[h];
+                m++;
+            }
+        }
+        hn = pool;
+        hv = pool_vel;
+        n = m;
+    }
     s = (uint32_t)++arp_s;               /* the pattern moves every step, played or not */
     if (set.p[P_MODE] == M_CHORD) {      /* CHORD: every held note at once, an octave higher each step */
-        for (i = 0; i < n; i++) {
-            st_note[i] = held[i] + 12 * (int32_t)(s % oct);
-            st_vel[i] = held_vel[i];
+        for (i = 0; i < n && i < NHELD; i++) {
+            st_note[i] = hn[i] + 12 * (int32_t)(s % oct);
+            st_vel[i] = hv[i];
         }
-        st_n = n;
+        st_n = i;
     } else {
         k = pattern_place(s, n * oct);
-        idx = set.p[P_MODE] == M_PLAYED ? played_index(k % n, n) : k % n;
-        st_note[0] = held[idx] + 12 * (int32_t)(k / n);
-        st_vel[0] = held_vel[idx];
+        idx = set.p[P_MODE] == M_PLAYED && hn == held ? played_index(k % n, n) : k % n;
+        st_note[0] = hn[idx] + 12 * (int32_t)(k / n);
+        st_vel[0] = hv[idx];
         st_n = 1;
+        if (kind != CH_OFF && !CH_TONES(kind)) {   /* the note a chord's root */
+            int32_t t[8];
+            uint32_t c = chord_of(st_note[0] > 127 ? 127 : st_note[0], kind, t);
+            for (i = 0; i < c; i++) {
+                st_note[i] = t[i];
+                st_vel[i] = st_vel[0];
+            }
+            st_n = c;
+        }
     }
     for (i = 0; i < st_n; i++)
         while (st_note[i] > 127)
@@ -798,15 +971,12 @@ static void arp_step(void)
         if (hum_wait > 0)
             return;
     }
-    for (i = 0; i < st_n; i++)
-        play(st_note[i], st_vel[i], hum_gate);
+    chord_play();
 }
 
 static void humanized(void)              /* the step HUMANIZE held back, now */
 {
-    uint32_t i;
-    for (i = 0; i < st_n; i++)
-        play(st_note[i], st_vel[i], hum_gate);
+    chord_play();
 }
 
 static void on_tick(void)                /* a clock tick: MIDI out, and a step where one falls */
@@ -828,7 +998,7 @@ static void arp_restart(void)            /* the first note of a new chord: the c
                                          * its top. With CLOCK OUT the clock keeps its time, and the first note waits
                                          * for the grid (played now, the grid's next step could land just after) */
 {
-    swing_wait = hum_wait = 0;
+    swing_wait = hum_wait = strum_wait = 0;
     arp_s = -1;
     if (clk_out_now)
         return;
@@ -982,7 +1152,7 @@ static void modes_follow(void)
         arp_on_now = set.arp_on;
         eng_release_all();               /* every note let go into its release */
         out_all_off();
-        swing_wait = hum_wait = 0;
+        swing_wait = hum_wait = strum_wait = 0;
         if (!arp_on_now)                 /* the arp stopped: the notes held sound again */
             for (i = 0; i < nheld; i++) {
                 eng_note_on(held[i], held_vel[i], -1);
@@ -1007,7 +1177,7 @@ static void modes_follow(void)
     if ((uint8_t)(set.p[P_CLOCK] == 2) != sync_now) {
         sync_now = (uint8_t)(set.p[P_CLOCK] == 2);
         ext_run = 1;
-        swing_wait = hum_wait = 0;
+        swing_wait = hum_wait = strum_wait = 0;
     }
     if ((uint8_t)(set.p[P_CLOCK] == 1) != clk_out_now) {
         clk_out_now = (uint8_t)(set.p[P_CLOCK] == 1);
@@ -1052,7 +1222,7 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
                     tick_n = CLK_WRAP - 1u;   /* the next clock is the first step */
                     arp_s = -1;
                 }
-                swing_wait = hum_wait = 0;
+                swing_wait = hum_wait = strum_wait = 0;
             }
             continue;
         }
@@ -1193,6 +1363,8 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             ev |= 2u;
         if (hum_wait > 0 && --hum_wait == 0)
             ev |= 4u;
+        if (strum_wait > 0 && --strum_wait == 0)
+            ev |= 8u;
         if (!ev)
             continue;
         eng_voices(buf_l, buf_r, seg, i);
@@ -1204,6 +1376,8 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             arp_step();
         if (ev & 4u && arp_on_now && nheld)
             humanized();
+        if (ev & 8u && arp_on_now)
+            strummed();
     }
     eng_voices(buf_l, buf_r, seg, n);
     if (eng_out(buf_l, buf_r, lr, n, gain))   /* a bad number: silence, then everything starts clean */
@@ -1465,6 +1639,7 @@ void app_init(void)
     {
         static union {
             settings_t s;
+            settings9_t o9;
             settings8_t o8;
             settings7_t o7;
             settings6_t o6;
@@ -1507,6 +1682,21 @@ void app_init(void)
                             set.op_wave[k] = (uint8_t)set.p[P_WAVE];
                 set.magic = SET_MAGIC;
             }
+        } else if (got == (int)sizeof(settings9_t) && ld.o9.magic == SET_MAGIC_9) {
+            settings9_t *o9 = &ld.o9;    /* before CHORDS: all as it was, CHORDS off */
+            for (i = 0; i < NP; i++)
+                set.p[i] = i < NP9 ? o9->p[i] : PAR[i].def;
+            set.preset = o9->preset;
+            set.octave = o9->octave;
+            set.arp_on = o9->arp_on;
+            set.hold = o9->hold;
+            for (i = 0; i < 4u; i++) {
+                set.op_ratio[i] = o9->op_ratio[i];
+                set.op_level[i] = o9->op_level[i];
+                set.op_wave[i] = o9->op_wave[i];
+                set.op_decay[i] = o9->op_decay[i];
+            }
+            set.magic = SET_MAGIC;
         } else if (got == (int)sizeof(settings8_t) && ld.o8.magic == SET_MAGIC_8) {
             settings8_t *o8 = &ld.o8;    /* before the filter's own envelope: as it sounded */
             for (i = 0; i < NP; i++)
@@ -1800,6 +1990,23 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         }
         break;
     }
+    case U_CHORD:
+        text_cat(t, CHORD_NAME[v]);
+        break;
+    case U_KEY:
+        text_cat(t, KEY_NAME[v]);
+        break;
+    case U_SCALE:
+        text_cat(t, SCALE_NAME[v]);
+        break;
+    case U_STRUM:
+        if (!v)
+            text_cat(t, "OFF");
+        else {
+            int_text((v * 8 + 5) / 10, t);   /* 0.8 ms a step: up to 80 ms */
+            text_cat(t, " MS");
+        }
+        break;
     case U_VOICES:
         text_cat(t, v == V_LEGATO ? "LEGATO" : v == V_MONO ? "MONO" : "POLY");
         break;
@@ -2129,6 +2336,10 @@ static void input(void)
         }
         if (k == B_ENV) {                    /* ENV: the amp's envelope, again FILTER, again its envelope, round */
             page_go(ui.page == PG_ENV ? PG_FILTER : ui.page == PG_FILTER ? PG_FENV : PG_ENV);
+            continue;
+        }
+        if (k == B_ARP) {                    /* ARP: the arp, again CHORDS, and back */
+            page_go(ui.page == PG_ARP ? PG_CHORDS : PG_ARP);
             continue;
         }
         if (k == B_LFO) {                    /* LFO: LFO, again LFO 2, and back */
@@ -2605,7 +2816,8 @@ static void draw(void)
                 [PG_OP2] = "EDIT AGAIN: OP 3", [PG_OP3] = "EDIT AGAIN: OP 4", [PG_OP4] = "EDIT AGAIN: ALGO",
                 [PG_SOUND] = "SEL AGAIN: VOICE", [PG_VOICE] = "SEL AGAIN: SOUND",
                 [PG_SOUNDS] = "SAVE: INTO THE SLOT", [PG_ENV] = "ENV AGAIN: FILTER",
-                [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1"};
+                [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1",
+                [PG_ARP] = "ARP AGAIN: CHORDS", [PG_CHORDS] = "ARP AGAIN: ARP"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);
