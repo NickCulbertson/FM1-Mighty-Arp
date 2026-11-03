@@ -82,7 +82,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 - Synthwave colours: a black ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as smooth arcs round a dark knob cap with a pointer; on HOME, the arcs alone. The name: MIGHTY in the labels' cyan, ARP in pink.
-- The boot screen: "Mighty" brushed over a chrome "ARP" (tools/make_splash.py, from Barlow).
+- The boot screen: "Mighty" brushed in pink, tilted across a chrome "ARP" with a curved horizon, speed stripes behind (tools/make_splash.py, from Barlow).
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros. With the arp off, an
   oscilloscope of the output in their place.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.
