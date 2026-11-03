@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mighty Arp's boot screen: "MIGHTY" in bold pink over a big cyan "ARP", drawn with Barlow (base/assets/fonts, OFL) and
+"""Mighty Arp's boot screen: "MIGHTY" in bold cyan over a big pink "ARP" (the header's colours), drawn with Barlow (base/assets/fonts, OFL) and
 written as app/splash.h, run-length RGB565 (app.c app_splash). Run it again after changing the look:
 
   python3 tools/make_splash.py [preview.png]
@@ -36,15 +36,15 @@ def paste_mask(img, colour, mask, xy):
 
 
 def draw():
-    """plain and bold: "MIGHTY" in pink over a big "ARP" in cyan, the line of what it is at the bottom"""
+    """plain and bold: "MIGHTY" in cyan over a big "ARP" in pink, the line of what it is at the bottom"""
     img = Image.new("RGB", (W, H), (0, 0, 0))
     d = ImageDraw.Draw(img)
     arp = text_mask("ARP", font("BarlowSemiCondensed-Bold.ttf", 130), pad=0)
     mighty = text_mask("MIGHTY", font("BarlowSemiCondensed-Bold.ttf", 58), pad=0)
     gap = 6 * S
     top = (int(H * 0.86) - (mighty.size[1] + gap + arp.size[1])) // 2   # the two together, above the line
-    paste_mask(img, PINK, mighty, ((W - mighty.size[0]) // 2, top))
-    paste_mask(img, CYAN, arp, ((W - arp.size[0]) // 2, top + mighty.size[1] + gap))
+    paste_mask(img, CYAN, mighty, ((W - mighty.size[0]) // 2, top))
+    paste_mask(img, PINK, arp, ((W - arp.size[0]) // 2, top + mighty.size[1] + gap))
     tag = "FM SYNTH  ·  CHANCE ARP"
     f = font("BarlowSemiCondensed-SemiBold.ttf", 12)
     tw = d.textlength(tag, font=f)
