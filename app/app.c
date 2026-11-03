@@ -1319,7 +1319,7 @@ void app_input_only(void) { input(); }
 #define KN_MAX (2 * (15 + KN_GLOW + 1) + 1)
 typedef struct {
     int32_t r, n;
-    uint8_t pos[KN_MAX * KN_MAX], dist[KN_MAX * KN_MAX];
+    uint8_t pos[KN_MAX * KN_MAX], dist[KN_MAX * KN_MAX], cen[KN_MAX * KN_MAX];   /* cen: from the centre (x 8) */
 } knob_map_t;
 static knob_map_t kn_big, kn_small;          /* the pages' (r 15), HOME's (r 12) */
 
@@ -1355,6 +1355,7 @@ static void knob_map_init(knob_map_t *m, int32_t r)
             else                             /* the gap: how far from the nearer end, 0 .. 45 degrees */
                 m->pos[i] = (uint8_t)(241.0f + fm_minf(deg - 270.0f, 360.0f - deg) * (14.0f / 45.0f));
             m->dist[i] = (uint8_t)fm_minf(fm_fabsf(d) * 16.0f, 255.0f);
+            m->cen[i] = (uint8_t)fm_minf(fm_sqrtf(dx * dx + dy * dy) * 8.0f, 255.0f);
         }
 }
 
@@ -1372,18 +1373,32 @@ static uint16_t mix565(uint16_t a, uint16_t b, uint32_t t)   /* a to b, t of 256
     return (uint16_t)(r << 11 | g << 5 | bl);
 }
 
-/* frac: how far it is turned, 0..240 */
+/* frac: how far it is turned, 0..240. Inside the ring, the knob itself: a dark cap with a rim, and its pointer
+ * from the centre out to the edge, at the value's angle */
+#define KN_CAP RGB(36, 26, 62)
+#define KN_RIM RGB(76, 60, 118)
 static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac, uint16_t c)
 {
     int32_t x, y, h = m->n / 2;
+    uint32_t cap = (uint32_t)(m->r - 6) * 8u;   /* the cap's radius, x 8 */
+    float a = FM_PI * (0.75f + 1.5f * (float)frac / 240.0f), ux = fm_cosf(a), uy = fm_sinf(a);
+    float len = (float)(m->r - 6);             /* the pointer: from the centre to the rim */
     for (y = 0; y < m->n; y++)
         for (x = 0; x < m->n; x++) {
-            uint32_t i = (uint32_t)(y * m->n + x), d = m->dist[i], pos = m->pos[i];
+            uint32_t i = (uint32_t)(y * m->n + x), d = m->dist[i], pos = m->pos[i], ce = m->cen[i];
             uint16_t col = C_BG;
             if (d < 40u && pos <= 240u) {    /* the ring: about 4 px wide, its edges soft */
                 uint16_t ring = (int32_t)pos <= frac && frac > 0 ? c : C_LINE;
                 uint32_t cov = d <= 24u ? 256u : (40u - d) * 16u;
                 col = mix565(col, ring, cov);
+            } else if (ce < cap + 8u) {      /* the cap, its rim the last pixel, its edge soft */
+                float dx = (float)(x - h), dy = (float)(y - h), t = dx * ux + dy * uy;
+                float perp = fm_fabsf(dx * uy - dy * ux);
+                col = ce + 12u >= cap ? KN_RIM : KN_CAP;
+                if (ce > cap)
+                    col = mix565(C_BG, col, (cap + 8u - ce) * 32u);
+                if (t > -0.5f && t < len && perp < 1.9f)   /* the pointer, about 3 px wide */
+                    col = mix565(col, c, perp < 0.9f ? 256u : (uint32_t)((1.9f - perp) * 256.0f));
             }
             if (col != C_BG)
                 cv_pset(cx - h + x, cy - h + y, col);

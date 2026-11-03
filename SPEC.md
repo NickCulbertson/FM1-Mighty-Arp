@@ -77,7 +77,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 
 - Synthwave colours: a black ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
-- Knobs as smooth arcs. The name: MIGHTY in the labels' cyan, ARP in pink.
+- Knobs as smooth arcs round a dark knob cap with a pointer. The name: MIGHTY in the labels' cyan, ARP in pink.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.
 
