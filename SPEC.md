@@ -49,7 +49,7 @@ sound mid-piece keeps its rhythm and its space.
 ## Engine
 
 - 4 operators a voice, 8 algorithms (DX21 / TX81Z style), feedback on operator 4, 8 waveforms (W1 sine .. W8, as the
-  TX81Z's), computed from the sine table; W9 a saw from band-limited tables (10 octave bands, 512 points, int16,
+  TX81Z's), computed from the sine table; W9 a saw from band-limited tables (30 bands, three an octave, 512 points, int16,
   made at boot), on carriers too (SAW PAD, SAW LEAD, SAW BASS).
 - Carriers follow the ENVELOPE page; modulators and STRIKE operators have the sound's own envelopes.
 - TONE scales the modulators; STRIKE scales the STRIKE operators and the modulators' attack burst.
@@ -82,6 +82,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 - Synthwave colours: a black ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as smooth arcs round a dark knob cap with a pointer; on HOME, the arcs alone. The name: MIGHTY in the labels' cyan, ARP in pink.
+- The boot screen: "Mighty" brushed over a chrome "ARP" (tools/make_splash.py, from Barlow).
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros. With the arp off, an
   oscilloscope of the output in their place.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.

@@ -22,23 +22,28 @@ static inline float sin_t(float ph)
     return sin_tab[i] + (sin_tab[i + 1] - sin_tab[i]) * f;
 }
 
-/* W9, the saw: band-limited, a table an octave of pitch so a high note carries only the harmonics it can (below
- * 18 kHz) and never folds back as noise. 512 points (and the first again at the end, for the interpolation), int16,
- * made at the start by adding up the harmonics (1/h each). Band b holds what a note up to SAW_TOP0 << b may carry */
+/* W9, the saw: band-limited, so a high note carries only the harmonics it can (below 18 kHz) and never folds back as
+ * noise. A table every third of an octave: a note's next table is only a little duller, so neighbouring notes match
+ * and a glide or a vibrato across a table's edge is not heard (a table an octave, the top harmonic halved at the
+ * edge). 512 points (and the first again at the end, for the interpolation), int16, made at the start by adding up
+ * the harmonics (1/h each), at most a quarter of the table's points (more, and reading between them would add grit
+ * to low notes). Band b holds what a note up to SAW_TOP0 x 2^(b/3) may carry */
 #define SAW_N 512u
-#define SAW_BANDS 10u
-#define SAW_TOP0 40.0f                   /* Hz: band 0's top; band 9's is 20 kHz */
+#define SAW_BANDS 30u
+#define SAW_TOP0 40.0f                   /* Hz: band 0's top; band 29's is 32 kHz */
 static PLAT_POOL int16_t saw_tab[SAW_BANDS][SAW_N + 1];
+
+static float saw_top[SAW_BANDS];         /* each band's top, Hz */
 
 static void saw_init(void)
 {
     static float acc[SAW_N];
     uint32_t b, i, h;
     for (b = 0; b < SAW_BANDS; b++) {
-        float top = SAW_TOP0 * (float)(1u << b), peak = 0.0f;
+        float top = SAW_TOP0 * fm_exp2f((float)b / 3.0f), peak = 0.0f;
         uint32_t nh = (uint32_t)(18000.0f / top);
-        if (nh > SAW_N / 2u - 1u)
-            nh = SAW_N / 2u - 1u;
+        if (nh > SAW_N / 4u)
+            nh = SAW_N / 4u;
         if (nh < 1u)
             nh = 1u;
         for (i = 0; i < SAW_N; i++)
@@ -53,13 +58,14 @@ static void saw_init(void)
         for (i = 0; i < SAW_N; i++)
             saw_tab[b][i] = (int16_t)(acc[i] / peak * 32000.0f);
         saw_tab[b][SAW_N] = saw_tab[b][0];
+        saw_top[b] = top;
     }
 }
 
-static const int16_t *saw_band(float hz)  /* the table for an operator at hz */
+static const int16_t *saw_band(float hz)  /* the table for an operator at hz: the first whose top it is under */
 {
     uint32_t b = 0;
-    while (b + 1u < SAW_BANDS && hz > SAW_TOP0 * (float)(1u << b))
+    while (b + 1u < SAW_BANDS && hz > saw_top[b])
         b++;
     return saw_tab[b];
 }

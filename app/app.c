@@ -2043,46 +2043,30 @@ static void draw(void)
     state_line(now);
 }
 
-/* the boot screen (APP_SPLASH): a synthwave sun on the horizon, its lower half cut by bands, a grid running to it,
- * and the name. Drawn in two bands (the canvas holds 240 x 144): everything at y - oy */
-static void splash_band(int32_t oy)
-{
-    static const uint8_t CUT[][2] = {{70, 2}, {78, 3}, {86, 4}, {94, 5}};   /* the sun's bands: from y, rows */
-    static const uint8_t GRID_Y[] = {3, 7, 12, 19, 28, 40, 55};            /* the grid's rows below the horizon */
-    int32_t y, k, hy = 104, cx = 120, r = 50;
-    uint32_t i;
-    for (y = hy - r; y < hy; y++) {      /* the sun: pink at the top to purple at the horizon */
-        int32_t dy = hy - y, half = (int32_t)fm_sqrtf((float)(r * r - dy * dy)), cut = 0;
-        for (i = 0; i < sizeof CUT / sizeof CUT[0]; i++)
-            if (y >= CUT[i][0] && y < CUT[i][0] + CUT[i][1])
-                cut = 1;
-        if (!cut)
-            cv_rect(cx - half, y - oy, 2 * half + 1, 1, mix565(C_HI, C_AMB, (uint32_t)(y - (hy - r)) * 256u / (uint32_t)r));
-    }
-    cv_rect(0, hy - oy, 240, 1, C_HI);   /* the horizon, and the grid running into the distance */
-    for (i = 0; i < sizeof GRID_Y; i++)
-        cv_rect(0, hy + GRID_Y[i] - oy, 240, 1, mix565(C_LINE, C_AMB, 60u + i * 25u));
-    for (k = -7; k <= 7; k++)
-        cv_line(cx + k * 6, hy - oy, cx + k * 48, hy + 60 - oy, mix565(C_LINE, C_AMB, 90u));
-    {                                    /* the name, and what it is */
-        int32_t w = text_w(&FONT_L, "MIGHTY ARP"), x = (240 - w) / 2;
-        x = cv_text(x, 176 - oy, &FONT_L, "MIGHTY", C_GRAY);
-        cv_text(x + text_w(&FONT_L, " "), 176 - oy, &FONT_L, "ARP", C_HI);
-        w = text_w(&FONT_XS, "FM SYNTH  CHANCE ARP");
-        cv_text((240 - w) / 2, 214 - oy, &FONT_XS, "FM SYNTH  CHANCE ARP", C_DIM);
-    }
-}
-
+/* the boot screen (APP_SPLASH): "Mighty" brushed over a chrome "ARP", a picture made by tools/make_splash.py
+ * (splash.h, run-length RGB565), unpacked into the canvas in two bands (it holds 240 x 144) */
+#include "splash.h"
 void app_splash(void)
 {
+    uint32_t r = 0, left = SPLASH_RLE[1], y0, y, x;
+    uint16_t c = SPLASH_RLE[0];
     theme();
-    lcd_fill(0, 0, 240, 240, C_BG);
-    cv_begin(240, 144, C_BG);
-    splash_band(0);
-    cv_blit(0, 0);
-    cv_begin(240, 96, C_BG);
-    splash_band(144);
-    cv_blit(0, 144);
+    for (y0 = 0; y0 < 240u; y0 += 144u) {
+        uint32_t h = y0 ? 96u : 144u;
+        cv_begin(240, h, C_BG);
+        for (y = 0; y < h; y++)
+            for (x = 0; x < 240u; x++) {
+                while (!left && ++r < SPLASH_RUNS) {
+                    c = SPLASH_RLE[2u * r];
+                    left = SPLASH_RLE[2u * r + 1u];
+                }
+                if (left) {
+                    left--;
+                    cv_pset((int32_t)x, (int32_t)y, c);
+                }
+            }
+        cv_blit(0, y0);
+    }
 }
 
 void app_ui_init(void)
