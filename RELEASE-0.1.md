@@ -12,6 +12,8 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
       notes stop, another's play on; All Notes Off releases the arp's gated voices)
 - [x] GPT's ninth review (`8ce5404..03fc476`): FACTORY with a failing flash keeps the presets; FACTORY clears
       the keys held; All Sound Off on a channel the arp didn't play for leaves its notes; the manual's path
+- [x] GPT's tenth review (`03fc476..9ace38b`): FACTORY never goes through SURE? in one turn; All Sound Off stops
+      only the voices its channel's notes made; a key held through FACTORY sounds again
 - [ ] Known, left for the beta: a root handed from one MIDI channel to another while sounding (channel 1 starts
       C4, channel 2 takes it over, channel 3 holds another root): All Sound Off on channel 2 misses C's chord
       tones (they end at their gate). Rare; fix only if it shows up in real use

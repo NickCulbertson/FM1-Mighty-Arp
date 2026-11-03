@@ -579,7 +579,8 @@ static void midi_rt(uint32_t st) { plat_midi_send(0x0Fu | st << 8, TO_USB); }   
 /* the arp's MIDI out: each note it sent and the sample clock its note-off is due at */
 static int16_t out_note[NHELD];
 static uint32_t out_end[NHELD];
-static uint16_t arp_chs;                 /* the MIDI channels whose notes the arp has played since this chord began */
+static uint16_t arp_note_chs[128];       /* each pitch the arp last played: the MIDI channels its root came in on (its
+                                          * voice's, through its release: All Sound Off stops that channel's only) */
 static int16_t out_root[NHELD];          /* the held note it came from (a chord's root, a tone's), and the MIDI */
 static uint16_t out_chs[NHELD];           /* channels holding that then: a panic stops only its channels' */
 static uint32_t rend_i;                  /* the render's place in the block: where an event falls */
@@ -690,8 +691,7 @@ static void held_add(int32_t note, uint32_t vel)
     held_seq[i] = ++held_seq_n;
     held_src[i] = held_by;
     held_ch[i] = held_by_ch;
-    if (!nheld++)                        /* a new chord: the channels the arp plays for start over */
-        arp_chs = 0;
+    nheld++;
     if (!arp_on_now) {
         eng_note_on(note, vel, -1);
         midi_note((uint32_t)note, vel);
@@ -787,7 +787,7 @@ static void play(int32_t note, uint32_t vel, int32_t gate, int32_t root)   /* on
     for (h = 0; h < nheld && held[h] != root; h++)
         ;
     out_chs[i] = h < nheld && held_src[h] & DN_MIDI ? held_ch[h] : 0u;
-    arp_chs |= out_chs[i];
+    arp_note_chs[note & 127] = out_chs[i];
     midi_note((uint32_t)note, vel);
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
     viz_w = viz_w + 1u;
@@ -1259,10 +1259,14 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
                 midi_off((uint32_t)out_note[i]);
                 out_note[i] = -1;
             }
-        if (sound_off && !nheld && arp_chs & chans)   /* All Sound Off, nothing left held, on a channel the arp
-                                          * played for: every voice is the arp's, the earlier steps' releases too */
+        if (sound_off)                   /* All Sound Off: the voices of the pitches this channel's notes last made
+                                          * the arp play, the earlier steps' releases too (another channel's own play
+                                          * on: the pitch is theirs once they play it) */
             for (i = 0; i < 128u; i++)
-                eng_note_kill((int32_t)i);
+                if (arp_note_chs[i] & chans) {
+                    arp_note_chs[i] = 0;
+                    eng_note_kill((int32_t)i);
+                }
     }
     for (i = 0; i < 128u; i++)           /* their notes no longer held, a release still ringing too */
         if (midi_played[i] & chans) {
@@ -2032,7 +2036,8 @@ static struct {
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
     uint32_t reset_arm;                  /* GLOBAL's PARAMS: KEEP, or turned right RESET (done) */
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
-    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (a detent more: done) */
+    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (a turn more: done) */
+    uint8_t rescan;                      /* the keys as up after this scan: one still pressed sounds again (FACTORY) */
     uint8_t redraw;
 } ui;
 
@@ -2492,7 +2497,7 @@ static void factory_reset(void)
                                           * octave as new, on the next scan) */
         down[k] = 0, midi_down[k] = 0, midi_played[k] = 0;
     ndown = 0;
-    ui.keys = 0;
+    ui.rescan = 1;
     arp_cancel();
     eng_release_all();
     {
@@ -2589,10 +2594,13 @@ static void param_turn(uint32_t p, int32_t d)
         }
         return;
     }
-    if (p == PX_FACTORY) {                   /* FACTORY: a detent right SURE?, another everything as new; left, KEEP */
+    if (p == PX_FACTORY) {                   /* FACTORY: a turn right SURE? (however fast: never through it in one), a
+                                              * turn more after that everything as new; left, KEEP */
         if (d < 0)
             ui.factory_arm = 0;
-        else if ((ui.factory_arm += (uint8_t)(d > 2 ? 2 : d)) >= 2u) {
+        else if (!ui.factory_arm)
+            ui.factory_arm = 1;
+        else {
             ui.factory_arm = 0;
             factory_reset();
             return;
@@ -2782,7 +2790,8 @@ static void input(void)
     }
     if (keys != ui.keys || btn != ui.btn)
         ui.redraw = 1;
-    ui.keys = keys;
+    ui.keys = ui.rescan ? 0u : keys;
+    ui.rescan = 0;
     ui.btn = btn;
 }
 

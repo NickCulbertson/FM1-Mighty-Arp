@@ -230,3 +230,29 @@ expect voices >0
 midi B0 78 00
 wait 350
 expect voices 0
+# CHORD mode: C on channel 1 and D on channel 2 together, both let go with their gates open; All Sound Off on
+# channel 1 stops C's voice only
+tap ARP
+wait 30
+tap ARP
+wait 30
+expect page 5
+spin K3 10
+wait 30
+expect mode 11
+tap ARP
+wait 30
+expect page 20
+spin K1 -1
+wait 30
+expect chord 0
+midi 90 3C 64
+midi 91 3E 64
+wait 1800
+expect voices >1
+midi 80 3C 00
+midi 81 3E 00
+wait 20
+midi B0 78 00
+wait 100
+expect voices 1
