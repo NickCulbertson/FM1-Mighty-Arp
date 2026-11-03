@@ -40,13 +40,16 @@ expect last_note 69
 spin K1 2
 wait 30
 expect chord 3
+expect arp_mark 0
 key 7 down 90
 wait 30
 key 7 up
-wait 30
-expect last_note 76
-expect arp_mark 0
 wait 1000
+expect note1 48
+expect note2 67
+expect note3 72
+expect note4 74
+expect note5 76
 expect arp_notes >13
 spin K1 -2
 wait 30
@@ -63,17 +66,15 @@ spin K2 -100
 spin K1 4
 wait 30
 expect chord 5
+expect arp_mark 0
 key 7 down 90
 wait 20
 key 7 up
-wait 20
-expect last_note 60
-wait 333
-expect last_note 64
-wait 333
-expect last_note 67
-wait 333
-expect last_note 60
+wait 1400
+expect note1 60
+expect note2 64
+expect note3 67
+expect note4 60
 # G MAJOR, MIXOLYDIAN on: all sound (no stuck notes, nothing bad)
 spin K3 7
 spin K4 3
@@ -90,17 +91,15 @@ wait 30
 expect chord 7
 expect key 0
 expect scale 0
+expect arp_mark 0
 key 7 down 90
 wait 20
 key 7 up
-wait 20
-expect last_note 48
-wait 333
-expect last_note 60
-wait 333
-expect last_note 64
-wait 333
-expect last_note 67
+wait 1400
+expect note1 48
+expect note2 60
+expect note3 64
+expect note4 67
 # STRUM at its longest at 1/2: a chord's notes still all play within the step
 spin K1 -10
 spin K1 3
@@ -118,5 +117,5 @@ wait 30
 expect rate 1
 expect arp_mark 0
 wait 2700
-expect arp_notes >9
+expect arp_notes >7
 expect dsp_resets 0

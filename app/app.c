@@ -681,6 +681,8 @@ static int32_t st_note[NHELD];           /* the step's notes (one, or CHORD's), 
 static uint8_t st_vel[NHELD];
 static uint32_t st_n;
 static volatile int32_t last_played = -1;
+static uint32_t arp_mark_at;             /* arp_count at the host tests' arp_mark */
+static uint8_t played_seq[16];
 static uint8_t ext_run = 1;              /* EXT: Stop holds the clock, Start and Continue run it */
 static uint32_t ext_last, ext_sc0, ext_cnt;   /* the last tick's sample clock; the period's measure */
 static float ext_per = 44100.0f * 60.0f / (120.0f * 24.0f);   /* samples a tick, measured */
@@ -710,6 +712,8 @@ static void play(int32_t note, uint32_t vel, int32_t gate)   /* one of the arp's
     }
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
     viz_w = viz_w + 1u;
+    if (arp_count - arp_mark_at < 16u)   /* (the host's tests: the notes since arp_mark, in order) */
+        played_seq[arp_count - arp_mark_at] = (uint8_t)note;
     arp_count = arp_count + 1u;
     last_played = note;
 }
@@ -1003,17 +1007,11 @@ static void on_tick(void)                /* a clock tick: MIDI out, and a step w
         arp_step();
 }
 
-static void arp_restart(void)            /* the first note of a new chord: the clock starts with it, the pattern from
-                                         * its top. With CLOCK OUT the clock keeps its time, and the first note waits
-                                         * for the grid (played now, the grid's next step could land just after) */
+static void arp_restart(void)            /* a new chord: the pattern from its top, its first note on the grid's next
+                                         * step (the clock never restarts: every note in time, as Mighty Synth plays) */
 {
     swing_wait = hum_wait = strum_wait = 0;
     arp_s = -1;
-    if (clk_out_now)
-        return;
-    tick_n = 0;
-    tick_acc = 0.0f;
-    arp_step();
 }
 
 static uint32_t vel_curve(uint32_t v)
@@ -1060,7 +1058,7 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     }
     held_add(note, vel);
     held_publish();
-    if (was == 0 && nheld && arp_on_now && !sync_now)   /* the first note plays at once */
+    if (was == 0 && nheld && arp_on_now)   /* a new chord: the pattern from its top, on the grid */
         arp_restart();
 }
 
@@ -1170,7 +1168,7 @@ static void modes_follow(void)
         else {
             for (i = 0; i < nheld; i++)
                 midi_off((uint32_t)held[i]);
-            if (nheld && !sync_now)
+            if (nheld)
                 arp_restart();
         }
     }
@@ -2950,8 +2948,13 @@ int app_expect(const char *what, int *got)
         *got = (int)nheld;
     else if (!strcmp(what, "arp_notes"))     /* the notes the arp has played since the last arp_mark */
         *got = (int)(arp_count - arp_mark);
+    else if (!strncmp(what, "note", 4) && what[4] >= '1' && what[4] <= '9') {   /* noteN: the Nth since arp_mark */
+        uint32_t k = (uint32_t)atoi(what + 4) - 1u;
+        *got = k < 16u && k < arp_count - arp_mark_at ? played_seq[k] : -1;
+    }
     else if (!strcmp(what, "arp_mark")) {    /* (always 0: counting starts again) */
         arp_mark = arp_count;
+        arp_mark_at = arp_count;
         *got = 0;
     }
     else if (!strcmp(what, "voices"))        /* sounding */

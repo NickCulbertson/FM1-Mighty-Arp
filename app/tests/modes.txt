@@ -18,16 +18,15 @@ wait 30
 expect octaves 1
 expect mode 4
 shot modes.png
-# AS PLAYED (RANDOM is first): the high key first, then the low: the high plays first (at once), the low next (1/8 at 90 BPM: 333 ms)
+# AS PLAYED (RANDOM is first): the high key first, then the low: the high plays first (on the grid), then the low
+expect arp_mark 0
 key 14 down 90
 wait 20
 key 7 down 90
-wait 20
-expect last_note 67
-wait 330
-expect last_note 60
-wait 333
-expect last_note 67
+wait 1100
+expect note1 67
+expect note2 60
+expect note3 67
 key 14 up
 key 7 up
 wait 30
@@ -118,23 +117,17 @@ expect mode 8
 spin K1 1
 wait 30
 expect rate 5
+expect arp_mark 0
 key 7 down 90
 key 11 down 90
 key 14 down 90
 key 18 down 90
-wait 30
-expect last_note 60
-wait 333
-expect last_note 64
-wait 333
-expect last_note 60
-wait 333
-expect last_note 67
-wait 333
-expect last_note 60
-wait 333
-expect last_note 71
-wait 333
-expect last_note 60
-wait 333
-expect last_note 67
+wait 3100
+expect note1 60
+expect note2 64
+expect note3 60
+expect note4 67
+expect note5 60
+expect note6 71
+expect note7 60
+expect note8 67

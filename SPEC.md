@@ -64,6 +64,8 @@ sound mid-piece keeps its rhythm and its space.
 
 ## Arp
 
+- The arp is on a fixed grid, as in Mighty Synth: a new chord starts its pattern on the next step, never restarting
+  the clock, so every note is in time.
 - A 24 PPQN clock drives every step: internal from BPM, or MIDI clock in (CLOCK EXT; Start resets, Stop pauses).
   CLOCK OUT runs the internal one and sends it.
 - HUMANIZE: each step up to 40 ms late, at random. OCT JUMP: a note an octave up or down. VEL RAND: velocity spread.
