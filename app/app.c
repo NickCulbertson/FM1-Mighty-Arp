@@ -843,15 +843,15 @@ void app_init(void)
 }
 
 /* --------------------------------------------------------------------- UI --- */
-/* the colours: synthwave. A deep violet ground, lavender labels, hot pink values and new notes, electric purple
- * for the rest */
+/* the colours: synthwave. A deep violet ground, cyan labels, hot pink values and new notes, electric purple for
+ * the rest */
 #define C_BG RGB(16, 10, 32)
 #define C_GHOST RGB(84, 62, 136)
 static void theme(void)
 {
     pal[0] = RGB(50, 32, 82);            /* C_LINE: rules, the knobs' tracks */
     pal[1] = RGB(104, 78, 156);          /* C_DIM: inactive, units */
-    pal[2] = RGB(200, 178, 255);         /* C_GRAY: labels, lavender */
+    pal[2] = RGB(110, 225, 255);         /* C_GRAY: labels and the held notes, cyan */
     pal[3] = RGB(178, 96, 255);          /* C_AMB: the sound, the tempo, notes as they age: electric purple */
     pal[4] = RGB(255, 46, 151);          /* C_HI: values, the knobs, new notes: hot pink */
 }

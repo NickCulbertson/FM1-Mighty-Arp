@@ -73,7 +73,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 
 ## Screen
 
-- Synthwave colours: a deep violet ground, lavender labels, hot pink values, knobs and new notes, electric purple for
+- Synthwave colours: a deep violet ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as arcs.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.
