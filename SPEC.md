@@ -45,7 +45,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
-| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | RESET (eight detents right, counting down, then DONE: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | RESET (TURN; a detent right, DONE: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) |
 
 A USER preset keeps everything: the sound pages, ARP, SEQ, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
 CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a sound change does to the rest:

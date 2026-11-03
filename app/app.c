@@ -1908,7 +1908,7 @@ static void theme(void)
     pal[4] = RGB(255, 46, 151);          /* C_HI: values, the knobs, new notes: hot pink */
 }
 
-#define RESET_TURNS 8u                   /* RESET: detents right before it goes (no slip of a finger) */
+#define RESET_TURNS 1u                   /* RESET: TURN, then DONE (a detent right) */
 static struct {
     char msg[2][24];                     /* a short message over the header */
     uint32_t msg_until;
@@ -2027,14 +2027,7 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         return;
     }
     if (p == PX_RESET) {                     /* GLOBAL's RESET: turn right until it goes */
-        if (!ui.reset_arm)
-            text_cat(t, "TURN");
-        else if (ui.reset_arm >= RESET_TURNS)
-            text_cat(t, "DONE");
-        else {                               /* the detents still to go */
-            int_text((int32_t)(RESET_TURNS - ui.reset_arm), t);
-            text_cat(t, " LEFT");
-        }
+        text_cat(t, ui.reset_arm ? "DONE" : "TURN");
         return;
     }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4's */
