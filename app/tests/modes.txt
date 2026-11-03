@@ -7,6 +7,8 @@ expect chance 100
 tap REC
 wait 30
 expect hold 1
+tap GLO
+wait 30
 tap ARP
 wait 30
 spin K2 -3
@@ -84,6 +86,8 @@ expect tempo 40
 wait 2000
 expect dsp_resets 0
 # the arp's dotted rates: 1/8D at 90 BPM is 500 ms a step
+tap GLO
+wait 30
 tap ARP
 wait 30
 spin K3 -20
@@ -103,6 +107,8 @@ wait 2000
 expect arp_notes >2
 expect arp_notes <6
 # THUMB U/D over four notes (one octave): the lowest between the others, they up and down: 60 64 60 67 60 71 60 67
+tap GLO
+wait 30
 tap ARP
 wait 30
 spin K3 -20
