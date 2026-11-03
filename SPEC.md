@@ -33,7 +33,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | CHORUS |
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
-| EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8) |
+| EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8, W9 SAW) |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
 | SEQ | HUMANIZE (up to 40 ms late) | OCT JUMP (chance) | VEL RAND | SWING |
 | DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | WIDTH |
@@ -46,7 +46,8 @@ sound mid-piece keeps its rhythm and its space.
 ## Engine
 
 - 4 operators a voice, 8 algorithms (DX21 / TX81Z style), feedback on operator 4, 8 waveforms (W1 sine .. W8, as the
-  TX81Z's), computed from the sine table (no new tables).
+  TX81Z's), computed from the sine table; W9 a saw from band-limited tables (10 octave bands, 512 points, int16,
+  made at boot), on carriers too (SAW PAD, SAW LEAD, SAW BASS).
 - Carriers follow the ENVELOPE page; modulators and STRIKE operators have the sound's own envelopes.
 - TONE scales the modulators; STRIKE scales the STRIKE operators and the modulators' attack burst.
 - Mono with glide, per sound (basses, leads).
@@ -78,7 +79,8 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 - Synthwave colours: a black ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
 - Knobs as smooth arcs round a dark knob cap with a pointer; on HOME, the arcs alone. The name: MIGHTY in the labels' cyan, ARP in pink.
-- HOME: the arp's notes over the last seconds, large; the held notes; the macros.
+- HOME: the arp's notes over the last seconds, large; the held notes; the macros. With the arp off, an
+  oscilloscope of the output in their place.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.
 
 ## Sounds (about 32)

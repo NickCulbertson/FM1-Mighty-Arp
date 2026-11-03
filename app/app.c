@@ -47,7 +47,7 @@ static const param_t PAR[NP] = {
     {"RATE", "lfo_rate", 0, 100, 40, U_HZ},      {"SHAPE", "lfo_shape", 0, LFO_NSHAPE - 1, 0, U_SHAPE},
     {"VIBRATO", "vibrato", 0, 100, 0, U_PCT},    {"TREMOLO", "tremolo", 0, 100, 0, U_PCT},
     {"ALGO", "algo", 0, 7, 4, U_NUM1},           {"RATIO", "ratio", 0, 7, 1, U_RATIO},
-    {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"WAVE", "wave", 0, 7, 0, U_WAVE},
+    {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"WAVE", "wave", 0, 8, 0, U_WAVE},
     {"RATE", "rate", 0, 10, 5, U_DIV},            {"OCTAVES", "octaves", 1, 4, 2, U_OCT},
     {"MODE", "mode", 0, NMODE - 1, M_RANDOM, U_MODE},           {"GATE", "gate", 5, 100, 50, U_PCT},
     {"HUMANIZE", "humanize", 0, 100, 0, U_PCT},  {"OCT JUMP", "oct_jump", 0, 100, 0, U_PCT},
@@ -212,6 +212,17 @@ static const preset_t PRESET[] = {
     {"FM SAW", 4, 5, {{CARRIER(1, -8, 0.7f), OP(1, 0, 0.32f, 0, 0, 0, 1.0f, 0.8f),
                        CARRIER(1, 8, 0.7f), OP(1, 0, 0.3f, 0, 0, 0, 1.0f, 0.8f)}, 0, 0},
      0, 60, 85, 50, 45, LFO_SINE, 0, 0},
+    /* saws: W9 carriers (band-limited), a little FM on top */
+#define SAWC(r, c, l) OP(r, c, l, 8, 0, 0.0f, 0.0f, 0.0f)
+    {"SAW PAD", 4, 0, {{SAWC(1, -7, 0.75f), OP(1, 0, 0.05f, 0, 0, 0.5f, 3.0f, 0.8f),
+                        SAWC(1, 7, 0.75f), OP(2, 0, 0.03f, 0, 0, 0.8f, 3.0f, 0.6f)}, 0, 0},
+     70, 82, 85, 90, 30, LFO_DRIFT, 15, 0},
+    {"SAW LEAD", 4, 0, {{SAWC(1, -5, 0.85f), OP(1, 0, 0.12f, 0, 0, 0, 0.4f, 0.3f),
+                         SAWC(1, 5, 0.65f), OP(2, 0, 0.08f, 0, 0, 0, 0.5f, 0.3f)}, 1, 0.04f},
+     0, 60, 80, 40, 76, LFO_SINE, 25, 0},
+    {"SAW BASS", 4, 0, {{SAWC(0.5f, 0, 0.8f), OP(0.5f, 0, 0.15f, 0, 0, 0, 0.15f, 0.05f),
+                         CARRIER(0.5f, 0, 0.4f), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 1, 0.02f},
+     0, 62, 40, 30, 45, LFO_SINE, 0, 0},
     /* pads */
     {"GLASS PAD", 4, 0, {{CARRIER(1, 0, 0.7f), OP(1, 0, 0.19f, 0, 0, 0, 4.0f, 0.6f),
                           CARRIER(1, 5, 0.55f), OP(2, 0, 0.13f, 0, 0, 0, 3.0f, 0.5f)}, 0, 0},
@@ -237,7 +248,7 @@ static uint32_t preset_wave(const preset_t *pr)
     uint32_t k;
     for (k = 0; k < 4u; k++)
         if (!(ENG_CAR[pr->alg & 7u] >> k & 1u))
-            return pr->s.op[k].wave & 7u;
+            return pr->s.op[k].wave;
     return 0;
 }
 
@@ -840,6 +851,10 @@ static void events_in(void)
 
 /* ----------------------------------------------------------------- render --- */
 static float buf_l[ENG_BLOCK], buf_r[ENG_BLOCK];
+/* the output's last samples, for HOME's oscilloscope with the arp off (one store a sample here; the screen reads it) */
+#define SCOPE_N 1024u
+static int16_t scope[SCOPE_N];
+static volatile uint32_t scope_w;
 static volatile uint32_t dsp_resets;     /* how often the guard had to clear (GLOBAL shows it; the tests read it) */
 static volatile uint32_t sheds;          /* how often the render ran late and a voice went (GLOBAL shows it) */
 static uint32_t cap_back_at;             /* the sample clock at which a voice shed comes back */
@@ -919,6 +934,9 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     eng_voices(buf_l, buf_r, seg, n);
     if (eng_out(buf_l, buf_r, lr, n, gain))   /* a bad number: silence, then everything starts clean */
         dsp_resets = dsp_resets + 1u;
+    for (i = 0, k = scope_w; i < n; i++, k++)   /* the scope: left and right summed, 16 bits */
+        scope[k & (SCOPE_N - 1u)] = (int16_t)((lr[2 * i] + lr[2 * i + 1]) >> 9);
+    scope_w = k;
     if (eng_cap(0) < ENG_NVOICE && sample_clock - cap_back_at < 0x80000000u) {   /* 2 s without running late: a
                                                                                   * voice back */
         eng_cap(1);
@@ -1553,12 +1571,48 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
     }
 }
 
+/* HOME with the arp off: an oscilloscope of the sound. It waits for a rising zero crossing, so a held note stands
+ * still, and scales itself to the sound (quickly up, slowly down: a fading note still fills it) */
+#define SCOPE_SPAN 440u                  /* samples across the 220 pixels: 10 ms */
+static void scope_view(int32_t h)
+{
+    static float gain_px;
+    uint32_t w = scope_w, s = w - SCOPE_SPAN, i, peak = 0;
+    int32_t x, py = 0, mid = h / 2;
+    float g;
+    for (i = 0; i < 300u; i++) {         /* the latest rising zero crossing that leaves a whole span */
+        uint32_t a = w - SCOPE_SPAN - i;
+        if (scope[(a - 1u) & (SCOPE_N - 1u)] < 0 && scope[a & (SCOPE_N - 1u)] >= 0) {
+            s = a;
+            break;
+        }
+    }
+    for (i = 0; i < SCOPE_SPAN; i++) {
+        int32_t v = scope[(s + i) & (SCOPE_N - 1u)];
+        uint32_t m = (uint32_t)(v < 0 ? -v : v);
+        peak = m > peak ? m : peak;
+    }
+    g = (float)(mid - 6) / (float)(peak > 400u ? peak : 400u);   /* (silence stays a flat line, not noise) */
+    gain_px = g < gain_px || gain_px <= 0.0f ? g : gain_px + (g - gain_px) * 0.05f;
+    cv_rect(10, mid, 220, 1, C_LINE);
+    for (x = 0; x < 220; x++) {
+        int32_t v = scope[(s + (uint32_t)x * 2u) & (SCOPE_N - 1u)];
+        int32_t y = clamp(mid - (int32_t)((float)v * gain_px), 2, h - 3);
+        if (x)
+            cv_line(9 + x, py, 10 + x, y, C_HI);
+        cv_rect(10 + x, y, 1, 2, C_HI);
+        py = y;
+    }
+}
+
 /* EDIT's WAVE, drawn: two turns of the modulators' wave (dsp/engine.c wave(), the TX81Z's eight), and its name */
-static const char *const WAVE_NAME[8] = {"SINE", "PEAKED SINE", "HALF SINE", "HALF PEAKED", "FAST HALF",
-                                         "FAST PEAKED", "FAST BUMPS", "FAST SOFT BUMPS"};
+static const char *const WAVE_NAME[9] = {"SINE", "PEAKED SINE", "HALF SINE", "HALF PEAKED", "FAST HALF",
+                                         "FAST PEAKED", "FAST BUMPS", "FAST SOFT BUMPS", "SAW"};
 static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
 {
     float s, f = ph;
+    if (w == 8u)                         /* W9: the saw, falling (the sum of sin(h x) / h) */
+        return 1.0f - 2.0f * ph;
     if (w >= 4u) {                       /* W5..W8: twice as fast in the first half, silent in the second */
         if (f >= 0.5f)
             return 0.0f;
@@ -1684,7 +1738,10 @@ static void draw(void)
     if (ui.page == PG_HOME) {
         /* HOME: the arp large, then the four macros in a row */
         cv_begin(240, 110, C_BG);
-        notes_view(110, 600u, 1);
+        if (set.arp_on)
+            notes_view(110, 600u, 1);
+        else
+            scope_view(110);             /* the keys alone: the sound itself */
         cv_blit(0, 34);
         cv_begin(240, 68, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
@@ -1757,8 +1814,8 @@ void app_frame(void)
         ui.msg_until = 0;
         ui.redraw = 1;
     }
-    if (viz_w != last_viz || ((viz_w || ui.page == PG_GLOBAL) && now - last_frame >= 50u))   /* the notes move (and
-                                                                                                * GLOBAL's load) */
+    if (viz_w != last_viz || ((viz_w || ui.page == PG_GLOBAL || (ui.page == PG_HOME && !set.arp_on))
+                               && now - last_frame >= 50u))   /* the notes move (GLOBAL's load, HOME's scope) */
         ui.redraw = 1;
     if (ui.redraw) {
         ui.redraw = 0;

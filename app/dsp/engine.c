@@ -22,6 +22,57 @@ static inline float sin_t(float ph)
     return sin_tab[i] + (sin_tab[i + 1] - sin_tab[i]) * f;
 }
 
+/* W9, the saw: band-limited, a table an octave of pitch so a high note carries only the harmonics it can (below
+ * 18 kHz) and never folds back as noise. 512 points (and the first again at the end, for the interpolation), int16,
+ * made at the start by adding up the harmonics (1/h each). Band b holds what a note up to SAW_TOP0 << b may carry */
+#define SAW_N 512u
+#define SAW_BANDS 10u
+#define SAW_TOP0 40.0f                   /* Hz: band 0's top; band 9's is 20 kHz */
+static PLAT_POOL int16_t saw_tab[SAW_BANDS][SAW_N + 1];
+
+static void saw_init(void)
+{
+    static float acc[SAW_N];
+    uint32_t b, i, h;
+    for (b = 0; b < SAW_BANDS; b++) {
+        float top = SAW_TOP0 * (float)(1u << b), peak = 0.0f;
+        uint32_t nh = (uint32_t)(18000.0f / top);
+        if (nh > SAW_N / 2u - 1u)
+            nh = SAW_N / 2u - 1u;
+        if (nh < 1u)
+            nh = 1u;
+        for (i = 0; i < SAW_N; i++)
+            acc[i] = 0.0f;
+        for (h = 1; h <= nh; h++) {      /* sin(2 pi h i / SAW_N) / h, from the sine table (2048 = 4 x 512) */
+            float g = 1.0f / (float)h;
+            for (i = 0; i < SAW_N; i++)
+                acc[i] += sin_tab[(h * i * (SIN_N / SAW_N)) & (SIN_N - 1u)] * g;
+        }
+        for (i = 0; i < SAW_N; i++)
+            peak = fm_maxf(peak, fm_fabsf(acc[i]));
+        for (i = 0; i < SAW_N; i++)
+            saw_tab[b][i] = (int16_t)(acc[i] / peak * 32000.0f);
+        saw_tab[b][SAW_N] = saw_tab[b][0];
+    }
+}
+
+static const int16_t *saw_band(float hz)  /* the table for an operator at hz */
+{
+    uint32_t b = 0;
+    while (b + 1u < SAW_BANDS && hz > SAW_TOP0 * (float)(1u << b))
+        b++;
+    return saw_tab[b];
+}
+
+static inline float saw_t(float ph, const int16_t *t)   /* ph as sin_t's */
+{
+    float x = (ph + PH_OFS) * (float)SAW_N, f;
+    uint32_t i = (uint32_t)x;
+    f = x - (float)i;
+    i &= SAW_N - 1u;
+    return ((float)t[i] + ((float)t[i + 1] - (float)t[i]) * f) * (1.0f / 32000.0f);
+}
+
 /* the eight waves, as the TX81Z's: W1 the sine, W2 its halves squared, W3 W4 their positive halves, W5..W8 the same
  * at twice the speed in the first half of the turn and silent in the second */
 static inline float wave(float ph, uint32_t w)
@@ -94,6 +145,7 @@ typedef struct {
     int32_t note, gate;                  /* gate: samples before the arp releases it; -1 a key holds it */
     uint32_t age;
     uint8_t on, rel, shed, wv[4], att[4];   /* att[k]: operator k still rising; shed: fading out for the CPU */
+    const int16_t *tab[4];               /* a saw operator's table, for its pitch now (voice_pitch) */
     float env[4], pk[4], ai[4], tgt[4], kk[4], sus[4], dk[4], rk[4];
     float lvl[4], lvl0[4], cl[4], cr[4], ic[4];   /* lvl0: before the high-note taper (voice_pitch); ic: 1 a
                                                    * carrier (its envelope ends the voice) */
@@ -130,6 +182,7 @@ static void voice_pitch(voice_t *v)
     for (k = 0; k < 4u; k++) {
         float hz = m * v->rat[k] * SR, lo = v->ic[k] > 0.0f ? 16000.0f : 8000.0f;
         v->inc[k] = m * v->rat[k];
+        v->tab[k] = saw_band(hz);
         v->lvl[k] = hz <= lo ? v->lvl0[k] : hz >= 20000.0f ? 0.0f : v->lvl0[k] * (20000.0f - hz) / (20000.0f - lo);
     }
 }
@@ -222,7 +275,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         const eng_op_t *o = &s->op[k];
         uint32_t is_car = car >> k & 1u, own = !is_car || o->strike;
         float a, d, su, pk;
-        v->wv[k] = (uint8_t)(is_car || prm.wave > 7u ? o->wave & 7u : prm.wave);
+        v->wv[k] = (uint8_t)(is_car || prm.wave == 0xFFu ? o->wave : prm.wave);   /* 0..8 (8: the saw) */
         v->rat[k] = o->ratio * (is_car ? 1.0f : prm.ratio)
                     * fm_exp2f((o->det + DSIGN[k] * prm.detune * 14.0f) * (1.0f / 1200.0f));
 
@@ -366,8 +419,10 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     float cr0 = v->cr[0], cr1 = v->cr[1], cr2 = v->cr[2], cr3 = v->cr[3];
     float fb1 = v->fb1, fb2 = v->fb2, fbk = v->fbk;
     uint32_t w0 = v->wv[0], w1 = v->wv[1], w2 = v->wv[2], w3 = v->wv[3], i, rel = v->rel;
+    const int16_t *t0 = v->tab[0], *t1 = v->tab[1], *t2 = v->tab[2], *t3 = v->tab[3];
     int32_t gate = v->gate;
-#define W(x, w) (sine || !(w) ? sin_t(x) : wave((x), (w)))   /* a plain sine here too, without the call */
+#define W(x, w, t) (sine || !(w) ? sin_t(x) : (w) == 8u ? saw_t((x), (t)) : wave((x), (w)))   /* a plain sine,
+                                                                                        * the saw, or a TX81Z wave */
 #define MODS(k, j) (MOD[alg][k] >> (j) & 1u)
 #define IS_CAR(k) (CAR[alg] >> (k) & 1u)
     for (i = a; i < b; i++) {
@@ -376,16 +431,16 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
         ENV_STEP(2);
         ENV_STEP(1);
         ENV_STEP(0);
-        raw = e3 * W(p3 + fbk * (fb1 + fb2), w3);
+        raw = e3 * W(p3 + fbk * (fb1 + fb2), w3, t3);
         fb2 = fb1;
         fb1 = raw;
         o3 = raw * lv3;
         m = MODS(2, 3) ? o3 : 0.0f;
-        o2 = e2 * lv2 * W(p2 + m, w2);
+        o2 = e2 * lv2 * W(p2 + m, w2, t2);
         m = (MODS(1, 2) ? o2 : 0.0f) + (MODS(1, 3) ? o3 : 0.0f);
-        o1 = e1 * lv1 * W(p1 + m, w1);
+        o1 = e1 * lv1 * W(p1 + m, w1, t1);
         m = (MODS(0, 1) ? o1 : 0.0f) + (MODS(0, 2) ? o2 : 0.0f) + (MODS(0, 3) ? o3 : 0.0f);
-        o0 = e0 * lv0 * W(p0 + m, w0);
+        o0 = e0 * lv0 * W(p0 + m, w0, t0);
         l[i] += cl0 * o0 + (IS_CAR(1) ? cl1 * o1 : 0.0f) + (IS_CAR(2) ? cl2 * o2 : 0.0f) + (IS_CAR(3) ? cl3 * o3 : 0.0f);
         r[i] += cr0 * o0 + (IS_CAR(1) ? cr1 * o1 : 0.0f) + (IS_CAR(2) ? cr2 * o2 : 0.0f) + (IS_CAR(3) ? cr3 * o3 : 0.0f);
         p0 += n0;
@@ -877,6 +932,7 @@ void eng_init(void)
     uint32_t i;
     for (i = 0; i <= SIN_N; i++)
         sin_tab[i] = fm_sinf((float)i * FM_TWO_PI / (float)SIN_N);
+    saw_init();
     for (i = 0; i < ENG_NVOICE; i++)
         vc[i].note = -1;
 #ifndef PLAT_HOST

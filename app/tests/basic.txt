@@ -209,3 +209,20 @@ shot algo6.png
 spin K1 2
 wait 30
 shot algo8.png
+# HOME with the arp off: the scope
+tap HOME
+wait 30
+tap PLAY
+wait 30
+expect arp 0
+key 7 down 100
+wait 400
+shot scope.png
+key 7 up
+wait 30
+spin PRESET 31
+wait 30
+key 7 down 100
+wait 600
+shot scope_saw.png
+key 7 up
