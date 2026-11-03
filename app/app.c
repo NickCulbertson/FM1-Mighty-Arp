@@ -2597,10 +2597,10 @@ static void header(uint32_t now)
 {
     cv_begin(240, 32, C_BG);
     if (now < ui.msg_until) {
-        int32_t x = cv_text(10, 6, &FONT_B, ui.msg[0], C_WHITE);
+        int32_t x = cv_text(10, 6, &FONT_B, ui.msg[0], C_NOW);   /* what just changed: yellow, as the knob turned */
         cv_text(x + 8, 6, &FONT_B, ui.msg[1], C_HI);
     } else {
-        cv_text(10, 6, &FONT_B, "MIGHTY", C_GRAY);
+        cv_text(10, 6, &FONT_B, "MIGHTY", C_NOW);
         cv_text(10 + text_w(&FONT_B, "MIGHTY "), 6, &FONT_B, "ARP", C_HI);
         char nm[16];
         sound_name(set.preset, nm);
