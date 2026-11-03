@@ -395,6 +395,8 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
             pk = 1.0f;
         }
         v->pk[k] = pk;
+        if (rph && a < 0.001f)           /* a wave begun mid-cycle: 1 ms in, never a click */
+            a = 0.001f;
         v->ai[k] = a < 0.0005f ? 1e9f : pk / (a * SR);
         v->sus[k] = su;
         v->dk[k] = fall_coef(d);
