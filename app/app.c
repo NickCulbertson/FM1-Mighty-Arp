@@ -942,20 +942,23 @@ static uint32_t chord_of(int32_t root, uint32_t kind, int32_t *out)
 /* the strum: a chord's notes after its first, STRUM apart (st_i the next, strum_wait the samples to it) */
 static uint32_t st_i;
 static int32_t strum_wait;
+static uint32_t step_at;                 /* the sample the step fell on the grid (its swing and HUMANIZE after) */
+static float st_room;                    /* from the chord's first note to the next step: its notes fit in this */
 /* STRUM's time between notes: 0 off, else 2 ms .. 250 ms (exponential), but never so long the chord would not finish
- * before the next step (all its notes within 90 % of it) */
+ * before the next step (all its notes within 90 % of the time left to it, a swung or late step's less) */
 static float strum_ms(int32_t v) { return v ? 2.0f * fm_exp2f((float)v * 0.0696578f) : 0.0f; }   /* 125^(v/100) */
 static int32_t strum_samples(void)
 {
     float t = strum_ms(set.p[P_STRUM]) * 0.001f * SR;
     if (st_n > 1u)
-        t = fm_minf(t, step_samples() * 0.9f / (float)(st_n - 1u));
+        t = fm_minf(t, st_room * 0.9f / (float)(st_n - 1u));
     return (int32_t)t;
 }
 
 static void chord_play(void)             /* the step's notes: all at once, or the first now and the rest strummed */
 {
     uint32_t i;
+    st_room = step_samples() - (float)(int32_t)(sample_clock + rend_i - step_at);
     if (st_n > 1u && strum_samples() > 0) {
         play(st_note[0], st_vel[0], hum_gate);
         st_i = 1;
@@ -1086,6 +1089,7 @@ static void on_tick(void)                /* a clock tick: MIDI out, and a step w
         midi_rt(0xF8u);
     if (!arp_on_now || !nheld || tick_n % L)
         return;
+    step_at = sample_clock + rend_i;
     if ((tick_n / L) & 1u && set.p[P_SWING]) {   /* SWING: every second step late, up to half a step */
         int32_t w = (int32_t)(step_samples() * (float)set.p[P_SWING] * 0.005f);
         swing_wait = w < 1 ? 1 : w;
@@ -1181,8 +1185,7 @@ static void note_up(int32_t note, uint32_t by, uint32_t ch)   /* let go by one o
  * MIDI CH changed: every one); a key's notes, and other channels', stay. sound_off: and quickly silent */
 static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels (a bit each; 0xFFFF all) */
 {
-    uint32_t i;
-    arp_cancel();                        /* the arp's queued notes may be these channels': none play after a panic */
+    uint32_t i, had = nheld;
     for (i = 0; i < 128u; i++)
         if (midi_down[i] & chans) {
             midi_down[i] &= (uint16_t)~chans;
@@ -1202,6 +1205,21 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
         }
     }
     held_publish();
+    if (arp_on_now && had && !nheld) {   /* the arp left with nothing (its queue went with the last, held_remove): the
+                                          * notes it made from them stop too, the chords' tones as well (out_note: the
+                                          * arp's notes sounding); with notes still held the arp plays on, its own */
+        for (i = 0; i < NHELD; i++)
+            if (out_note[i] >= 0) {
+                if (!sound_off)
+                    eng_note_off(out_note[i]);
+                midi_off((uint32_t)out_note[i]);
+                out_note[i] = -1;
+            }
+        if (sound_off)                   /* All Sound Off: every voice (the arp's all, with nothing held), the earlier
+                                          * steps' releases too */
+            for (i = 0; i < 128u; i++)
+                eng_note_kill((int32_t)i);
+    }
     for (i = 0; i < 128u; i++)           /* their notes no longer held, a release still ringing too */
         if (midi_played[i] & chans) {
             midi_played[i] &= (uint16_t)~chans;
@@ -1571,6 +1589,7 @@ static int patch_par(uint32_t p)         /* one a USER preset loads: not the pla
 static void patch_defaults(void)         /* the arp, SEQ, CHORDS, CHANCE and the effects as new (not the sound, TEMPO) */
 {
     uint32_t i;
+    arp_cancel();                        /* a queued strum or late step: the old settings', never played under the new */
     for (i = 0; i < NP; i++)
         if (patch_par(i) && !sound_par(i) && i != P_TEMPO)
             set.p[i] = PAR[i].def;
@@ -1582,6 +1601,8 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
 {
     const preset_t *pr;
     int all = set.p[P_LOADS] == 1;
+    if (all)                             /* the arp's settings replaced: what it had queued under the old goes */
+        arp_cancel();
     if (p >= NPRESET) {
         const user_t *u = &users.u[(p - NPRESET) % NUSER];
         uint32_t i;
@@ -1634,9 +1655,14 @@ static int user_store(uint32_t slot)
     u->whole = 1;
     if (!was.used || !was.name) {        /* a new name (over one already named: it keeps its own), none another
                                           * slot has */
+        static uint32_t name_rng = 0x6D2B79F5u;   /* its own: SAVE never moves the arp's chance (drift_rng) */
         uint32_t tries, k, nm = 0;
+        name_rng ^= plat_ms() | 1u;
         for (tries = 0; tries < 32u; tries++) {
-            nm = 1u + rnd_n(255u);
+            name_rng ^= name_rng << 13;
+            name_rng ^= name_rng >> 17;
+            name_rng ^= name_rng << 5;
+            nm = 1u + (name_rng >> 8) % 255u;
             for (k = 0; k < NUSER && !(users.u[k].used && users.u[k].name == nm && &users.u[k] != u); k++)
                 ;
             if (k == NUSER)
@@ -3181,6 +3207,8 @@ int app_expect(const char *what, int *got)
         arp_mark_at = arp_count;
         *got = 0;
     }
+    else if (!strcmp(what, "queued"))        /* the arp has a note waiting: a strum's next, a late or swung step */
+        *got = strum_wait > 0 || hum_wait > 0 || swing_wait > 0;
     else if (!strcmp(what, "voices"))        /* sounding */
         *got = (int)eng_active();
     else if (!strcmp(what, "dirty"))

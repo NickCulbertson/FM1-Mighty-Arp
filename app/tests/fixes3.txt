@@ -1,0 +1,148 @@
+# The seventh review (GPT, Nov 2026): panic and the arp's chords, RESET mid-strum, strum on swung steps (tests/run_tests.sh)
+wait 600
+turn ALGO 40
+wait 30
+expect chance 100
+expect arp 1
+# CHORDS TRIAD, GATE 100 (ARP: GLO first, so ARP opens ARP)
+tap ARP
+wait 30
+tap ARP
+wait 30
+expect page 20
+spin K1 1
+wait 30
+expect chord 1
+tap GLO
+wait 30
+tap ARP
+wait 30
+expect page 5
+spin K4 50
+wait 30
+expect gate 100
+# All Sound Off on C's channel: the triad the arp made of it stops too (E and G, not only C)
+midi 90 3C 64
+wait 700
+expect arp_notes >2
+midi B0 78 00
+wait 350
+expect held 0
+expect voices 0
+wait 1000
+# A STRUM rolling on channel 1: All Notes Off on channel 2, again and again, takes nothing from it
+tap ARP
+wait 30
+expect page 20
+spin K2 100
+wait 30
+expect strum 100
+midi 90 3C 64
+wait 400
+expect arp_mark 0
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+midi B1 7B 00
+wait 40
+expect arp_notes >9
+# RESET in the middle of a strum: what it had queued under the old settings goes (never played after: CHORD OFF)
+tap GLO
+wait 30
+expect page 9
+wait 80
+expect queued 1
+spin K4 1
+expect queued 0
+expect chord 0
+midi 80 3C 00
+wait 1000
+# SWING full and STRUM at its longest, 1/8 at 90 BPM: the swung steps' chords whole too
+turn ALGO 40
+wait 30
+tap ARP
+wait 30
+expect page 5
+tap ARP
+wait 30
+expect page 20
+spin K1 1
+spin K2 100
+wait 30
+expect strum 100
+tap SEQ
+wait 30
+spin K4 100
+wait 30
+expect swing 100
+midi 90 3C 64
+wait 30
+expect arp_mark 0
+wait 6000
+expect arp_notes >50
+midi 80 3C 00
+wait 30
+expect dsp_resets 0
