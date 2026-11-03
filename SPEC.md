@@ -34,7 +34,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
 | EDIT | ALGO (1-8) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8) |
-| ARP | RATE (1/1 .. 1/32) | OCTAVES | MODE (UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB, PINKY, CHORD, RANDOM, WALK) | GATE |
+| ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB, PINKY, CHORD, RANDOM, WALK) | GATE |
 | SEQ | RATCHET (chance) | OCT JUMP (chance) | VEL RAND | SWING |
 | DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | CHORUS |
 | REVERB | MIX | LENGTH (0.5 s .. 100 s) | DARK | SHIMMER |

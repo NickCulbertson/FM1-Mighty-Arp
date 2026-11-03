@@ -47,7 +47,7 @@ static const param_t PAR[NP] = {
     {"VIBRATO", "vibrato", 0, 100, 0, U_PCT},    {"TREMOLO", "tremolo", 0, 100, 0, U_PCT},
     {"ALGO", "algo", 0, 7, 4, U_NUM1},           {"RATIO", "ratio", 0, 7, 1, U_RATIO},
     {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"WAVE", "wave", 0, 7, 0, U_WAVE},
-    {"RATE", "rate", 0, 7, 3, U_DIV},            {"OCTAVES", "octaves", 1, 4, 2, U_OCT},
+    {"RATE", "rate", 0, 10, 5, U_DIV},            {"OCTAVES", "octaves", 1, 4, 2, U_OCT},
     {"MODE", "mode", 0, NMODE - 1, M_RANDOM, U_MODE},           {"GATE", "gate", 5, 100, 50, U_PCT},
     {"RATCHET", "ratchet", 0, 100, 0, U_PCT},    {"OCT JUMP", "oct_jump", 0, 100, 0, U_PCT},
     {"VEL RAND", "vel_rand", 0, 100, 20, U_PCT}, {"SWING", "swing", 0, 100, 0, U_PCT},
@@ -80,8 +80,10 @@ static const page_t PAGE[NPAGE] = {
 };
 
 /* the arp's steps (in MIDI clocks: 24 a beat) and the delay's times (in beats) */
-static const char *const DIV_NAME[8] = {"1/1", "1/2", "1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"};
-static const uint8_t DIV_TICKS[8] = {96, 48, 24, 12, 8, 6, 4, 3};
+static const char *const DIV_NAME[11] = {"1/1", "1/2", "1/4D", "1/4", "1/8D", "1/8", "1/16D", "1/8T", "1/16", "1/16T",
+                                         "1/32"};
+static const uint8_t DIV_TICKS[11] = {96, 48, 36, 24, 18, 12, 9, 8, 6, 4, 3};
+#define CLK_WRAP 576u                    /* six bars of clocks: every step, and every pair of steps, divides it */
 static const char *const DDIV_NAME[9] = {"1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2"};
 static const float DDIV_BEATS[9] = {0.25f, 0.375f, 1.0f / 3.0f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f, 1.5f, 2.0f};
 static const char *const MODE_NAME[NMODE] = {"UP", "DOWN", "UP-DN", "AS PLAYED", "CONVERGE", "DIVERGE", "THUMB",
@@ -240,7 +242,7 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3252414Du            /* "MAR2": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x3352414Du            /* "MAR3": the settings record; another magic loads defaults */
 typedef struct {
     uint32_t magic;
     int16_t p[NP];
@@ -386,7 +388,7 @@ static void held_clear(void)
 
 /* ---- the clock: 24 a beat, from the tempo or from MIDI clock in (SYNC EXT); every step lands on it */
 static float tick_acc;                   /* the internal clock: fractions of a tick */
-static uint32_t tick_n = 191u;           /* the tick in two bars, 0..191 (every step length divides it) */
+static uint32_t tick_n = CLK_WRAP - 1u;  /* the clock's tick, 0 .. CLK_WRAP - 1 */
 static int32_t swing_wait, rat_wait;     /* samples to a swung step, and to the next ratchet hit */
 static int32_t rat_left, rat_gate, rat_sub;
 static int32_t arp_s = -1, arp_k;        /* steps since the pattern began; WALK's place */
@@ -557,7 +559,7 @@ static void ratchet_hit(void)
 static void on_tick(void)                /* a clock tick: MIDI out, and a step where one falls */
 {
     uint32_t L = DIV_TICKS[set.p[P_RATE]];
-    tick_n = (tick_n + 1u) % 192u;
+    tick_n = (tick_n + 1u) % CLK_WRAP;
     if (clk_out_now && !sync_now && plat_midi_out_room(TO_USB))
         midi_rt(0xF8u);
     if (!arp_on_now || !nheld || tick_n % L)
@@ -706,7 +708,7 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
             if (sync_now) {
                 ext_run = st != 0xFCu;
                 if (st == 0xFAu) {
-                    tick_n = 191u;       /* the next clock is the first step */
+                    tick_n = CLK_WRAP - 1u;   /* the next clock is the first step */
                     arp_s = -1;
                 }
                 swing_wait = rat_wait = 0;

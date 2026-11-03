@@ -79,3 +79,22 @@ expect dly_time 8
 expect tempo 40
 wait 2000
 expect dsp_resets 0
+# the arp's dotted rates: 1/8D at 90 BPM is 500 ms a step
+tap ARP
+wait 30
+spin K3 -20
+spin K1 -1
+wait 30
+expect rate 4
+expect mode 0
+turn SELECT 50
+wait 30
+expect tempo 90
+key 7 down 90
+wait 30
+key 7 up
+wait 30
+expect arp_mark 0
+wait 2000
+expect arp_notes >2
+expect arp_notes <6
