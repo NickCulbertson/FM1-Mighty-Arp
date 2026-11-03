@@ -1239,35 +1239,15 @@ static void header(uint32_t now)
 }
 
 /* the arp's steps over the last seconds: time across (newest at the right), pitch up; played notes yellow, then
- * orange as they age; the steps the chance skipped as faint lavender ghosts. The held notes at the right edge */
+ * orange as they age; the steps the chance skipped as faint lavender ghosts. The held notes at the right edge. The
+ * pitch range stays put: the keys at this octave, and the octaves the arp climbs above them */
 static void notes_view(int32_t h, uint32_t secs_cs, int big)
 {
     uint32_t i, now_cs = sample_clock / 441u, w = viz_w;
-    int32_t lo = 127, hi = 0, span;
-    for (i = 0; i < 128u; i++)
-        if (held_mask[i >> 5] >> (i & 31) & 1u) {
-            lo = lo < (int32_t)i ? lo : (int32_t)i;
-            hi = hi > (int32_t)i ? hi : (int32_t)i;
-        }
-    for (i = 0; i < VIZ_N && i < w; i++) {
-        uint32_t e = viz[(w - 1u - i) % VIZ_N], age = (now_cs - (e >> 16)) & 0xFFFFu;
-        int32_t note = (int32_t)(e & 0xFFu);
-        if (age > secs_cs)
-            break;
-        lo = lo < note ? lo : note;
-        hi = hi > note ? hi : note;
-    }
-    if (lo > hi)
-        lo = 48, hi = 72;
-    if (hi - lo < 24) {                      /* at least two octaves, centred */
-        int32_t c = (lo + hi) / 2;
-        lo = c - 12;
-        hi = c + 12;
-    }
-    span = hi - lo;
+    int32_t lo = 53 + 12 * set.octave, hi = lo + (int32_t)NKEYS - 1 + 12 * (set.p[P_OCTAVES] - 1), span = hi - lo;
     for (i = 0; i < 128u; i++)               /* the pool: the held notes, lavender at the right */
         if (held_mask[i >> 5] >> (i & 31) & 1u) {
-            int32_t y = h - 6 - ((int32_t)i - lo) * (h - 12) / span;
+            int32_t y = h - 6 - clamp((int32_t)i - lo, 0, span) * (h - 12) / span;
             cv_rect(226, y - 1, 6, 3, C_GRAY);
         }
     for (i = 0; i < VIZ_N && i < w; i++) {
@@ -1276,7 +1256,7 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
         if (age > secs_cs)
             break;
         x = 220 - (int32_t)(age * 210u / secs_cs);
-        y = h - 6 - ((int32_t)(e & 0xFFu) - lo) * (h - 12) / span;
+        y = h - 6 - clamp((int32_t)(e & 0xFFu) - lo, 0, span) * (h - 12) / span;   /* an octave jump past it: the edge */
         if (!vel) {                          /* a ghost: the chance skipped it */
             s = big ? 3 : 2;
             cv_rect(x - s, y - s, 2 * s + 1, 1, C_GHOST);
