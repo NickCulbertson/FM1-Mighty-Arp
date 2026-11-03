@@ -293,6 +293,42 @@ static const preset_t PRESET[] = {
     {"TRI FLUTE", CAT_LEADS, 4, 0, {{WAVC(1, 0, 0.9f, 12), OP(1, 0, 0.03f, 0, 0, 0.08f, 1.0f, 0.6f),
                                     CARRIER(1, 0, 0), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
      6, 70, 80, 40, 76, LFO_SINE, 30, 0},
+    /* VA: the analog-synth classics. No filter: the bite and the sweep are FM, a modulator with its own envelope over
+     * the saw, square and pulse carriers (a quick fall for a pluck's or a bass's attack, a slow rise for brass) */
+#define Z CARRIER(1, 0, 0)
+    {"POLY SYNTH", CAT_KEYS, 6, 4, {{SAWC(1, -6, 0.45f), SAWC(1, 6, 0.45f), CARRIER(1, 0, 0.5f),
+                                    OP(1, 0, 0.25f, 0, 0, 0, 0.3f, 0.1f)}, 0, 0},
+     0, 72, 40, 60, 45, LFO_SINE, 0, 0},
+    {"VA KEYS", CAT_KEYS, 7, 0, {{WAVC(1, 0, 0.9f, 9), SAWC(2, 0, 0.45f), Z, Z}, 0, 0},
+     0, 70, 30, 62, 45, LFO_SINE, 0, 0},
+    {"SAW PLUCK", CAT_PLUCKS, 4, 0, {{SAWC(1, 0, 0.95f), OP(1, 0, 0.25f, 0, 0, 0, 0.12f, 0),
+                                     SAWC(1, 8, 0.55f), OP(2, 0, 0.15f, 0, 0, 0, 0.1f, 0)}, 0, 0},
+     0, 66, 0, 72, 45, LFO_SINE, 0, 0},
+    {"SQR PLUCK", CAT_PLUCKS, 7, 0, {{WAVC(1, 0, 1.0f, 9), WAVC(2, 4, 0.4f, 10), Z, Z}, 0, 0},
+     0, 64, 0, 70, 45, LFO_SINE, 0, 0},
+    {"SQUARE BASS", CAT_BASS, 7, 0, {{WAVC(0.5f, 0, 0.6f, 9), CARRIER(0.5f, 0, 0.4f), Z, Z}, 1, 0.03f},
+     0, 60, 60, 25, 45, LFO_SINE, 0, 0},
+    {"PULSE BASS", CAT_BASS, 4, 0, {{WAVC(0.5f, 0, 1.0f, 10), OP(0.5f, 0, 0.2f, 0, 0, 0, 0.15f, 0.05f), Z,
+                                    OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 1, 0},
+     0, 62, 45, 28, 45, LFO_SINE, 0, 0},
+    {"SYNTH BASS", CAT_BASS, 6, 0, {{SAWC(0.5f, 0, 0.6f), SAWC(0.5f, 10, 0.4f), CARRIER(0.5f, 0, 0.35f),
+                                    OP(1, 0, 0.2f, 0, 0, 0, 0.1f, 0)}, 1, 0.03f},
+     0, 62, 55, 25, 45, LFO_SINE, 0, 0},
+    {"TWIN SAW", CAT_LEADS, 7, 0, {{SAWC(1, -9, 0.45f), SAWC(1, 9, 0.45f), SAWC(2, 0, 0.15f), Z}, 1, 0.05f},
+     0, 60, 85, 45, 76, LFO_SINE, 25, 0},
+    {"PULSE LEAD", CAT_LEADS, 7, 0, {{WAVC(1, 0, 0.6f, 10), WAVC(1, 7, 0.35f, 11), Z, Z}, 1, 0.04f},
+     0, 60, 80, 40, 76, LFO_SINE, 30, 0},
+    {"VA BRASS", CAT_LEADS, 6, 0, {{SAWC(1, -5, 0.4f), SAWC(1, 5, 0.4f), CARRIER(1, 0, 0.4f),
+                                   OP(1, 0, 0.3f, 0, 0, 0.08f, 0.5f, 0.4f)}, 0, 0},
+     10, 70, 80, 45, 76, LFO_SINE, 15, 0},
+    {"SAW STRINGS", CAT_PADS, 7, 0, {{SAWC(1, -12, 0.35f), SAWC(1, 0, 0.35f), SAWC(1, 12, 0.35f),
+                                     WAVC(2, 0, 0.15f, 10)}, 0, 0},
+     72, 82, 90, 88, 70, LFO_SINE, 10, 0},
+    {"SQUARE PAD", CAT_PADS, 7, 0, {{WAVC(1, -6, 0.45f, 9), WAVC(1, 6, 0.45f, 9), WAVC(2, 0, 0.25f, 12), Z}, 0, 0},
+     75, 82, 85, 92, 25, LFO_DRIFT, 12, 15},
+    {"SWEEP PAD", CAT_PADS, 4, 0, {{SAWC(1, 0, 0.55f), OP(1, 0, 0.1f, 0, 0, 2.0f, 4.0f, 0.6f),
+                                   SAWC(1, 7, 0.55f), OP(1, 0, 0.08f, 0, 0, 3.0f, 4.0f, 0.5f)}, 0, 0},
+     70, 85, 85, 92, 20, LFO_DRIFT, 12, 0},
 };
 #define NPRESET (sizeof PRESET / sizeof PRESET[0])
 
@@ -406,9 +442,11 @@ static uint16_t midi_down[128];
 #define DN_KEY 1u
 #define DN_MIDI 2u
 static uint8_t held_src[NHELD];
+static uint16_t held_ch[NHELD];          /* the MIDI channels a held note came in on (a bit a channel) */
+static uint16_t held_by_ch;              /* the note being added's channel bit (MIDI), 0 a key's */
 static int is_down(int32_t note) { return (down[note] & DN_KEY) || midi_down[note]; }
 static uint32_t ndown;
-static uint8_t arp_on_now, hold_now, clk_out_now, sync_now;   /* what the render last acted on */
+static uint8_t arp_on_now, hold_now, clk_out_now, sync_now, voices_now;   /* what the render last acted on */
 
 /* published to the screen: the held set, and the steps the arp has taken (played or skipped) */
 static volatile uint32_t held_mask[4];
@@ -488,6 +526,7 @@ static void held_add(int32_t note, uint32_t vel)
         if (held[i] == note) {
             held_vel[i] = (uint8_t)vel;
             held_src[i] |= held_by;
+            held_ch[i] |= held_by_ch;
             return;
         }
     if (nheld >= NHELD)
@@ -499,11 +538,13 @@ static void held_add(int32_t note, uint32_t vel)
         held_vel[j] = held_vel[j - 1];
         held_seq[j] = held_seq[j - 1];
         held_src[j] = held_src[j - 1];
+        held_ch[j] = held_ch[j - 1];
     }
     held[i] = note;
     held_vel[i] = (uint8_t)vel;
     held_seq[i] = ++held_seq_n;
     held_src[i] = held_by;
+    held_ch[i] = held_by_ch;
     nheld++;
     if (!arp_on_now) {
         eng_note_on(note, vel, -1);
@@ -523,6 +564,7 @@ static void held_remove(int32_t note)
         held_vel[i] = held_vel[i + 1];
         held_seq[i] = held_seq[i + 1];
         held_src[i] = held_src[i + 1];
+        held_ch[i] = held_ch[i + 1];
     }
     nheld--;
     if (!arp_on_now) {
@@ -779,6 +821,7 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     else
         down[note] |= DN_KEY;
     held_by = (uint8_t)by;
+    held_by_ch = (uint16_t)(by == DN_MIDI ? 1u << (ch & 15u) : 0u);
     if (hold_now == H_LATCH) {           /* LATCH: each key on or off by itself */
         for (i = 0; i < nheld && held[i] != note; i++)
             ;
@@ -815,34 +858,48 @@ static void note_up(int32_t note, uint32_t by, uint32_t ch)   /* let go by one o
     held_publish();
 }
 
-/* MIDI's notes all let go, those HOLD or LATCH kept too (All Notes Off, All Sound Off, MIDI CH changed); a key's
- * notes stay. sound_off: and silence now */
-static void midi_let_go(int sound_off)
+/* MIDI's notes on chans let go, those HOLD or LATCH kept too (All Notes Off and All Sound Off: their own channel;
+ * MIDI CH changed: every one); a key's notes, and other channels', stay. sound_off: and quickly silent */
+static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels (a bit each; 0xFFFF all) */
 {
     uint32_t i;
     for (i = 0; i < 128u; i++)
-        if (midi_down[i]) {
-            midi_down[i] = 0;
+        if (midi_down[i] & chans) {
+            midi_down[i] &= (uint16_t)~chans;
             if (!is_down((int32_t)i))
                 ndown--;
         }
-    for (i = nheld; i-- > 0;)
-        if (held_src[i] & DN_MIDI && !(down[held[i]] & DN_KEY))
-            held_remove(held[i]);
-    held_publish();
-    if (sound_off) {
-        eng_silence();
-        out_all_off();
+    for (i = nheld; i-- > 0;) {          /* MIDI's held notes from those channels, that nothing else holds now */
+        int32_t note = held[i];
+        if (held_src[i] & DN_MIDI && held_ch[i] & chans && !(down[note] & DN_KEY) && !midi_down[note]) {
+            held_remove(note);
+            if (sound_off)               /* All Sound Off: out fast, not into the release */
+                eng_note_kill(note);
+        }
     }
+    held_publish();
 }
 
-/* the arp, hold, CLOCK or MIDI CH switched: what sounds follows */
+/* the arp, hold, CLOCK, MIDI CH or VOICES switched: what sounds follows */
 static void modes_follow(void)
 {
     uint32_t i;
+    if ((uint8_t)set.p[P_VOICES] != voices_now) {   /* VOICES: what sounds now goes into its release, and the keys
+                                                     * held sound again as the new mode plays them: all (POLY), the
+                                                     * top one (MONO, LEGATO) */
+        voices_now = (uint8_t)set.p[P_VOICES];
+        eng_release_all();
+        if (!arp_on_now && nheld) {
+            if (voices_now == V_POLY)
+                for (i = 0; i < nheld; i++)
+                    eng_note_on(held[i], held_vel[i], -1);
+            else
+                eng_note_on(held[nheld - 1], held_vel[nheld - 1], -1);
+        }
+    }
     if ((uint8_t)set.p[P_MIDICH] != midi_ch_now) {   /* MIDI CH: what went out on the old channel ends there; what
                                                       * came in on it is let go (its offs would no longer be heard) */
-        midi_let_go(0);
+        midi_let_go(0xFFFFu, 0);
         if (!arp_on_now)
             for (i = 0; i < nheld; i++)
                 midi_off((uint32_t)held[i]);
@@ -943,7 +1000,7 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
             bend = (float)((int32_t)(d2 << 7 | d1) - 8192) * (2.0f / 8192.0f);
         } else if (ty == 0xB0u && (d1 == 123u || d1 == 120u)) {   /* All Notes Off, All Sound Off (that silent now):
                                                                  * MIDI's notes, kept or not */
-            midi_let_go(d1 == 120u);
+            midi_let_go(1u << (st & 0x0Fu), d1 == 120u);
         }
     }
     if (sync_now && sample_clock - ext_last < (uint32_t)SR && ext_per > 0.0f)
@@ -1163,11 +1220,14 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
     set.p[P_STRIKE] = 50;
 }
 
-/* the sound now, kept as user sound slot (and that the one playing); 0 = written */
+/* the sound now, kept as user sound slot, and that then the one playing; 0 = written. The slot changes only once
+ * the flash has it: a failed write leaves the bank, and the sound playing, as they were */
 static int user_store(uint32_t slot)
 {
+    static user_t was;
     user_t *u = &users.u[slot % NUSER];
     uint32_t i;
+    was = *u;
     u->used = 1;
     u->base = (uint8_t)(cur_preset() - PRESET);
     for (i = 0; i < NSOUNDP; i++)
@@ -1179,8 +1239,12 @@ static int user_store(uint32_t slot)
         u->op_decay[i] = set.op_decay[i];
     }
     users.magic = USER_MAGIC;
+    if (plat_store_save(OBJ_USER, &users, sizeof users) != 0) {
+        *u = was;
+        return -1;
+    }
     set.preset = (uint8_t)(NPRESET + slot % NUSER);
-    return plat_store_save(OBJ_USER, &users, sizeof users);
+    return 0;
 }
 
 /* the next sound from n, d steps on (factory then user, the empty user slots skipped); within one kind (cat) or all
@@ -1261,15 +1325,23 @@ void app_init(void)
                 o->p[P_WIDTH] = PAR[P_WIDTH].def;
                 o->magic = SET_MAGIC_5;
             }
-            if (o->magic == SET_MAGIC_5 && o->preset < NPRESET) {   /* before the chorus's two and the operators */
+            if (o->magic == SET_MAGIC_5 && o->preset < 37u) {   /* before the chorus's two and the operators: and the
+                                                            * bank before the saws (37 sounds; from GLASS PAD on,
+                                                            * three places further now) */
+                uint32_t k;
                 for (i = 0; i < NP; i++)
                     set.p[i] = i < NP5 ? o->p[i] : PAR[i].def;
-                set.preset = o->preset;
+                set.preset = (uint8_t)(o->preset >= 32u ? o->preset + 3u : o->preset);
                 set.octave = o->octave;
                 set.arp_on = o->arp_on;
                 set.hold = o->hold;
                 ops_load(&PRESET[set.preset]);
                 voice_load(&PRESET[set.preset]);
+                if ((uint32_t)set.p[P_WAVE] != preset_wave(&PRESET[set.preset]))   /* its WAVE then overrode every
+                                                                                * modulator's: so now on them */
+                    for (k = 0; k < 4u; k++)
+                        if (!(ENG_CAR[set.p[P_ALGO] & 7] >> k & 1u))
+                            set.op_wave[k] = (uint8_t)set.p[P_WAVE];
                 set.magic = SET_MAGIC;
             }
         } else if (got == (int)sizeof(settings6_t) && ld.o6.magic == SET_MAGIC_6 && ld.o6.preset < NPRESET) {
@@ -1377,13 +1449,27 @@ static const char *par_name(uint32_t p)
 }
 
 static int op_own_env(uint32_t k);
+/* MOD WAVE: the modulators' wave when they share one, -1 when they differ (MIXED), -2 with none (ALGO 8) */
+static int32_t mod_wave(void)
+{
+    int32_t w = -2;
+    uint32_t k;
+    for (k = 0; k < 4u; k++)
+        if (!(ENG_CAR[set.p[P_ALGO] & 7] >> k & 1u)) {
+            if (w == -2)
+                w = set.op_wave[k];
+            else if (w != (int32_t)set.op_wave[k])
+                return -1;
+        }
+    return w;
+}
 /* the page's knob i, or PX_NONE where it would mean nothing now: DECAY on a carrier the ENVELOPE page shapes, GLIDE
  * with VOICES on POLY */
 static uint32_t page_knob(uint32_t i)
 {
     uint32_t p = PAGE[ui.page].p[i];
     if ((p == PX_OPD && !op_own_env(IS_OP_PAGE(ui.page) ? ui.page - PG_OP1 : 0u))
-        || (p == P_GLIDE && set.p[P_VOICES] == V_POLY))
+        || (p == P_GLIDE && set.p[P_VOICES] == V_POLY) || (p == P_WAVE && mod_wave() == -2))
         return PX_NONE;
     return p;
 }
@@ -1441,9 +1527,13 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         }
         return;
     }
+    if (p == P_WAVE && mod_wave() < 0) {     /* MOD WAVE over modulators of different waves */
+        text_cat(t, "MIXED");
+        return;
+    }
     if (p == PX_SPACE)
         p = P_RMIX;
-    v = set.p[p];
+    v = p == P_WAVE ? mod_wave() : set.p[p];
     switch (PAR[p].unit) {
     case U_TIME: {
         float s = knob_secs(v);
@@ -1573,6 +1663,8 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
     default:
         break;
     }
+    if (p == P_WAVE)
+        return mod_wave() > 0 ? mod_wave() * w / (int32_t)(NWAVE - 1u) : 0;
     if (p == PX_SPACE)
         p = P_RMIX;
     return (set.p[p] - PAR[p].lo) * w / (PAR[p].hi - PAR[p].lo);
@@ -1712,6 +1804,15 @@ static void param_turn(uint32_t p, int32_t d)
         int32_t hi = p == PX_OPR ? (int32_t)N_OPRATIO - 1 : p == PX_OPW ? (int32_t)NWAVE - 1 : 100, v = clamp((int32_t)*f + d, 0, hi);
         changed = v != *f;
         *f = (uint8_t)v;
+    } else if (p == P_WAVE) {                /* MOD WAVE: from the modulators' own (the first's, when MIXED) */
+        int32_t m = mod_wave();
+        uint32_t k;
+        if (m == -1)
+            for (k = 0; k < 4u && m < 0; k++)
+                if (!op_is_carrier(k))
+                    m = set.op_wave[k];
+        set.p[P_WAVE] = (int16_t)(m < 0 ? 0 : m);
+        changed = set_par(P_WAVE, set.p[P_WAVE] + d) || mod_wave() == -1;
     } else if (p == PX_SPACE) {              /* SPACE: the reverb's mix and its length together */
         changed = set_par(P_RMIX, set.p[P_RMIX] + d);
         changed |= set_par(P_RLEN, set.p[P_RLEN] + d);
@@ -1820,12 +1921,16 @@ static void input(void)
             app_say(HOLD_NAME[set.hold], "");
         } else if (k == B_SAVE && ui.page == PG_SOUNDS) {   /* on SOUNDS: the sound into the USER slot chosen */
             char nm[16];
-            if (user_store(ui.save_slot) == 0 && plat_store_save(OBJ_SETTINGS, &set, sizeof set) == 0) {
+            if (user_store(ui.save_slot) != 0)
+                app_say("NOT SAVED", "FLASH FAILED");
+            else if (plat_store_save(OBJ_SETTINGS, &set, sizeof set) != 0) {
+                sound_name(set.preset, nm);   /* the sound is kept; only the settings (what plays at power-on) not */
+                app_say(nm, "SETTINGS NOT SAVED");
+            } else {
                 set_dirty = 0;
                 sound_name(set.preset, nm);
                 app_say("SAVED", nm);
-            } else
-                app_say("SAVE", "FAILED");
+            }
             ui.redraw = 1;
         } else if (k == B_SAVE) {
             if (plat_store_save(OBJ_SETTINGS, &set, sizeof set) == 0) {
@@ -2134,7 +2239,8 @@ static const uint8_t ALG_ROW[8][4] = {   /* and its row, 0 the top, 3 the carrie
 static void algo_view(int32_t h, int32_t hl)   /* hl: the operator OP is editing, outlined white (-1 none) */
 {
     uint32_t a = (uint32_t)set.p[P_ALGO] & 7u, fb = (uint32_t)set.p[P_FDBK], k, j;
-    uint32_t w = hl >= 0 ? set.op_wave[hl] : (uint32_t)set.p[P_WAVE];   /* the wave beside: this operator's, or MOD
+    uint32_t w = hl >= 0 ? set.op_wave[hl] : mod_wave() >= 0 ? (uint32_t)mod_wave() : set.op_wave[0];   /* the wave
+                                                     * beside: this operator's; the modulators' (or operator 1's); or MOD
                                                                          * WAVE's */
     int32_t x, py = 0, lo = 240, hi = 0, y0 = 44, amp = 16;
     char t[24] = "ALGO ";
@@ -2277,10 +2383,15 @@ static void draw(void)
             knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI, 1);
             cv_text(x + 38, y + 1, &FONT_S, par_name(p), C_GRAY);
             param_text(p, t);
-            if (text_w(&FONT_M, t) <= (i % 2u ? 66 : 68))   /* a long one (AS PLAYED, LEGATO) smaller */
-                cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
-            else
-                cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_WHITE : C_HI);
+            {                                /* a long one (AS PLAYED, LEGATO, a sound's name) smaller */
+                int32_t room = i % 2u ? 66 : 68;
+                if (text_w(&FONT_M, t) <= room)
+                    cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
+                else if (text_w(&FONT_B, t) <= room + 8)
+                    cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_WHITE : C_HI);
+                else
+                    cv_text(x + 38, y + 21, &FONT_XS, t, lit ? C_WHITE : C_HI);
+            }
         }
         cv_blit(0, 34);
         cv_begin(240, 70, C_BG);
@@ -2404,6 +2515,8 @@ int app_expect(const char *what, int *got)
         app_splash();
         *got = 0;
     }
+    else if (!strncmp(what, "user", 4) && !strcmp(what + strlen(what) - 5, "_used"))   /* userN_used: slot N */
+        *got = users.u[(uint32_t)(atoi(what + 4) - 1) % NUSER].used;
     else if (!strcmp(what, "shed_note"))     /* the note the last shed let go */
         *got = (int)eng_shed_note();
     else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */

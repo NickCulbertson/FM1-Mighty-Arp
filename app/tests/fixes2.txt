@@ -1,0 +1,77 @@
+# The third review (Codex, Nov 2026): saves, panic's channel, VOICES (tests/run_tests.sh)
+wait 600
+tap PLAY
+wait 30
+expect arp 0
+expect preset 0
+# a USER save the flash refuses: nothing changes (the slot stays empty, the sound playing stays)
+tap HOME
+wait 30
+expect page 16
+flash_fail 1
+tap SAVE
+wait 30
+expect user1_used 0
+expect preset 0
+flash_fail 0
+# one it takes: the slot, and the sound playing is it; after a reboot too
+spin PRESET 5
+wait 30
+expect preset 5
+tap SAVE
+wait 30
+expect user1_used 1
+expect preset 60
+shot sounds_saved.png
+reboot
+wait 600
+expect user1_used 1
+expect preset 60
+# All Sound Off on channel 1 leaves a key's note and channel 2's
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+expect arp 0
+key 7 down 100
+wait 30
+midi 91 3E 64
+wait 30
+expect held 2
+midi B0 78 00
+wait 30
+expect held 2
+expect voices 2
+midi B1 78 00
+wait 30
+expect held 1
+key 7 up
+wait 30
+midi 81 3E 00
+wait 30
+expect held 0
+# VOICES to MONO with a chord held: one voice from then on
+spin PRESET -61
+wait 30
+expect preset 60
+spin PRESET 1
+wait 30
+expect preset 0
+key 7 down 100
+key 11 down 100
+key 14 down 100
+wait 100
+expect voices 3
+tap SEL
+wait 30
+tap SEL
+wait 30
+spin K1 1
+wait 30
+expect voice_mode 1
+wait 6000
+expect voices 1
+key 7 up
+key 11 up
+key 14 up
+wait 30

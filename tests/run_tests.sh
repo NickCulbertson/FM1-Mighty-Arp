@@ -28,5 +28,6 @@ run space $H app/tests/space.txt $B/host
 run modes $H app/tests/modes.txt $B/host
 run overload $H app/tests/overload.txt $B/host
 run fixes $H app/tests/fixes.txt $B/host
+run fixes2 $H app/tests/fixes2.txt $B/host
 run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL

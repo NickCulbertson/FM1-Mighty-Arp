@@ -204,7 +204,9 @@ typedef struct {
     int32_t note, gate;                  /* gate: samples before the arp releases it; -1 a key holds it */
     uint32_t age;
     uint8_t on, rel, shed, wv[4], att[4];   /* att[k]: operator k still rising; shed: fading out for the CPU */
-    const int16_t *tab[4];               /* a saw operator's table, for its pitch now (voice_pitch) */
+    const int16_t *tab[4];               /* a table wave's table, for its pitch now (voice_pitch; 0 a sine's) */
+    const int16_t *tab_was[4];           /* the one before, faded out over XF_N samples (xf: how much of it is left) */
+    float xf[4];
     float env[4], pk[4], ai[4], tgt[4], kk[4], sus[4], dk[4], rk[4];
     float lvl[4], lvl0[4], cl[4], cr[4], ic[4];   /* lvl0: before the high-note taper (voice_pitch); ic: 1 a
                                                    * carrier (its envelope ends the voice) */
@@ -241,7 +243,14 @@ static void voice_pitch(voice_t *v)
     for (k = 0; k < 4u; k++) {
         float hz = m * v->rat[k] * SR, lo = v->ic[k] > 0.0f ? 16000.0f : 8000.0f;
         v->inc[k] = m * v->rat[k];
-        v->tab[k] = v->wv[k] == 12u ? tri_band(hz) : saw_band(hz);
+        if (v->wv[k] >= 8u) {            /* a table wave: its band for this pitch; a change mid-note fades across */
+            const int16_t *t = v->wv[k] == 12u ? tri_band(hz) : saw_band(hz);
+            if (v->tab[k] && t != v->tab[k]) {
+                v->tab_was[k] = v->tab[k];
+                v->xf[k] = 1.0f;
+            }
+            v->tab[k] = t;
+        }
         v->lvl[k] = hz <= lo ? v->lvl0[k] : hz >= 20000.0f ? 0.0f : v->lvl0[k] * (20000.0f - hz) / (20000.0f - lo);
     }
 }
@@ -375,6 +384,10 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         }
     }
     v->alg = (uint8_t)(prm.alg & 7u);
+    for (k = 0; k < 4u; k++) {           /* a new note's tables start fresh (no fade from the last note's) */
+        v->tab[k] = 0;
+        v->xf[k] = 0.0f;
+    }
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
     v->on = 1;
     v->rel = 0;
@@ -388,6 +401,17 @@ void eng_note_off(int32_t note)
     for (i = 0; i < ENG_NVOICE; i++)
         if (vc[i].on && vc[i].note == note && vc[i].gate < 0)
             voice_release(&vc[i]);
+}
+
+void eng_note_kill(int32_t note)         /* the voices playing note, out in a few ms */
+{
+    uint32_t i, k;
+    for (i = 0; i < ENG_NVOICE; i++)
+        if (vc[i].on && vc[i].note == note) {
+            voice_release(&vc[i]);
+            for (k = 0; k < 4u; k++)
+                vc[i].kk[k] = vc[i].rk[k] = 0.995f;
+        }
 }
 
 void eng_release_all(void)
@@ -464,6 +488,7 @@ uint32_t eng_cap(int up)                 /* one more voice back (up), or just as
 /* a voice over samples [a, b), one version for each algorithm (alg a constant: what does not modulate or sound is
  * not computed), with every operator a plain sine (sine 1: no wave to choose) or each its own wave */
 #define AI __attribute__((always_inline)) static inline
+#define XF_STEP (1.0f / 256.0f)                  /* a table change's fade, a sample */
 AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const uint32_t alg, const int sine)
 {
     float e0 = v->env[0], e1 = v->env[1], e2 = v->env[2], e3 = v->env[3];
@@ -480,8 +505,12 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     float fb1 = v->fb1, fb2 = v->fb2, fbk = v->fbk;
     uint32_t w0 = v->wv[0], w1 = v->wv[1], w2 = v->wv[2], w3 = v->wv[3], i, rel = v->rel;
     const int16_t *t0 = v->tab[0], *t1 = v->tab[1], *t2 = v->tab[2], *t3 = v->tab[3];
+    const int16_t *u0 = v->tab_was[0], *u1 = v->tab_was[1], *u2 = v->tab_was[2], *u3 = v->tab_was[3];
+    float xf0 = v->xf[0], xf1 = v->xf[1], xf2 = v->xf[2], xf3 = v->xf[3];
     int32_t gate = v->gate;
-#define W(x, w, t) (sine || !(w) ? sin_t(x) : (w) >= 8u ? tab_wave((x), (w), (t)) : wave((x), (w)))   /* a plain
+#define TW(x, w, t, u, xf) ((xf) > 0.0f ? tab_wave((x), (w), (t)) + (tab_wave((x), (w), (u)) - tab_wave((x), (w), (t))) \
+                                                  * (xf) : tab_wave((x), (w), (t)))   /* (fading from u) */
+#define W(x, w, t, u, xf) (sine || !(w) ? sin_t(x) : (w) >= 8u ? TW(x, w, t, u, xf) : wave((x), (w)))   /* a plain
                                                                          * sine, a table wave, or a TX81Z wave */
 #define MODS(k, j) (MOD[alg][k] >> (j) & 1u)
 #define IS_CAR(k) (CAR[alg] >> (k) & 1u)
@@ -491,16 +520,22 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
         ENV_STEP(2);
         ENV_STEP(1);
         ENV_STEP(0);
-        raw = e3 * W(p3 + fbk * (fb1 + fb2), w3, t3);
+        raw = e3 * W(p3 + fbk * (fb1 + fb2), w3, t3, u3, xf3);
         fb2 = fb1;
         fb1 = raw;
         o3 = raw * lv3;
         m = MODS(2, 3) ? o3 : 0.0f;
-        o2 = e2 * lv2 * W(p2 + m, w2, t2);
+        o2 = e2 * lv2 * W(p2 + m, w2, t2, u2, xf2);
         m = (MODS(1, 2) ? o2 : 0.0f) + (MODS(1, 3) ? o3 : 0.0f);
-        o1 = e1 * lv1 * W(p1 + m, w1, t1);
+        o1 = e1 * lv1 * W(p1 + m, w1, t1, u1, xf1);
         m = (MODS(0, 1) ? o1 : 0.0f) + (MODS(0, 2) ? o2 : 0.0f) + (MODS(0, 3) ? o3 : 0.0f);
-        o0 = e0 * lv0 * W(p0 + m, w0, t0);
+        o0 = e0 * lv0 * W(p0 + m, w0, t0, u0, xf0);
+        if (!sine) {                     /* the table fades, ~6 ms */
+            xf0 = xf0 > 0.0f ? xf0 - XF_STEP : 0.0f;
+            xf1 = xf1 > 0.0f ? xf1 - XF_STEP : 0.0f;
+            xf2 = xf2 > 0.0f ? xf2 - XF_STEP : 0.0f;
+            xf3 = xf3 > 0.0f ? xf3 - XF_STEP : 0.0f;
+        }
         l[i] += cl0 * o0 + (IS_CAR(1) ? cl1 * o1 : 0.0f) + (IS_CAR(2) ? cl2 * o2 : 0.0f) + (IS_CAR(3) ? cl3 * o3 : 0.0f);
         r[i] += cr0 * o0 + (IS_CAR(1) ? cr1 * o1 : 0.0f) + (IS_CAR(2) ? cr2 * o2 : 0.0f) + (IS_CAR(3) ? cr3 * o3 : 0.0f);
         p0 += n0;
@@ -536,6 +571,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     v->att[0] = (uint8_t)at0, v->att[1] = (uint8_t)at1, v->att[2] = (uint8_t)at2, v->att[3] = (uint8_t)at3;
     v->ph[0] = p0, v->ph[1] = p1, v->ph[2] = p2, v->ph[3] = p3;
     v->fb1 = fb1, v->fb2 = fb2;
+    v->xf[0] = xf0, v->xf[1] = xf1, v->xf[2] = xf2, v->xf[3] = xf3;
     v->gate = gate;
     v->rel = (uint8_t)rel;
 }
