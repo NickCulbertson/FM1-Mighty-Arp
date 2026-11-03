@@ -579,6 +579,7 @@ static void midi_rt(uint32_t st) { plat_midi_send(0x0Fu | st << 8, TO_USB); }   
 /* the arp's MIDI out: each note it sent and the sample clock its note-off is due at */
 static int16_t out_note[NHELD];
 static uint32_t out_end[NHELD];
+static uint16_t arp_chs;                 /* the MIDI channels whose notes the arp has played since this chord began */
 static int16_t out_root[NHELD];          /* the held note it came from (a chord's root, a tone's), and the MIDI */
 static uint16_t out_chs[NHELD];           /* channels holding that then: a panic stops only its channels' */
 static uint32_t rend_i;                  /* the render's place in the block: where an event falls */
@@ -689,7 +690,8 @@ static void held_add(int32_t note, uint32_t vel)
     held_seq[i] = ++held_seq_n;
     held_src[i] = held_by;
     held_ch[i] = held_by_ch;
-    nheld++;
+    if (!nheld++)                        /* a new chord: the channels the arp plays for start over */
+        arp_chs = 0;
     if (!arp_on_now) {
         eng_note_on(note, vel, -1);
         midi_note((uint32_t)note, vel);
@@ -785,6 +787,7 @@ static void play(int32_t note, uint32_t vel, int32_t gate, int32_t root)   /* on
     for (h = 0; h < nheld && held[h] != root; h++)
         ;
     out_chs[i] = h < nheld && held_src[h] & DN_MIDI ? held_ch[h] : 0u;
+    arp_chs |= out_chs[i];
     midi_note((uint32_t)note, vel);
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
     viz_w = viz_w + 1u;
@@ -1256,8 +1259,8 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
                 midi_off((uint32_t)out_note[i]);
                 out_note[i] = -1;
             }
-        if (sound_off && !nheld)         /* All Sound Off, nothing left held: every voice is the arp's, the earlier
-                                          * steps' releases too */
+        if (sound_off && !nheld && arp_chs & chans)   /* All Sound Off, nothing left held, on a channel the arp
+                                          * played for: every voice is the arp's, the earlier steps' releases too */
             for (i = 0; i < 128u; i++)
                 eng_note_kill((int32_t)i);
     }
@@ -2465,29 +2468,48 @@ static int set_par(uint32_t p, int32_t v)    /* 1 = changed */
 }
 
 static void page_go(uint32_t pg);
-/* RESETS's FACTORY: as a new FM-1 (for testing): the settings as new, every USER preset gone, both written to the
- * flash, then HOME */
+/* RESETS's FACTORY: as a new FM-1 (for testing): every USER preset gone and the settings as new, each written to the
+ * flash, then HOME. The empty bank is written before the one in memory changes: a write the flash refuses leaves the
+ * presets as they were (a later SAVE never writes a bank emptied only in memory) */
 static void factory_reset(void)
 {
-    uint32_t f = plat_lock(), k;
-    uint8_t *b = (uint8_t *)&users;
-    held_clear();
-    arp_cancel();
-    eng_release_all();
-    for (k = 0; k < sizeof users; k++)
-        b[k] = 0;
-    users.magic = USER_MAGIC;
-    settings_defaults();
-    plat_unlock(f);
-    ui.save_slot = 0;
-    if (plat_store_save(OBJ_USER, &users, sizeof users) != 0 || plat_store_save(OBJ_SETTINGS, &set, sizeof set) != 0) {
-        set_dirty = 1;
+    static uint8_t blank[sizeof users];
+    uint32_t f, k;
+    for (k = 0; k < sizeof blank; k++)
+        blank[k] = 0;
+    blank[0] = USER_MAGIC & 0xFFu;
+    blank[1] = USER_MAGIC >> 8 & 0xFFu;
+    blank[2] = USER_MAGIC >> 16 & 0xFFu;
+    blank[3] = USER_MAGIC >> 24;
+    if (plat_store_save(OBJ_USER, blank, sizeof blank) != 0) {
         page_go(PG_HOME);
         app_say("FACTORY RESET", "NOT SAVED");
         return;
     }
-    set_dirty = 0;
+    f = plat_lock();
+    held_clear();
+    for (k = 0; k < 128u; k++)           /* the keys and MIDI notes down: none (a key still pressed comes back, at the
+                                          * octave as new, on the next scan) */
+        down[k] = 0, midi_down[k] = 0, midi_played[k] = 0;
+    ndown = 0;
+    ui.keys = 0;
+    arp_cancel();
+    eng_release_all();
+    {
+        uint8_t *b = (uint8_t *)&users;
+        for (k = 0; k < sizeof users; k++)
+            b[k] = blank[k];
+    }
+    settings_defaults();
+    plat_unlock(f);
+    ui.save_slot = 0;
     page_go(PG_HOME);
+    if (plat_store_save(OBJ_SETTINGS, &set, sizeof set) != 0) {
+        set_dirty = 1;
+        app_say("PRESETS CLEARED", "SETTINGS NOT SAVED");
+        return;
+    }
+    set_dirty = 0;
     app_say("FACTORY", "RESET");
 }
 
@@ -2570,7 +2592,7 @@ static void param_turn(uint32_t p, int32_t d)
     if (p == PX_FACTORY) {                   /* FACTORY: a detent right SURE?, another everything as new; left, KEEP */
         if (d < 0)
             ui.factory_arm = 0;
-        else if (++ui.factory_arm >= 2u) {
+        else if ((ui.factory_arm += (uint8_t)(d > 2 ? 2 : d)) >= 2u) {
             ui.factory_arm = 0;
             factory_reset();
             return;

@@ -10,6 +10,11 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
       the arp's chords, RESET mid-strum, swung strums, the names' generator); tests green
 - [x] GPT's eighth review (`ce7429c..8ce5404`): both panic findings fixed (a channel's queued and sounding arp
       notes stop, another's play on; All Notes Off releases the arp's gated voices)
+- [x] GPT's ninth review (`8ce5404..03fc476`): FACTORY with a failing flash keeps the presets; FACTORY clears
+      the keys held; All Sound Off on a channel the arp didn't play for leaves its notes; the manual's path
+- [ ] Known, left for the beta: a root handed from one MIDI channel to another while sounding (channel 1 starts
+      C4, channel 2 takes it over, channel 3 holds another root): All Sound Off on channel 2 misses C's chord
+      tones (they end at their gate). Rare; fix only if it shows up in real use
 - [ ] GPT's suggested beta test on the FM-1: ten VA notes, long releases, shimmer up, a swung strum, MIDI in and out
 - [ ] Open from before: MONO's fade-then-restart (decide: fix for 0.1, or later)
 - [ ] Open from before: migration fixtures from real old firmware (decide: worth it before 0.1, now that there

@@ -8,7 +8,7 @@ the notes; the arp decides when they play. Hold a chord, set CHANCE, and let it 
 ## Install
 
 In Chrome or Edge, connect the FM-1 by USB, open the installer and press Install. Allow MIDI when the browser
-asks. Don't unplug it while it writes. From a terminal: `python3 tools/fm1_install.py mightyarp-VERSION.fwsc`.
+asks. Don't unplug it while it writes. From a terminal, in this repository: `python3 base/tools/fm1_install.py mightyarp-VERSION.fwsc`.
 The installer can also put M-VAVE's own firmware back. You can try everything first in the browser emulator.
 
 ## Playing

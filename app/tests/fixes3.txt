@@ -214,3 +214,19 @@ wait 350
 expect voices 0
 expect held 0
 expect dsp_resets 0
+# All Sound Off on a channel that played nothing, the arp's chord let go on channel 1 (its gates still open): it
+# plays out;
+# on channel 1, they stop
+midi 90 3C 64
+wait 1500
+expect arp_notes >0
+midi 80 3C 00
+wait 20
+expect held 0
+expect voices >0
+midi B1 78 00
+wait 100
+expect voices >0
+midi B0 78 00
+wait 350
+expect voices 0
