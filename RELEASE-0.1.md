@@ -14,6 +14,8 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
       the keys held; All Sound Off on a channel the arp didn't play for leaves its notes; the manual's path
 - [x] GPT's tenth review (`03fc476..9ace38b`): FACTORY never goes through SURE? in one turn; All Sound Off stops
       only the voices its channel's notes made; a key held through FACTORY sounds again
+- [x] GPT's eleventh review (`9ace38b..9e8ff31`): FACTORY confirmed by SAVE (no knob turn erases); a note two
+      channels hold stops only when neither does
 - [ ] Known, left for the beta: a root handed from one MIDI channel to another while sounding (channel 1 starts
       C4, channel 2 takes it over, channel 3 holds another root): All Sound Off on channel 2 misses C's chord
       tones (they end at their gate). Rare; fix only if it shows up in real use

@@ -61,7 +61,7 @@ effects carry on. On **CHANGE**, a USER preset brings back everything it saved, 
 default arp and effects.
 
 **Reset:** press GLO twice for RESETS. Turn PARAMS one click right to RESET: the arp, chords and effects go back to
-their defaults; the sound and tempo stay. FACTORY, turned right to SURE? and then turned again, puts everything back as
+their defaults; the sound and tempo stay. FACTORY, turned right to SURE? and then SAVE pressed, puts everything back as
 new and deletes every USER preset.
 
 **SAVE on any other page** keeps how things are now for the next power-on.

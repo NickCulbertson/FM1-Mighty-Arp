@@ -135,7 +135,7 @@ expect page 21
 flash_fail 1
 spin K2 1
 wait 30
-spin K2 1
+tap SAVE
 wait 30
 flash_fail 0
 expect user1_used 1
@@ -149,7 +149,8 @@ reboot
 wait 600
 expect user1_used 1
 expect user2_used 1
-# RESETS's FACTORY: a turn SURE? (a fast one too, never through it), back left KEEP; a turn more: every USER preset gone, the settings as new, kept
+# RESETS's FACTORY: a turn SURE?, back left KEEP; turned on and on, nothing more (a turn never erases); SAVE on
+# SURE?: every USER preset gone, the settings as new, kept
 tap GLO
 wait 30
 tap GLO
@@ -162,9 +163,13 @@ spin K2 -1
 wait 30
 spin K2 3
 wait 30
+spin K2 1
+wait 30
+spin K2 1
+wait 30
 expect user1_used 1
 expect page 21
-spin K2 1
+tap SAVE
 wait 30
 expect user1_used 0
 expect user2_used 0
@@ -191,7 +196,7 @@ tap GLO
 wait 30
 spin K2 1
 wait 30
-spin K2 1
+tap SAVE
 wait 30
 expect octave 0
 wait 100

@@ -1263,9 +1263,10 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
                                           * the arp play, the earlier steps' releases too (another channel's own play
                                           * on: the pitch is theirs once they play it) */
             for (i = 0; i < 128u; i++)
-                if (arp_note_chs[i] & chans) {
-                    arp_note_chs[i] = 0;
-                    eng_note_kill((int32_t)i);
+                if (arp_note_chs[i] & chans) {   /* (this channel's claim gone; another still holding it: on) */
+                    arp_note_chs[i] &= (uint16_t)~chans;
+                    if (!arp_note_chs[i])
+                        eng_note_kill((int32_t)i);
                 }
     }
     for (i = 0; i < 128u; i++)           /* their notes no longer held, a release still ringing too */
@@ -2036,7 +2037,7 @@ static struct {
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
     uint32_t reset_arm;                  /* GLOBAL's PARAMS: KEEP, or turned right RESET (done) */
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
-    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (a turn more: done) */
+    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (SAVE: done) */
     uint8_t rescan;                      /* the keys as up after this scan: one still pressed sounds again (FACTORY) */
     uint8_t redraw;
 } ui;
@@ -2594,16 +2595,13 @@ static void param_turn(uint32_t p, int32_t d)
         }
         return;
     }
-    if (p == PX_FACTORY) {                   /* FACTORY: a turn right SURE? (however fast: never through it in one), a
-                                              * turn more after that everything as new; left, KEEP */
+    if (p == PX_FACTORY) {                   /* FACTORY: a turn right SURE?; SAVE then erases (no turn of the knob, however
+                                              * quick, ever does); left, KEEP */
         if (d < 0)
             ui.factory_arm = 0;
-        else if (!ui.factory_arm)
+        else if (!ui.factory_arm) {
             ui.factory_arm = 1;
-        else {
-            ui.factory_arm = 0;
-            factory_reset();
-            return;
+            app_say("FACTORY", "SAVE TO ERASE ALL");
         }
         ui.redraw = 1;
         return;
@@ -2750,6 +2748,9 @@ static void input(void)
             set.hold = (uint8_t)((set.hold + 1u) % 3u);
             set_dirty = 1;
             app_say(HOLD_NAME[set.hold], "");
+        } else if (k == B_SAVE && ui.page == PG_RESETS && ui.factory_arm) {   /* RESETS, FACTORY on SURE?: done */
+            ui.factory_arm = 0;
+            factory_reset();
         } else if (k == B_SAVE && ui.page == PG_SOUNDS) {   /* on SOUNDS: the sound into the USER slot chosen */
             char nm[16];
             if (user_store(ui.save_slot) != 0)
@@ -3199,7 +3200,7 @@ static void draw(void)
                 [PG_SOUNDS] = "SAVE: INTO THE SLOT", [PG_ENV] = "ENV AGAIN: FILTER",
                 [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1",
                 [PG_ARP] = "ARP AGAIN: CHORDS", [PG_CHORDS] = "ARP AGAIN: ARP",
-                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "GLO AGAIN: GLOBAL"};
+                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "FACTORY: SURE?, THEN SAVE"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);

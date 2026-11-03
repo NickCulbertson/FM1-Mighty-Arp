@@ -256,3 +256,16 @@ wait 20
 midi B0 78 00
 wait 100
 expect voices 1
+# C held on channels 1 and 2 (both at its attack): All Sound Off on channel 1 leaves it, channel 2 still owns it
+midi 90 3C 64
+midi 91 3C 64
+wait 1800
+expect voices >0
+midi B0 78 00
+wait 100
+expect held 1
+expect voices >0
+midi B1 78 00
+wait 100
+expect held 0
+expect voices 0
