@@ -451,15 +451,16 @@ static inline float ch_read(float d)
     return ch_buf[i & (CH_N - 1)] + (ch_buf[(i + 1) & (CH_N - 1)] - ch_buf[i & (CH_N - 1)]) * f;
 }
 
-/* the ping-pong delay: two lines of int16, up to 0.74 s; the read point slews to a new time like tape */
+/* the ping-pong delay: two lines of int16 at half the rate (each slot two samples, averaged), so up to 1.49 s; the
+ * read point slews to a new time like tape */
 #define DLY_N 32768u
 static PLAT_POOL int16_t dly_l[DLY_N], dly_r[DLY_N];
-static uint32_t dly_w;
-static float dly_t, dly_lp_l, dly_lp_r, dmix_now, rmix_now;
+static uint32_t dly_w, dly_odd;          /* the slot being filled, and which of its two samples this is */
+static float dly_t, dly_lp_l, dly_lp_r, dly_acc_l, dly_acc_r, dmix_now, rmix_now;
 
-static inline float dly_read(const int16_t *b, float d)
+static inline float dly_read(const int16_t *b, float d)   /* d samples back */
 {
-    float p = (float)dly_w - d, f;
+    float p = (float)dly_w + (dly_odd ? 0.5f : 0.0f) - d * 0.5f, f;
     int32_t i;
     if (p < 0.0f)
         p += (float)DLY_N;
@@ -582,7 +583,7 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
     const eng_params_t *p = &prm;
     uint32_t i, k;
     int bad = 0;
-    float dtarget = fm_minf(p->dly_samples, (float)(DLY_N - 4u)), fb = p->dly_fb;
+    float dtarget = fm_clampf(p->dly_samples, 8.0f, ENG_DLY_MAX), fb = p->dly_fb;
     float damp = 0.05f + 0.85f * p->rev_dark, shim = p->shimmer * 0.7f;
     float tl = trem_l, tr = trem_r, dtl = (trem_l_to - trem_l) / (float)n, dtr = (trem_r_to - trem_r) / (float)n;
     if (fm_fabsf(p->rev_secs - rv_secs_now) > 0.001f) {   /* the decay time: each line's gain for 60 dB in it */
@@ -618,9 +619,15 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
         dr = dly_read(dly_r, dly_t);
         dly_lp_l += (dl - dly_lp_l) * 0.45f;
         dly_lp_r += (dr - dly_lp_r) * 0.45f;
-        dly_l[dly_w] = to16((xl + xr) * 0.5f + dly_lp_r * fb);
-        dly_r[dly_w] = to16(dly_lp_l * fb);
-        dly_w = (dly_w + 1u) & (DLY_N - 1u);
+        dly_acc_l += (xl + xr) * 0.5f + dly_lp_r * fb;
+        dly_acc_r += dly_lp_l * fb;
+        if (dly_odd) {
+            dly_l[dly_w] = to16(dly_acc_l * 0.5f);
+            dly_r[dly_w] = to16(dly_acc_r * 0.5f);
+            dly_acc_l = dly_acc_r = 0.0f;
+            dly_w = (dly_w + 1u) & (DLY_N - 1u);
+        }
+        dly_odd ^= 1u;
         dmix_now += (p->dly_mix - dmix_now) * 0.001f;
         rmix_now += (p->rev_mix - rmix_now) * 0.001f;
         outl = xl + dl * dmix_now;
@@ -670,7 +677,7 @@ void eng_reset(void)
         ch_buf[i] = 0.0f;
     for (i = 0; i < SH_N; i++)
         sh_buf[i] = 0.0f;
-    dly_lp_l = dly_lp_r = 0.0f;
+    dly_lp_l = dly_lp_r = dly_acc_l = dly_acc_r = 0.0f;
     dc_xl = dc_yl = dc_xr = dc_yr = 0.0f;
 }
 

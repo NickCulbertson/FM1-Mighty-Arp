@@ -34,9 +34,9 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
 | EDIT | ALGO (1-8) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8) |
-| ARP | RATE (1/1 .. 1/32) | OCTAVES | MODE | GATE |
+| ARP | RATE (1/1 .. 1/32) | OCTAVES | MODE (UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB, PINKY, CHORD, RANDOM, WALK) | GATE |
 | SEQ | RATCHET (chance) | OCT JUMP (chance) | VEL RAND | SWING |
-| DELAY | TIME | FEEDBACK | MIX | CHORUS |
+| DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | CHORUS |
 | REVERB | MIX | LENGTH (0.5 s .. 100 s) | DARK | SHIMMER |
 | GLOBAL | SYNC (INT / EXT) | CLOCK OUT (OFF / ON) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) |
 
@@ -68,6 +68,8 @@ sound mid-piece keeps its rhythm and its space.
 Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 
 - Chorus: stereo, two taps moving in opposite directions.
+- Delay: ping-pong, int16 at half the rate, up to 1.49 s; a time longer than that at a slow tempo is halved (still in
+  time).
 - Reverb: the same 4-line feedback network, lines about 3x longer, stored 16-bit, slowly modulated; LENGTH as a
   decay time up to 100 s. SHIMMER: an octave-up pitch shifter in the reverb's feedback.
 
@@ -75,7 +77,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 
 - Synthwave colours: a deep violet ground, cyan labels, hot pink values, knobs and new notes, electric purple for
   the sound, the tempo and notes as they age, faint violet ghosts for the steps the chance skipped.
-- Knobs as arcs.
+- Knobs as smooth arcs over a purple glow that brightens as the value rises.
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros.
 - The state line: PLAY ARP/KEYS, REC hold mode, BPM, ARP CHANCE.
 

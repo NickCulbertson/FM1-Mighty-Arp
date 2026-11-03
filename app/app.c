@@ -31,6 +31,8 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_SPACE = NP };                               /* HOME's macro: the reverb's mix and length together */
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE, U_SECS,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
+/* the arp's modes */
+enum { M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_PINKY, M_CHORD, M_RANDOM, M_WALK, NMODE };
 typedef struct {
     const char *name, *id;               /* id: the host tests' name for it */
     int16_t lo, hi, def;
@@ -46,10 +48,10 @@ static const param_t PAR[NP] = {
     {"ALGO", "algo", 0, 7, 4, U_NUM1},           {"RATIO", "ratio", 0, 7, 1, U_RATIO},
     {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"WAVE", "wave", 0, 7, 0, U_WAVE},
     {"RATE", "rate", 0, 7, 3, U_DIV},            {"OCTAVES", "octaves", 1, 4, 2, U_OCT},
-    {"MODE", "mode", 0, 3, 3, U_MODE},           {"GATE", "gate", 5, 100, 50, U_PCT},
+    {"MODE", "mode", 0, NMODE - 1, M_RANDOM, U_MODE},           {"GATE", "gate", 5, 100, 50, U_PCT},
     {"RATCHET", "ratchet", 0, 100, 0, U_PCT},    {"OCT JUMP", "oct_jump", 0, 100, 0, U_PCT},
     {"VEL RAND", "vel_rand", 0, 100, 20, U_PCT}, {"SWING", "swing", 0, 100, 0, U_PCT},
-    {"TIME", "dly_time", 0, 7, 3, U_DDIV},       {"FEEDBACK", "dly_fdbk", 0, 95, 45, U_PCT},
+    {"TIME", "dly_time", 0, 8, 4, U_DDIV},       {"FEEDBACK", "dly_fdbk", 0, 95, 45, U_PCT},
     {"MIX", "dly_mix", 0, 100, 30, U_PCT},       {"CHORUS", "chorus", 0, 100, 25, U_PCT},
     {"MIX", "rev_mix", 0, 100, 40, U_PCT},       {"LENGTH", "rev_len", 0, 100, 55, U_SECS},
     {"DARK", "rev_dark", 0, 100, 40, U_PCT},     {"SHIMMER", "shimmer", 0, 100, 0, U_PCT},
@@ -80,10 +82,10 @@ static const page_t PAGE[NPAGE] = {
 /* the arp's steps (in MIDI clocks: 24 a beat) and the delay's times (in beats) */
 static const char *const DIV_NAME[8] = {"1/1", "1/2", "1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"};
 static const uint8_t DIV_TICKS[8] = {96, 48, 24, 12, 8, 6, 4, 3};
-static const char *const DDIV_NAME[8] = {"1/16", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2"};
-static const float DDIV_BEATS[8] = {0.25f, 1.0f / 3.0f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f, 1.5f, 2.0f};
-enum { M_UP, M_DOWN, M_UPDN, M_RANDOM };
-static const char *const MODE_NAME[4] = {"UP", "DOWN", "UP-DN", "RANDOM"};
+static const char *const DDIV_NAME[9] = {"1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2"};
+static const float DDIV_BEATS[9] = {0.25f, 0.375f, 1.0f / 3.0f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f, 1.5f, 2.0f};
+static const char *const MODE_NAME[NMODE] = {"UP", "DOWN", "UP-DN", "AS PLAYED", "CONVERGE", "DIVERGE", "THUMB",
+                                             "PINKY", "CHORD", "RANDOM", "WALK"};
 static const char *const SHAPE_NAME[LFO_NSHAPE] = {"SINE", "TRI", "SQUARE", "S&H", "DRIFT"};
 static const char *const RATIO_NAME[8] = {"X1/2", "X1", "X2", "X3", "X4", "X5", "X6", "X7"};
 static const float RATIO_MUL[8] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f};
@@ -238,7 +240,7 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3152414Du            /* "MAR1": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x3252414Du            /* "MAR2": the settings record; another magic loads defaults */
 typedef struct {
     uint32_t magic;
     int16_t p[NP];
@@ -283,6 +285,7 @@ static void ev_push(uint32_t type, uint32_t note, uint32_t vel)
 /* the notes the arp plays from (or the keys hold, with the arp off): sorted, with their velocities */
 static int32_t held[NHELD];
 static uint8_t held_vel[NHELD];
+static uint32_t held_seq[NHELD], held_seq_n;   /* when each was added: AS PLAYED's order */
 static uint32_t nheld;
 static uint8_t down[128];                /* physically down (keys and MIDI in): HOLD and LATCH keep the rest */
 static uint32_t ndown;
@@ -342,9 +345,11 @@ static void held_add(int32_t note, uint32_t vel)
     for (j = nheld; j > i; j--) {
         held[j] = held[j - 1];
         held_vel[j] = held_vel[j - 1];
+        held_seq[j] = held_seq[j - 1];
     }
     held[i] = note;
     held_vel[i] = (uint8_t)vel;
+    held_seq[i] = ++held_seq_n;
     nheld++;
     if (!arp_on_now) {
         eng_note_on(note, vel, -1);
@@ -362,6 +367,7 @@ static void held_remove(int32_t note)
     for (; i + 1 < nheld; i++) {
         held[i] = held[i + 1];
         held_vel[i] = held_vel[i + 1];
+        held_seq[i] = held_seq[i + 1];
     }
     nheld--;
     if (!arp_on_now) {
@@ -382,8 +388,12 @@ static void held_clear(void)
 static float tick_acc;                   /* the internal clock: fractions of a tick */
 static uint32_t tick_n = 191u;           /* the tick in two bars, 0..191 (every step length divides it) */
 static int32_t swing_wait, rat_wait;     /* samples to a swung step, and to the next ratchet hit */
-static int32_t rat_left, rat_note, rat_vel, rat_gate, rat_sub;
-static int32_t arp_i, arp_dir = 1;
+static int32_t rat_left, rat_gate, rat_sub;
+static int32_t arp_s = -1, arp_k;        /* steps since the pattern began; WALK's place */
+static int32_t st_note[NHELD];           /* the step's notes (one, or CHORD's), for its ratchet hits */
+static uint8_t st_vel[NHELD];
+static uint32_t st_n;
+static volatile int32_t last_played = -1;
 static uint8_t ext_run = 1;              /* EXT: Stop holds the clock, Start and Continue run it */
 static uint32_t ext_last, ext_sc0, ext_cnt;   /* the last tick's sample clock; the period's measure */
 static float ext_per = 44100.0f * 60.0f / (120.0f * 24.0f);   /* samples a tick, measured */
@@ -414,77 +424,132 @@ static void play(int32_t note, uint32_t vel, int32_t gate)   /* one of the arp's
     viz[viz_w % VIZ_N] = (uint32_t)note | vel << 8 | (sample_clock / 441u) << 16;
     viz_w = viz_w + 1u;
     arp_count = arp_count + 1u;
+    last_played = note;
+}
+
+static uint32_t played_index(uint32_t j, uint32_t n)   /* the held note pressed j-th (of those still held) */
+{
+    uint32_t i, m, c;
+    for (i = 0; i < n; i++) {
+        for (m = 0, c = 0; m < n; m++)
+            c += held_seq[m] < held_seq[i];
+        if (c == j)
+            return i;
+    }
+    return 0;
+}
+
+/* the place in the run (the held notes low to high, then an octave up, ...) that step s of the pattern plays */
+static uint32_t pattern_place(uint32_t s, uint32_t L)
+{
+    uint32_t t, P;
+    switch (set.p[P_MODE]) {
+    case M_DOWN:
+        return L - 1u - s % L;
+    case M_UPDN:                         /* no repeats at the ends */
+        if (L < 2u)
+            return 0;
+        P = 2u * L - 2u;
+        t = s % P;
+        return t < L ? t : P - t;
+    case M_CONVERGE:                     /* the outside in: low, high, next low, next high */
+        t = s % L;
+        return t & 1u ? L - 1u - t / 2u : t / 2u;
+    case M_DIVERGE:                      /* the inside out */
+        t = L - 1u - s % L;
+        return t & 1u ? L - 1u - t / 2u : t / 2u;
+    case M_THUMB:                        /* the lowest between each of the others */
+        if (L < 2u)
+            return 0;
+        t = s % (2u * L - 2u);
+        return t & 1u ? 1u + t / 2u : 0;
+    case M_PINKY:                        /* the highest between each of the others */
+        if (L < 2u)
+            return 0;
+        t = s % (2u * L - 2u);
+        return t & 1u ? t / 2u : L - 1u;
+    case M_RANDOM:
+        return rnd_n(L);
+    case M_WALK:                         /* a step up or down from the last, at random */
+        if (L < 2u || s == 0 || arp_k >= (int32_t)L)
+            arp_k = 0;
+        else {
+            arp_k += rnd() & 1u ? 1 : -1;
+            if (arp_k < 0)
+                arp_k = 1;
+            else if (arp_k >= (int32_t)L)
+                arp_k = (int32_t)L - 2;
+        }
+        return (uint32_t)arp_k;
+    default:                             /* UP, AS PLAYED */
+        return s % L;
+    }
 }
 
 static void arp_step(void)
 {
-    uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], len, vel;
-    int32_t note, gate, vr;
+    uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], s, i, k, idx;
+    int32_t gate, vr, j;
     float step = step_samples();
     if (!n)
         return;
-    len = n * oct;
-    switch (set.p[P_MODE]) {             /* the pattern moves every step, played or not */
-    case M_UP:
-        arp_i = (arp_i + 1) % (int32_t)len;
-        break;
-    case M_DOWN:
-        arp_i = arp_i <= 0 || arp_i >= (int32_t)len ? (int32_t)len - 1 : arp_i - 1;
-        break;
-    case M_UPDN:
-        if (len < 2) {
-            arp_i = 0;
-            break;
+    s = (uint32_t)++arp_s;               /* the pattern moves every step, played or not */
+    if (set.p[P_MODE] == M_CHORD) {      /* CHORD: every held note at once, an octave higher each step */
+        for (i = 0; i < n; i++) {
+            st_note[i] = held[i] + 12 * (int32_t)(s % oct);
+            st_vel[i] = held_vel[i];
         }
-        arp_i += arp_dir;
-        if (arp_i >= (int32_t)len) {
-            arp_dir = -1;
-            arp_i = (int32_t)len - 2;
-        } else if (arp_i < 0) {
-            arp_dir = 1;
-            arp_i = 1;
-        }
-        break;
-    default:
-        arp_i = (int32_t)rnd_n(len);
-        break;
+        st_n = n;
+    } else {
+        k = pattern_place(s, n * oct);
+        idx = set.p[P_MODE] == M_PLAYED ? played_index(k % n, n) : k % n;
+        st_note[0] = held[idx] + 12 * (int32_t)(k / n);
+        st_vel[0] = held_vel[idx];
+        st_n = 1;
     }
-    if (arp_i >= (int32_t)len)
-        arp_i = 0;
-    note = held[arp_i % (int32_t)n] + 12 * (arp_i / (int32_t)n);
-    while (note > 127)
-        note -= 12;
-    if (rnd_n(100) >= (uint32_t)set.p[P_CHANCE]) {   /* the chance: this step rests (a ghost on the screen) */
-        viz[viz_w % VIZ_N] = (uint32_t)note | (sample_clock / 441u) << 16;
-        viz_w = viz_w + 1u;
+    for (i = 0; i < st_n; i++)
+        while (st_note[i] > 127)
+            st_note[i] -= 12;
+    rat_wait = 0;
+    if (rnd_n(100) >= (uint32_t)set.p[P_CHANCE]) {   /* the chance: this step rests (ghosts on the screen) */
+        for (i = 0; i < st_n; i++) {
+            viz[viz_w % VIZ_N] = (uint32_t)st_note[i] | (sample_clock / 441u) << 16;
+            viz_w = viz_w + 1u;
+        }
         return;
     }
     if (rnd_n(100) < (uint32_t)set.p[P_OJUMP]) {     /* OCT JUMP: an octave away, up or down */
-        int32_t j = rnd() & 1u ? 12 : -12;
-        note = note + j >= 0 && note + j <= 127 ? note + j : note - j;
+        j = rnd() & 1u ? 12 : -12;
+        for (i = 0; i < st_n; i++)
+            if (st_note[i] + j < 0 || st_note[i] + j > 127)
+                j = -j;
+        for (i = 0; i < st_n; i++)
+            if (st_note[i] + j >= 0 && st_note[i] + j <= 127)
+                st_note[i] += j;
     }
     vr = set.p[P_VRAND] * 6 / 10;                    /* VEL RAND: up to +-60 */
-    vel = (uint32_t)clamp((int32_t)held_vel[arp_i % (int32_t)n] + (vr ? (int32_t)rnd_n((uint32_t)(2 * vr + 1)) - vr : 0),
-                          1, 127);
+    for (i = 0; i < st_n; i++)
+        st_vel[i] = (uint8_t)clamp((int32_t)st_vel[i] + (vr ? (int32_t)rnd_n((uint32_t)(2 * vr + 1)) - vr : 0), 1, 127);
     gate = (int32_t)(step * (float)set.p[P_GATE] / 100.0f);
-    rat_wait = 0;
     if (rnd_n(100) < (uint32_t)set.p[P_RATCHET]) {   /* RATCHET: the step in 2 or 3 quick hits */
         int32_t hits = 2 + (int32_t)rnd_n(2);
         rat_sub = (int32_t)(step / (float)hits);
         gate = gate / hits;
         rat_left = hits - 1;
         rat_wait = rat_sub;
-        rat_note = note;
-        rat_vel = (int32_t)vel;
-        rat_gate = gate < 64 ? 64 : gate;
     }
-    play(note, vel, gate < 64 ? 64 : gate);
+    rat_gate = gate < 64 ? 64 : gate;
+    for (i = 0; i < st_n; i++)
+        play(st_note[i], st_vel[i], rat_gate);
 }
 
 static void ratchet_hit(void)
 {
-    rat_vel = rat_vel * 4 / 5 < 1 ? 1 : rat_vel * 4 / 5;
-    play(rat_note, (uint32_t)rat_vel, rat_gate);
+    uint32_t i;
+    for (i = 0; i < st_n; i++) {
+        st_vel[i] = (uint8_t)(st_vel[i] * 4u / 5u < 1u ? 1u : st_vel[i] * 4u / 5u);
+        play(st_note[i], st_vel[i], rat_gate);
+    }
     if (--rat_left > 0)
         rat_wait = rat_sub;
 }
@@ -509,6 +574,7 @@ static void arp_restart(void)            /* the first note of a new chord: the c
     tick_n = 0;
     tick_acc = 0.0f;
     swing_wait = rat_wait = 0;
+    arp_s = -1;                          /* the pattern from its top */
     arp_step();
 }
 
@@ -641,8 +707,7 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
                 ext_run = st != 0xFCu;
                 if (st == 0xFAu) {
                     tick_n = 191u;       /* the next clock is the first step */
-                    arp_i = -1;
-                    arp_dir = 1;
+                    arp_s = -1;
                 }
                 swing_wait = rat_wait = 0;
             }
@@ -722,6 +787,8 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
     ep.bend = bend;
     ep.chorus = (float)set.p[P_CHORUS] / 100.0f;
     ep.dly_samples = beat * DDIV_BEATS[set.p[P_DTIME]];
+    while (ep.dly_samples > ENG_DLY_MAX)    /* longer than the line at a slow tempo: half, still in time */
+        ep.dly_samples *= 0.5f;
     ep.dly_fb = (float)set.p[P_DFDBK] / 100.0f;
     ep.dly_mix = (float)set.p[P_DMIX] / 100.0f;
     ep.rev_mix = (float)set.p[P_RMIX] / 100.0f * 0.6f;
@@ -1200,28 +1267,90 @@ static void lights(void)
 
 void app_input_only(void) { input(); }
 
-/* a knob: an arc of 270 degrees, from the lower left round to the lower right; its track dim, its value orange */
-#define ARC_N 40u
-static int8_t arc_x[ARC_N + 1], arc_y[ARC_N + 1];   /* unit points, x 64 */
-static void arcs_init(void)
+/* a knob: a smooth arc of 270 degrees, from the lower left round to the lower right, its track dim and its value
+ * pink, over a purple glow that brightens as the knob turns up. Each size's pixels are worked out once: where along
+ * the sweep each lies (0..240; in the gap at the bottom 241..255, further from the ring's ends) and how far it is from
+ * the ring's centre line (x 16) */
+#define KN_GLOW 7                            /* the glow's reach past the ring */
+#define KN_MAX (2 * (15 + KN_GLOW + 1) + 1)
+typedef struct {
+    int32_t r, n;
+    uint8_t pos[KN_MAX * KN_MAX], dist[KN_MAX * KN_MAX];
+} knob_map_t;
+static knob_map_t kn_big, kn_small;          /* the pages' (r 15), HOME's (r 12) */
+
+static float atan2_approx(float y, float x)  /* radians, -pi .. pi (to 0.004) */
 {
-    uint32_t i;
-    for (i = 0; i <= ARC_N; i++) {
-        float a = FM_PI * (0.75f + 1.5f * (float)i / (float)ARC_N);   /* 135 .. 405 degrees, y down */
-        arc_x[i] = (int8_t)(fm_cosf(a) * 63.0f);
-        arc_y[i] = (int8_t)(fm_sinf(a) * 63.0f);
-    }
+    float ax = fm_fabsf(x), ay = fm_fabsf(y), z, a;
+    if (ax < 1e-6f && ay < 1e-6f)
+        return 0.0f;
+    z = ax > ay ? ay / ax : ax / ay;
+    a = z * (0.785398f + 0.273f * (1.0f - z));
+    if (ay > ax)
+        a = 1.570796f - a;
+    if (x < 0.0f)
+        a = FM_PI - a;
+    return y < 0.0f ? -a : a;
 }
-static void knob_arc(int32_t cx, int32_t cy, int32_t r, int32_t frac, uint16_t c)   /* frac 0..ARC_N */
+
+static void knob_map_init(knob_map_t *m, int32_t r)
 {
-    uint32_t i;
-    for (i = 0; i <= ARC_N; i++) {
-        uint16_t col = (int32_t)i <= frac ? c : C_LINE;
-        int32_t x = cx + arc_x[i] * r / 64, y = cy + arc_y[i] * r / 64;
-        int32_t x2 = cx + arc_x[i] * (r - 2) / 64, y2 = cy + arc_y[i] * (r - 2) / 64;
-        cv_rect(x, y, 2, 2, col);
-        cv_rect(x2, y2, 2, 2, col);
-    }
+    int32_t x, y, c;
+    m->r = r;
+    m->n = 2 * (r + KN_GLOW + 1) + 1;
+    c = m->n / 2;
+    for (y = 0; y < m->n; y++)
+        for (x = 0; x < m->n; x++) {
+            float dx = (float)(x - c), dy = (float)(y - c), d = fm_sqrtf(dx * dx + dy * dy) - (float)r + 1.0f;
+            float deg = atan2_approx(dy, dx) * (180.0f / FM_PI) - 135.0f;   /* y down: clockwise from the lower left */
+            uint32_t i = (uint32_t)(y * m->n + x);
+            while (deg < 0.0f)
+                deg += 360.0f;
+            if (deg <= 270.0f)
+                m->pos[i] = (uint8_t)(deg * (240.0f / 270.0f));
+            else                             /* the gap: how far from the nearer end, 0 .. 45 degrees */
+                m->pos[i] = (uint8_t)(241.0f + fm_minf(deg - 270.0f, 360.0f - deg) * (14.0f / 45.0f));
+            m->dist[i] = (uint8_t)fm_minf(fm_fabsf(d) * 16.0f, 255.0f);
+        }
+}
+
+static void knobs_init(void)
+{
+    knob_map_init(&kn_big, 15);
+    knob_map_init(&kn_small, 12);
+}
+
+static uint16_t mix565(uint16_t a, uint16_t b, uint32_t t)   /* a to b, t of 256 */
+{
+    uint32_t r = ((a >> 11) * (256u - t) + (b >> 11) * t) >> 8;
+    uint32_t g = ((a >> 5 & 63u) * (256u - t) + (b >> 5 & 63u) * t) >> 8;
+    uint32_t bl = ((a & 31u) * (256u - t) + (b & 31u) * t) >> 8;
+    return (uint16_t)(r << 11 | g << 5 | bl);
+}
+
+/* frac: how far it is turned, 0..240 */
+static void knob_draw(const knob_map_t *m, int32_t cx, int32_t cy, int32_t frac, uint16_t c)
+{
+    int32_t x, y, h = m->n / 2;
+    uint32_t glow = 30u + (uint32_t)frac * 190u / 240u;   /* the glow's strength, of 256: dim at 0, bright at full */
+    for (y = 0; y < m->n; y++)
+        for (x = 0; x < m->n; x++) {
+            uint32_t i = (uint32_t)(y * m->n + x), d = m->dist[i], pos = m->pos[i];
+            uint16_t col = C_BG;
+            if (d < (KN_GLOW + 1) * 16u) {   /* the glow, fading away from the ring, and round its ends */
+                uint32_t f = (KN_GLOW + 1) * 16u - d, t = glow * f * f / ((KN_GLOW + 1) * 16u * (KN_GLOW + 1) * 16u);
+                if (pos > 240u)
+                    t = t * (255u - pos) / 14u;
+                col = mix565(C_BG, C_AMB, t);
+            }
+            if (d < 32u && pos <= 240u) {    /* the ring: 2 px wide, its edges soft */
+                uint16_t ring = (int32_t)pos <= frac && frac > 0 ? c : C_LINE;
+                uint32_t cov = d <= 16u ? 256u : (32u - d) * 16u;
+                col = mix565(col, ring, cov);
+            }
+            if (col != C_BG)
+                cv_pset(cx - h + x, cy - h + y, col);
+        }
 }
 
 static void header(uint32_t now)
@@ -1315,7 +1444,7 @@ static void draw(void)
             int32_t cx = 37 + (int32_t)i * 55;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
             const char *nm = par_name(p);
-            knob_arc(cx, 19, 12, par_frac(p, (int32_t)ARC_N), lit ? C_WHITE : C_HI);
+            knob_draw(&kn_small, cx, 19, par_frac(p, 240), lit ? C_WHITE : C_HI);
             param_text(p, t);
             cv_text(cx - text_w(&FONT_XS, t) / 2, 34, &FONT_XS, t, lit ? C_WHITE : C_HI);
             cv_text(cx - text_w(&FONT_T, nm) / 2, 51, &FONT_T, nm, C_GRAY);
@@ -1334,10 +1463,13 @@ static void draw(void)
             uint32_t p = pg->p[i];
             int32_t x = 10 + (int32_t)(i % 2u) * 116, y = 22 + (int32_t)(i / 2u) * 44;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
-            knob_arc(x + 16, y + 19, 15, par_frac(p, (int32_t)ARC_N), lit ? C_WHITE : C_HI);
+            knob_draw(&kn_big, x + 16, y + 19, par_frac(p, 240), lit ? C_WHITE : C_HI);
             cv_text(x + 38, y + 2, &FONT_XS, par_name(p), C_GRAY);
             param_text(p, t);
-            cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
+            if (text_w(&FONT_M, t) <= 76)      /* a long one (AS PLAYED) smaller */
+                cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
+            else
+                cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_WHITE : C_HI);
         }
         cv_blit(0, 34);
         cv_begin(240, 72, C_BG);
@@ -1351,7 +1483,7 @@ static void draw(void)
 void app_ui_init(void)
 {
     theme();
-    arcs_init();
+    knobs_init();
     touch_on(1);                             /* velocity: the keys' readings on */
     lcd_fill(0, 0, 240, 240, C_BG);
     ui.page = PG_HOME;
@@ -1410,6 +1542,8 @@ int app_expect(const char *what, int *got)
         *got = set_dirty;
     else if (!strcmp(what, "dsp_resets"))    /* the render's guard cleared a bad number */
         *got = (int)dsp_resets;
+    else if (!strcmp(what, "last_note"))     /* the arp's last note played */
+        *got = (int)last_played;
     else if (!strcmp(what, "ext_bpm"))       /* the tempo coming in over MIDI clock */
         *got = (int)((ext_bpm_x10 + 5u) / 10u);
     else if (!strcmp(what, "poison")) {      /* (always 0) a NaN into the reverb, as the out-of-table read made */

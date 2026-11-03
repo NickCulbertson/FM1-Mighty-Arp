@@ -1,0 +1,81 @@
+# The arp's modes: AS PLAYED keeps the order the keys went down; CHORD plays every held note each step; the delay's
+# dotted times (tests/run_tests.sh)
+wait 600
+turn ALGO 40
+wait 30
+expect chance 100
+tap REC
+wait 30
+expect hold 1
+tap ARP
+wait 30
+spin K2 -3
+spin K3 -20
+spin K3 3
+wait 30
+expect octaves 1
+expect mode 3
+shot modes.png
+# AS PLAYED: the high key first, then the low: the high plays first (at once), the low next (1/8 at 90 BPM: 333 ms)
+key 14 down 90
+wait 20
+key 7 down 90
+wait 20
+expect last_note 67
+wait 330
+expect last_note 60
+wait 333
+expect last_note 67
+key 14 up
+key 7 up
+wait 30
+# CHORD: both notes every step
+spin K3 5
+wait 30
+expect mode 8
+expect arp_mark 0
+wait 1000
+expect arp_notes >5
+# every mode runs
+spin K3 -20
+wait 30
+expect mode 0
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+spin K3 1
+wait 400
+expect mode 10
+expect arp_mark 0
+wait 1000
+expect arp_notes >2
+# the delay: 1/16D, and 1/2 at 40 BPM (longer than the line: halved, still in time)
+tap FX
+wait 30
+spin K1 -20
+spin K1 1
+wait 30
+expect dly_time 1
+shot delay_dotted.png
+spin K1 20
+turn SELECT -60
+wait 30
+expect dly_time 8
+expect tempo 40
+wait 2000
+expect dsp_resets 0

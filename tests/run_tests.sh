@@ -25,5 +25,6 @@ run release $H app/tests/release.txt $B/host
 run recover $H app/tests/recover.txt $B/host
 run sync $H app/tests/sync.txt $B/host
 run space $H app/tests/space.txt $B/host
+run modes $H app/tests/modes.txt $B/host
 run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL

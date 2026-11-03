@@ -10,6 +10,7 @@
 #define ENG_SR 44100.0f
 #define ENG_NVOICE 10
 #define ENG_BLOCK 256u
+#define ENG_DLY_MAX 65528.0f             /* the delay's longest, in samples (1.49 s) */
 
 /* an operator of a sound. ratio: its frequency, times the note's; det: cents; lvl: a carrier's amplitude, or a
  * modulator's depth (1 = a whole turn of phase); wave 0..7 (W1..W8). A modulator, or a carrier marked strike, runs
