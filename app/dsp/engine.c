@@ -117,19 +117,15 @@ static const int16_t *tri_band(float hz)
 }
 
 /* the table waves, W9..W13: the saw; the square and the pulses, each a saw less the same saw moved on by the pulse's
- * width (so they are band-limited too, and need no tables of their own); the triangle (t is then its table) */
+ * width (so they are band-limited too, and need no tables of their own); the triangle (t is then its table). The
+ * widths (0.5, 0.25, 0.125) move with the LFO (PWM: pw_d, set a block in eng_set), each scaled to the square's
+ * loudness, sqrt(0.25 / (d (1 - d))) */
+static float pw_d[3] = {0.5f, 0.25f, 0.125f}, pw_s[3] = {0.5f, 0.577f, 0.756f};
 static inline float tab_wave(float x, uint32_t w, const int16_t *t)
 {
-    switch (w) {
-    case 9:                              /* W10 SQUARE */
-        return (saw_t(x, t) - saw_t(x + 0.5f, t)) * 0.5f;
-    case 10:                             /* W11 PULSE 25% (x 1.15: as loud as the square, sqrt(0.25 / (d (1 - d)))) */
-        return (saw_t(x, t) - saw_t(x + 0.25f, t)) * 0.577f;
-    case 11:                             /* W12 PULSE 12.5% (x 1.51) */
-        return (saw_t(x, t) - saw_t(x + 0.125f, t)) * 0.756f;
-    default:                             /* W9 SAW, W13 TRIANGLE */
-        return saw_t(x, t);
-    }
+    if (w >= 9u && w <= 11u)             /* W10 SQUARE, W11 PULSE 25%, W12 PULSE 12.5% */
+        return (saw_t(x, t) - saw_t(x + pw_d[w - 9u], t)) * pw_s[w - 9u];
+    return saw_t(x, t);                  /* W9 SAW, W13 TRIANGLE */
 }
 
 /* the eight waves, as the TX81Z's: W1 the sine, W2 its halves squared, W3 W4 their positive halves, W5..W8 the same
@@ -215,6 +211,13 @@ typedef struct {
     float fb1, fb2, fbk;
     float f, f_to;                       /* the note, turns a sample, gliding to f_to */
     float drift, drift_to;
+    /* the filter: its envelope (fe, rising while fatt), where it starts (fbase: log2 Hz with the key) and how far it
+     * opens (famt: octaves, with the velocity); its coefficients now and their step a sample to the block's end, and
+     * its state, left and right (Simper's state-variable low-pass, the trapezoidal one: stable at any cutoff) */
+    uint8_t flt, fatt;
+    float fe, fbase, famt;
+    float fa1, fa2, fa3, fd1, fd2, fd3;
+    float fl1, fl2, fr1, fr2;
     uint32_t drift_n;
 } voice_t;
 static voice_t vc[ENG_NVOICE];
@@ -265,6 +268,24 @@ static void voice_release(voice_t *v)
         v->att[k] = 0;
         v->tgt[k] = 0.0f;
         v->kk[k] = v->rk[k];
+    }
+}
+
+/* the filter's coefficients for where its envelope is now (and the LFO), to step to over the next n samples (0:
+ * there at once) */
+static void filter_coefs(voice_t *v, uint32_t n)
+{
+    float hz = fm_exp2f(fm_clampf(v->fbase + v->famt * v->fe + prm.lfo_cut * lfo_val, 4.32f, 14.1f));   /* 20 Hz ..
+                                                                                                        * 17.6 kHz */
+    float g = fm_tanf(FM_PI * hz / SR), k = 2.0f - 1.9f * prm.res, a1 = 1.0f / (1.0f + g * (g + k));
+    float a2 = g * a1, a3 = g * a2;
+    if (n) {
+        v->fd1 = (a1 - v->fa1) / (float)n;
+        v->fd2 = (a2 - v->fa2) / (float)n;
+        v->fd3 = (a3 - v->fa3) / (float)n;
+    } else {
+        v->fa1 = a1, v->fa2 = a2, v->fa3 = a3;
+        v->fd1 = v->fd2 = v->fd3 = 0.0f;
     }
 }
 
@@ -389,6 +410,13 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         v->xf[k] = 0.0f;
     }
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
+    v->flt = prm.filter;                 /* the filter: from closed again, the envelope from its start */
+    v->fbase = prm.cut + (float)(note - 60) * (1.0f / 24.0f);   /* half the key's way */
+    v->famt = prm.env * (0.4f + 0.6f * velf);   /* harder, brighter */
+    v->fe = 0.0f;
+    v->fatt = 1;
+    v->fl1 = v->fl2 = v->fr1 = v->fr2 = 0.0f;
+    filter_coefs(v, 0u);
     v->on = 1;
     v->rel = 0;
     v->shed = 0;
@@ -507,6 +535,9 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     const int16_t *t0 = v->tab[0], *t1 = v->tab[1], *t2 = v->tab[2], *t3 = v->tab[3];
     const int16_t *u0 = v->tab_was[0], *u1 = v->tab_was[1], *u2 = v->tab_was[2], *u3 = v->tab_was[3];
     float xf0 = v->xf[0], xf1 = v->xf[1], xf2 = v->xf[2], xf3 = v->xf[3];
+    float fa1 = v->fa1, fa2 = v->fa2, fa3 = v->fa3, fd1 = v->fd1, fd2 = v->fd2, fd3 = v->fd3;
+    float fl1 = v->fl1, fl2 = v->fl2, fr1 = v->fr1, fr2 = v->fr2;
+    uint32_t flt = v->flt;
     int32_t gate = v->gate;
 #define TW(x, w, t, u, xf) ((xf) > 0.0f ? tab_wave((x), (w), (t)) + (tab_wave((x), (w), (u)) - tab_wave((x), (w), (t))) \
                                                   * (xf) : tab_wave((x), (w), (t)))   /* (fading from u) */
@@ -536,8 +567,25 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
             xf2 = xf2 > 0.0f ? xf2 - XF_STEP : 0.0f;
             xf3 = xf3 > 0.0f ? xf3 - XF_STEP : 0.0f;
         }
-        l[i] += cl0 * o0 + (IS_CAR(1) ? cl1 * o1 : 0.0f) + (IS_CAR(2) ? cl2 * o2 : 0.0f) + (IS_CAR(3) ? cl3 * o3 : 0.0f);
-        r[i] += cr0 * o0 + (IS_CAR(1) ? cr1 * o1 : 0.0f) + (IS_CAR(2) ? cr2 * o2 : 0.0f) + (IS_CAR(3) ? cr3 * o3 : 0.0f);
+        {
+            float vl = cl0 * o0 + (IS_CAR(1) ? cl1 * o1 : 0.0f) + (IS_CAR(2) ? cl2 * o2 : 0.0f) + (IS_CAR(3) ? cl3 * o3 : 0.0f);
+            float vr = cr0 * o0 + (IS_CAR(1) ? cr1 * o1 : 0.0f) + (IS_CAR(2) ? cr2 * o2 : 0.0f) + (IS_CAR(3) ? cr3 * o3 : 0.0f);
+            if (flt) {                   /* the low-pass, left and right */
+                float x3 = vl - fl2, x1 = fa1 * fl1 + fa2 * x3, x2 = fl2 + fa2 * fl1 + fa3 * x3;
+                fl1 = 2.0f * x1 - fl1;
+                fl2 = 2.0f * x2 - fl2;
+                vl = x2;
+                x3 = vr - fr2, x1 = fa1 * fr1 + fa2 * x3, x2 = fr2 + fa2 * fr1 + fa3 * x3;
+                fr1 = 2.0f * x1 - fr1;
+                fr2 = 2.0f * x2 - fr2;
+                vr = x2;
+                fa1 += fd1;
+                fa2 += fd2;
+                fa3 += fd3;
+            }
+            l[i] += vl;
+            r[i] += vr;
+        }
         p0 += n0;
         p1 += n1;
         p2 += n2;
@@ -572,6 +620,8 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     v->ph[0] = p0, v->ph[1] = p1, v->ph[2] = p2, v->ph[3] = p3;
     v->fb1 = fb1, v->fb2 = fb2;
     v->xf[0] = xf0, v->xf[1] = xf1, v->xf[2] = xf2, v->xf[3] = xf3;
+    v->fa1 = fa1, v->fa2 = fa2, v->fa3 = fa3;
+    v->fl1 = fl1, v->fl2 = fl2, v->fr1 = fr1, v->fr2 = fr2;
     v->gate = gate;
     v->rel = (uint8_t)rel;
 }
@@ -648,6 +698,7 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
 {
     float d = p->lfo_hz * (float)n / SR, x;
     uint32_t i, k, wrapped;
+    float fdec_k = fm_exp2f(-9.965784f * (float)n / (fm_maxf(p->fdec, 0.001f) * SR));   /* the filter's fall, a block */
     snd = s;
     prm = *p;
     lfo_ph += d;
@@ -678,6 +729,12 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         break;
     }
     lfo_val = x;
+    for (i = 0; i < 3u; i++) {           /* PWM: the widths swung by the LFO (half way to the edges at most) */
+        static const float base[3] = {0.5f, 0.25f, 0.125f};
+        float dd = fm_clampf(base[i] + p->pwm * x * base[i] * 0.85f, 0.03f, 0.97f);
+        pw_d[i] = dd;
+        pw_s[i] = 0.5f * fm_sqrtf(0.25f / (dd * (1.0f - dd)));
+    }
     trem_l_to = 1.0f - p->trem * (0.5f + 0.5f * x);   /* the tremolo across the stereo: a Rhodes' */
     trem_r_to = 1.0f - p->trem * (0.5f - 0.5f * x);
     glide_k = s && s->glide > 0.0f ? fm_exp2f(-1.442695f * (float)n / (s->glide * SR)) : 0.0f;
@@ -692,6 +749,18 @@ void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n)
         } else
             v->drift_n--;
         v->drift += (v->drift_to - v->drift) * drift_k;
+        if (v->flt) {                    /* the filter's envelope a block on, and its coefficients there by the end */
+            if (v->fatt) {
+                v->fe += p->att > 0.0005f ? (float)n / (p->att * SR) : 1.0f;
+                if (v->fe >= 1.0f) {
+                    v->fe = 1.0f;
+                    v->fatt = 0;
+                }
+            } else
+                v->fe *= fdec_k;
+            v->fl1 = fm_flush(v->fl1), v->fl2 = fm_flush(v->fl2), v->fr1 = fm_flush(v->fr1), v->fr2 = fm_flush(v->fr2);
+            filter_coefs(v, n);
+        }
         for (k = 0; k < 4u; k++)         /* an envelope fallen to nothing stays nothing (no denormals) */
             if (!v->att[k] && v->env[k] < 1e-7f)
                 v->env[k] = 0.0f;

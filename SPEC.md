@@ -33,7 +33,9 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | VELOCITY |
 | VOICE (SEL again) | VOICES (POLY, MONO, LEGATO) | GLIDE (not shown with POLY) | | |
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
+| FILTER (ENV again) | CUTOFF (30 Hz .. open) | RESONANCE | ENV AMOUNT (up to 8 octaves) | ENV DECAY |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
+| LFO 2 (LFO again) | PWM | FILTER (up to 3 octaves) | | |
 | EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | MOD WAVE (W1-W8, W9 SAW) |
 | OP 1-4 (EDIT again) | RATIO | LEVEL | WAVE | DECAY |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |

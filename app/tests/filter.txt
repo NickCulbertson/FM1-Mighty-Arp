@@ -1,0 +1,45 @@
+# The filter: a held saw open, then closed; LFO 2 page; the filter off costs nothing (tests/run_tests.sh)
+wait 600
+tap PLAY
+wait 30
+spin PRESET 32
+wait 30
+expect preset 32
+tap ENV
+tap ENV
+wait 30
+expect page 17
+spin K1 100
+spin K3 -100
+wait 30
+expect cutoff 100
+key 14 down 100
+wait 1500
+peakreset
+wait 500
+expect peak_db_min -30
+key 14 up
+wait 3000
+spin K1 -100
+spin K2 -100
+wait 30
+expect cutoff 0
+key 14 down 100
+wait 1500
+peakreset
+wait 500
+expect peak_db_max <-40
+shot filter.png
+key 14 up
+wait 30
+tap LFO
+tap LFO
+wait 30
+expect page 18
+spin K1 50
+spin K2 30
+wait 30
+expect pwm 50
+expect lfo_cut 30
+shot lfo2.png
+expect dsp_resets 0
