@@ -47,6 +47,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
 | GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | RESET (TURN; a detent right, DONE: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) |
 
+A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
 A USER preset keeps everything: the sound pages, ARP, SEQ, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
 CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a sound change does to the rest:
 

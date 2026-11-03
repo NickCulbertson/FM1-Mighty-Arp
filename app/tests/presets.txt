@@ -109,3 +109,17 @@ expect chance 13
 spin K4 1
 wait 30
 expect chance 33
+# A USER preset's name: given at its first save, kept when saved over; none another slot has
+expect user1_name >0
+tap HOME
+wait 30
+tap HOME
+wait 30
+expect page 16
+spin K3 1
+wait 30
+tap SAVE
+wait 30
+expect user2_used 1
+expect user2_name >0
+shot sounds_named.png

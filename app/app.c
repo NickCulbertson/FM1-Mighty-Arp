@@ -492,7 +492,9 @@ typedef char np_is_mau4s[NP == 57u ? 1 : -1];   /* a knob added: bump USER_MAGIC
 #define USER_MAGIC_1 0x3155414Du         /* "MAU1": before the filter and PWM (user1_t) */
 typedef struct {
     uint8_t used, base;
-    uint8_t whole, pad;                  /* whole: it kept everything; one from an older bank its sound only */
+    uint8_t whole;                       /* it kept everything; one from an older bank its sound only */
+    uint8_t name;                        /* its name, 1..255 (NAME_A x NAME_B, user_name); 0: none, the factory
+                                          * sound's it began from (an older save's) */
     int16_t p[NP];                       /* every knob, by its number (the player's own kept, never loaded) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
 } user_t;
@@ -604,7 +606,21 @@ static const preset_t *cur_preset(void)
                    ? users.u[set.preset - NPRESET].base : 0];
 }
 
-static void sound_name(uint32_t n, char *t)   /* sound n's name: a factory sound's, or "U03 TINE EP" */
+/* a USER preset's name, given when it is saved: an animal and a hairdo, "FROG MULLET" (at most 4 + 1 + 6 letters:
+ * with "U03 " it fits the screen) */
+static const char *const NAME_A[16] = {"LION", "FROG", "CRAB", "OWL", "YAK", "EMU", "BEAR", "WOLF",
+                                       "MOLE", "NEWT", "TOAD", "DUCK", "GOAT", "SEAL", "MOTH", "HARE"};
+static const char *const NAME_B[16] = {"AFRO", "MULLET", "MOHAWK", "BOB", "BUN", "PERM", "FADE", "QUIFF",
+                                       "MOPTOP", "BOWL", "BRAIDS", "BUZZ", "SHAG", "CURLS", "DREADS", "SPIKES"};
+static void text_cat(char *d, const char *s);
+static void user_name(uint32_t name, char *t)   /* (appended to t) */
+{
+    text_cat(t, NAME_A[name >> 4 & 15u]);
+    text_cat(t, " ");
+    text_cat(t, NAME_B[name & 15u]);
+}
+
+static void sound_name(uint32_t n, char *t)   /* sound n's name: a factory sound's, or "U03 FROG MULLET" */
 {
     const char *b;
     uint32_t i = 0;
@@ -617,11 +633,27 @@ static void sound_name(uint32_t n, char *t)   /* sound n's name: a factory sound
         t[i++] = (char)('0' + u / 10u);
         t[i++] = (char)('0' + u % 10u);
         t[i++] = ' ';
+        t[i] = 0;
+        if (n - NPRESET < NUSER && users.u[n - NPRESET].used && users.u[n - NPRESET].name) {
+            user_name(users.u[n - NPRESET].name, t);
+            return;
+        }
         for (b = n - NPRESET < NUSER && users.u[n - NPRESET].used ? PRESET[users.u[n - NPRESET].base].name : "EMPTY";
              *b && i < 15u; b++)
             t[i++] = *b;
     }
     t[i] = 0;
+}
+
+/* where room is short (the header, the SOUND knob): a named USER preset's name alone, "FROG MULLET" (the list and
+ * SAVE TO show its slot) */
+static void sound_title(uint32_t n, char *t)
+{
+    uint32_t i;
+    sound_name(n, t);
+    if (n >= NPRESET && n - NPRESET < NUSER && users.u[n - NPRESET].used && users.u[n - NPRESET].name)
+        for (i = 0; (t[i] = t[i + 4u]) != 0; i++)
+            ;
 }
 
 static uint32_t sound_cat(uint32_t n) { return n < NPRESET ? PRESET[n].cat : CAT_USER; }
@@ -1600,7 +1632,18 @@ static int user_store(uint32_t slot)
     u->used = 1;
     u->base = (uint8_t)(cur_preset() - PRESET);
     u->whole = 1;
-    u->pad = 0;
+    if (!was.used || !was.name) {        /* a new name (over one already named: it keeps its own), none another
+                                          * slot has */
+        uint32_t tries, k, nm = 0;
+        for (tries = 0; tries < 32u; tries++) {
+            nm = 1u + rnd_n(255u);
+            for (k = 0; k < NUSER && !(users.u[k].used && users.u[k].name == nm && &users.u[k] != u); k++)
+                ;
+            if (k == NUSER)
+                break;
+        }
+        u->name = (uint8_t)nm;
+    }
     for (i = 0; i < NP; i++)
         u->p[i] = set.p[i];
     for (i = 0; i < 4u; i++) {
@@ -1719,7 +1762,7 @@ void app_init(void)
             user_t *u = &users.u[k];
             int16_t full[NP];
             u->used = (uint8_t)(n && e[0] == 1u && e[1] < NPRESET);
-            u->whole = u->pad = 0;
+            u->whole = u->name = 0;
             if (!u->used)
                 continue;
             u->base = e[1];
@@ -2017,7 +2060,7 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         return;
     }
     if (p == PX_SND) {
-        sound_name(set.preset, t);
+        sound_title(set.preset, t);
         return;
     }
     if (p == PX_SLOT) {
@@ -2705,7 +2748,7 @@ static void header(uint32_t now)
         cv_text(10, 6, &FONT_B, "MIGHTY", C_GRAY);
         cv_text(10 + text_w(&FONT_B, "MIGHTY "), 6, &FONT_B, "ARP", C_HI);
         char nm[16];
-        sound_name(set.preset, nm);
+        sound_title(set.preset, nm);
         cv_text(230 - text_w(&FONT_B, nm), 6, &FONT_B, nm, C_AMB);
     }
     cv_rect(10, 30, 220, 1, C_LINE);
@@ -3134,6 +3177,8 @@ int app_expect(const char *what, int *got)
     }
     else if (!strncmp(what, "user", 4) && !strcmp(what + strlen(what) - 5, "_used"))   /* userN_used: slot N */
         *got = users.u[(uint32_t)(atoi(what + 4) - 1) % NUSER].used;
+    else if (!strncmp(what, "user", 4) && !strcmp(what + strlen(what) - 5, "_name"))   /* userN_name: its name */
+        *got = users.u[(uint32_t)(atoi(what + 4) - 1) % NUSER].name;
     else if (!strcmp(what, "shed_note"))     /* the note the last shed let go */
         *got = (int)eng_shed_note();
     else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */
