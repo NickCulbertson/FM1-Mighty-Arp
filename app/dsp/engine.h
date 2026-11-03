@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct {
     eng_op_t op[4];                      /* op[3] is operator 4: the one with feedback */
-    uint8_t mono;                        /* one voice, legato */
+    uint8_t mono;                        /* 0 poly; 1 mono (each note afresh); 2 legato (the envelopes go on) */
     float glide;                         /* mono: seconds to a new note */
 } eng_sound_t;
 

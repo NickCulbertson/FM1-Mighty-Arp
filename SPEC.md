@@ -12,7 +12,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | ALGO | arp chance, labelled CHANCE |
 | PRESET | the sound |
 | HOME | the performance screen: the arp's notes large, and four macros (below) |
-| SEL | SOUND page |
+| SEL | SOUND page; SEL again: VOICE |
 | ENV | ENVELOPE page |
 | LFO | LFO page |
 | EDIT | EDIT page: the FM engine underneath; EDIT again: OP 1, OP 2, OP 3, OP 4 (and round) |
@@ -31,6 +31,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | --- | --- | --- | --- | --- |
 | HOME | CHANCE | RATE | SPACE (reverb mix and length together) | DRIFT (= LFO vibrato) |
 | SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | VELOCITY |
+| VOICE (SEL again) | VOICES (POLY, MONO, LEGATO) | GLIDE (not shown with POLY) | | |
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
 | EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | MOD WAVE (W1-W8, W9 SAW) |

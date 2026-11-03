@@ -265,3 +265,45 @@ shot op4.png
 tap EDIT
 wait 30
 expect page 4
+# SEL again: VOICE. FM BASS is LEGATO with a glide; POLY plays a chord, MONO and LEGATO one note
+tap HOME
+wait 30
+expect arp 0
+spin PRESET 25
+wait 30
+expect preset 25
+tap SEL
+wait 30
+tap SEL
+wait 30
+expect page 15
+expect voice_mode 2
+expect glide >0
+shot voice.png
+key 7 down 100
+key 11 down 100
+wait 100
+expect voices 1
+key 7 up
+key 11 up
+wait 1500
+spin K1 -2
+wait 30
+expect voice_mode 0
+key 7 down 100
+key 11 down 100
+wait 100
+expect voices 2
+key 7 up
+key 11 up
+wait 1500
+spin K1 1
+wait 30
+expect voice_mode 1
+key 7 down 100
+key 11 down 100
+wait 100
+expect voices 1
+key 7 up
+key 11 up
+wait 30

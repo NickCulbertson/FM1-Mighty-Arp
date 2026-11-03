@@ -209,9 +209,10 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     if (!s)
         return;
     f = 440.0f * fm_exp2f((float)(note - 69) * (1.0f / 12.0f)) / SR;
-    if (s->mono) {
+    if (s->mono) {                       /* one voice: MONO starts each note afresh (gliding to it), LEGATO goes
+                                          * on from the last while it still sounds */
         v = &vc[0];
-        if (v->on && !v->rel) {          /* legato: the envelopes go on, the pitch glides */
+        if (s->mono == 2u && v->on && !v->rel) {   /* legato: the envelopes go on, the pitch glides */
             v->note = note;
             v->gate = gate;
             v->age = ++vc_age;

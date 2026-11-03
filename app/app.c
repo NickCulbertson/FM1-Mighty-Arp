@@ -28,13 +28,15 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_CLOCK, P_WIDTH, P_MIDICH, P_VCURVE,          /* GLOBAL (WIDTH: on DELAY) */
        P_TEMPO, P_CHANCE,                             /* SELECT and ALGO */
        P_CRATE, P_CDEPTH,                             /* CHORUS (after the rest: a save's slots keep their place) */
+       P_VOICES, P_GLIDE,                             /* VOICE (SEL again) */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
        PX_NONE = 0xFF };                              /* no knob there */
-#define NP5 (NP - 2u)                    /* the parameters a save had before CHORUS's rate and depth */
+#define NP5 (NP - 4u)                    /* the parameters a save had before CHORUS's rate and depth */
+#define NP6 (NP - 2u)                    /* and before VOICES and GLIDE */
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
-       U_SECS,
+       U_SECS, U_VOICES, U_GLIDE,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
 /* the arp's modes */
 enum { M_RANDOM, M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_THUMB_UD, M_PINKY, M_PINKY_UD,
@@ -65,11 +67,13 @@ static const param_t PAR[NP] = {
     {"MIDI CH", "midi_ch", 0, 16, 0, U_CH},      {"VEL CURVE", "vel_curve", 0, 3, 1, U_CURVE},
     {"TEMPO", "tempo", 40, 200, 90, U_BPM},      {"CHANCE", "chance", 0, 100, 33, U_PCT},
     {"RATE", "chorus_rate", 0, 100, 44, U_CHZ},  {"DEPTH", "chorus_depth", 0, 100, 65, U_PCT},
+    {"VOICES", "voice_mode", 0, 2, 0, U_VOICES},     {"GLIDE", "glide", 0, 100, 0, U_GLIDE},
 };
 
 /* the pages: each button's four knobs */
 enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, PG_CHORUS,
-       PG_OP1, PG_OP2, PG_OP3, PG_OP4, NPAGE };      /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS */
+       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
+                                                             * again: VOICE */
 typedef struct {
     const char *name;
     uint8_t btn, p[4];
@@ -90,7 +94,10 @@ static const page_t PAGE[NPAGE] = {
     {"OP 2", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 3", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 4", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
+    {"VOICE", B_SEL, {P_VOICES, P_GLIDE, PX_NONE, PX_NONE}},
 };
+#define IS_OP_PAGE(pg) ((pg) >= PG_OP1 && (pg) <= PG_OP4)
+enum { V_POLY, V_MONO, V_LEGATO };       /* VOICES: MONO starts each note afresh, LEGATO only glides to it */
 /* an operator's ratios, as OP's RATIO knob steps through them (every sound's are among them) */
 static const float OP_RATIO[] = {0.5f, 1.0f, 1.41f, 1.5f, 2.0f, 2.5f, 2.76f, 3.0f, 3.5f, 4.0f, 5.0f, 5.4f, 6.0f, 7.0f,
                                  8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f};
@@ -269,7 +276,8 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3652414Du            /* "MAR6": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x3752414Du            /* "MAR7": the settings record; another magic loads defaults */
+#define SET_MAGIC_6 0x3652414Du          /* "MAR6": before VOICES and GLIDE (settings6_t) */
 #define SET_MAGIC_5 0x3552414Du          /* "MAR5": before CHORUS's rate and depth and the operators (settings5_t) */
 #define SET_MAGIC_4 0x3452414Du          /* "MAR4": the same record with RATCHET, SYNC and CLOCK OUT in three slots */
 #define SET_MAGIC_3 0x3352414Du          /* "MAR3": MAR4 with the arp's modes in their old order */
@@ -285,6 +293,14 @@ typedef struct {
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
 } settings_t;
+typedef struct {                         /* MAR6 */
+    uint32_t magic;
+    int16_t p[NP6];
+    uint8_t preset;
+    int8_t octave;
+    uint8_t arp_on, hold;
+    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
+} settings6_t;
 typedef struct {                         /* MAR3..MAR5 */
     uint32_t magic;
     int16_t p[NP5];
@@ -309,6 +325,7 @@ static inline uint32_t rnd_n(uint32_t n) { return ((rnd() >> 16) * n) >> 16; }
 /* a 0..100 time knob: 1 ms .. 10 s, exponential */
 static float knob_secs(int32_t v) { return 0.001f * fm_exp2f((float)v * 0.1328771f); }   /* 10000 ^ (v / 100) */
 static float lfo_hz(int32_t v) { return 0.05f * fm_exp2f((float)v * 0.0864386f); }        /* 0.05 .. 20 Hz */
+static float glide_secs(int32_t v) { return v ? 0.002f * fm_exp2f((float)v * 0.0996578f) : 0.0f; }   /* 0, 2 ms .. 2 s */
 static float rev_secs(int32_t v) { return 0.5f * fm_exp2f((float)v * 0.0490689f); }      /* 0.5 .. 15 s */
 
 /* ---------------------------------------------------------- notes and arp --- */
@@ -429,7 +446,7 @@ static void held_remove(int32_t note)
     }
     nheld--;
     if (!arp_on_now) {
-        if (cur_preset()->s.mono && nheld && eng_sounding(note))   /* mono: back to the top note still held */
+        if (set.p[P_VOICES] != V_POLY && nheld && eng_sounding(note))   /* mono: back to the top note still held */
             eng_note_on(held[nheld - 1], held_vel[nheld - 1], -1);
         eng_note_off(note);
         midi_off((uint32_t)note);
@@ -899,6 +916,8 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
         snd.op[k].wave = set.op_wave[k];
         snd.op[k].dec = knob_secs(set.op_decay[k]);
     }
+    snd.mono = (uint8_t)set.p[P_VOICES];   /* (engine.h: 0 poly, 1 mono, 2 legato) */
+    snd.glide = glide_secs(set.p[P_GLIDE]);
     float beat = tick_samples() * 24.0f, v = (float)set.p[P_VIB] / 100.0f;
     ep.tone = fm_exp2f(((float)set.p[P_TONE] - 50.0f) / 25.0f);   /* x0.25 .. x4 */
     ep.strike = (float)set.p[P_STRIKE] / 50.0f;
@@ -1019,12 +1038,20 @@ static void ops_load(const preset_t *pr) /* OP 1-4 as the sound has them */
     }
 }
 
-static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT and OP pages, and SOUND's two at the
-                                          * middle */
+static void voice_load(const preset_t *pr)   /* VOICE as the sound has it (a mono sound glides legato) */
+{
+    set.p[P_VOICES] = pr->s.mono ? V_LEGATO : V_POLY;
+    set.p[P_GLIDE] = (int16_t)(pr->s.glide > 0.0f
+                               ? clamp((int32_t)(10.0343f * fm_log2f(pr->s.glide / 0.002f) + 0.5f), 1, 100) : 0);
+}
+
+static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP and VOICE pages, and SOUND's two
+                                          * at the middle */
 {
     const preset_t *pr = &PRESET[p];
     set.preset = (uint8_t)p;
     ops_load(pr);
+    voice_load(pr);
     set.p[P_ATTACK] = pr->a;
     set.p[P_DECAY] = pr->d;
     set.p[P_SUSTAIN] = pr->su;
@@ -1081,6 +1108,7 @@ void app_init(void)
     {
         static union {
             settings_t s;
+            settings6_t o6;
             settings5_t o;
         } ld;
         int got = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
@@ -1104,8 +1132,25 @@ void app_init(void)
                 set.arp_on = o->arp_on;
                 set.hold = o->hold;
                 ops_load(&PRESET[set.preset]);
+                voice_load(&PRESET[set.preset]);
                 set.magic = SET_MAGIC;
             }
+        } else if (got == (int)sizeof(settings6_t) && ld.o6.magic == SET_MAGIC_6 && ld.o6.preset < NPRESET) {
+            settings6_t *o6 = &ld.o6;    /* before VOICES and GLIDE: the sound's own */
+            for (i = 0; i < NP; i++)
+                set.p[i] = i < NP6 ? o6->p[i] : PAR[i].def;
+            set.preset = o6->preset;
+            set.octave = o6->octave;
+            set.arp_on = o6->arp_on;
+            set.hold = o6->hold;
+            for (i = 0; i < 4u; i++) {
+                set.op_ratio[i] = o6->op_ratio[i];
+                set.op_level[i] = o6->op_level[i];
+                set.op_wave[i] = o6->op_wave[i];
+                set.op_decay[i] = o6->op_decay[i];
+            }
+            voice_load(&PRESET[set.preset]);
+            set.magic = SET_MAGIC;
         } else if (got == (int)sizeof set)
             set = ld.s;
     }
@@ -1187,9 +1232,21 @@ static const char *par_name(uint32_t p)
     return p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name;
 }
 
+static int op_own_env(uint32_t k);
+/* the page's knob i, or PX_NONE where it would mean nothing now: DECAY on a carrier the ENVELOPE page shapes, GLIDE
+ * with VOICES on POLY */
+static uint32_t page_knob(uint32_t i)
+{
+    uint32_t p = PAGE[ui.page].p[i];
+    if ((p == PX_OPD && !op_own_env(IS_OP_PAGE(ui.page) ? ui.page - PG_OP1 : 0u))
+        || (p == P_GLIDE && set.p[P_VOICES] == V_POLY))
+        return PX_NONE;
+    return p;
+}
+
 /* OP 1-4: which operator the page edits, and whether it runs its own envelope (a modulator, or a strike carrier:
  * DECAY is its) or the ENVELOPE page's */
-static uint32_t op_now(void) { return ui.page >= PG_OP1 ? ui.page - PG_OP1 : 0u; }
+static uint32_t op_now(void) { return IS_OP_PAGE(ui.page) ? ui.page - PG_OP1 : 0u; }
 static int op_is_carrier(uint32_t k) { return ENG_CAR[set.p[P_ALGO] & 7] >> k & 1u; }
 static int op_own_env(uint32_t k) { return !op_is_carrier(k) || cur_preset()->s.op[k].strike; }
 
@@ -1213,8 +1270,6 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
             text_cat(t, "W");
             int_text(set.op_wave[k] + 1, t + 1);
             text_cat(t, set.op_wave[k] == 8u ? " SAW" : set.op_wave[k] ? "" : " SINE");
-        } else if (!op_own_env((uint32_t)k)) {
-            text_cat(t, "ENV PAGE");         /* a carrier on the ENVELOPE page: its own decay unused */
         } else {
             float sec = knob_secs(set.op_decay[k]);
             if (sec < 1.0f) {
@@ -1278,6 +1333,23 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         break;
     case U_SYNC:                         /* CLOCK: its own, its own sent out, MIDI clock in */
         text_cat(t, v == 2 ? "EXT" : v ? "OUT" : "INT");
+        break;
+    case U_VOICES:
+        text_cat(t, v == V_LEGATO ? "LEGATO" : v == V_MONO ? "MONO" : "POLY");
+        break;
+    case U_GLIDE:
+        if (!v)
+            text_cat(t, "OFF");
+        else {
+            float g = glide_secs(v);
+            if (g < 1.0f) {
+                int_text((int32_t)(g * 1000.0f + 0.5f), t);
+                text_cat(t, " MS");
+            } else {
+                dec_text(g, 1, t);
+                text_cat(t, " S");
+            }
+        }
         break;
     case U_ONOFF:
         text_cat(t, v ? "ON" : "OFF");
@@ -1397,12 +1469,12 @@ static void speak(void)
         text_cat(t, ". ");
         text_cat(t, PAGE[ui.page].name);
         for (i = 0; i < 4u; i++) {
-            if (PAGE[ui.page].p[i] == PX_NONE)
+            if (page_knob(i) == PX_NONE)
                 continue;
             text_cat(t, ". ");
-            text_cat(t, par_name(PAGE[ui.page].p[i]));
+            text_cat(t, par_name(page_knob(i)));
             text_cat(t, " ");
-            param_text(PAGE[ui.page].p[i], v);
+            param_text(page_knob(i), v);
             text_cat(t, v);
         }
         if (ui.page == PG_GLOBAL) {
@@ -1504,8 +1576,12 @@ static void input(void)
             page_go(ui.page == PG_DELAY ? PG_REVERB : ui.page == PG_REVERB ? PG_CHORUS : PG_DELAY);
             continue;
         }
+        if (k == B_SEL) {                    /* SEL: SOUND, again VOICE, and back */
+            page_go(ui.page == PG_SOUND ? PG_VOICE : PG_SOUND);
+            continue;
+        }
         if (k == B_EDIT) {                   /* EDIT: the algorithm, again OP 1, OP 2, OP 3, OP 4, and round */
-            page_go(ui.page == PG_EDIT ? PG_OP1 : ui.page >= PG_OP1 && ui.page < PG_OP4 ? ui.page + 1u : PG_EDIT);
+            page_go(ui.page == PG_EDIT ? PG_OP1 : IS_OP_PAGE(ui.page) && ui.page < PG_OP4 ? ui.page + 1u : PG_EDIT);
             continue;
         }
         for (pg = 0; pg < NPAGE && PAGE[pg].btn != k; pg++)
@@ -1550,7 +1626,7 @@ static void input(void)
             param_turn(P_CHANCE, e * 2);
             ui.chance_at = now;
         } else {
-            param_turn(PAGE[ui.page].p[k - EN_K1], e);
+            param_turn(page_knob(k - EN_K1), e);
             ui.turned_at[k - EN_K1] = now;
         }
     }
@@ -1928,16 +2004,17 @@ static void draw(void)
         {
             static const char *const NEXT[NPAGE] = {[PG_DELAY] = "FX AGAIN: REVERB", [PG_REVERB] = "FX AGAIN: CHORUS",
                 [PG_CHORUS] = "FX AGAIN: DELAY", [PG_EDIT] = "EDIT AGAIN: OP 1", [PG_OP1] = "EDIT AGAIN: OP 2",
-                [PG_OP2] = "EDIT AGAIN: OP 3", [PG_OP3] = "EDIT AGAIN: OP 4", [PG_OP4] = "EDIT AGAIN: ALGO"};
+                [PG_OP2] = "EDIT AGAIN: OP 3", [PG_OP3] = "EDIT AGAIN: OP 4", [PG_OP4] = "EDIT AGAIN: ALGO",
+                [PG_SOUND] = "SEL AGAIN: VOICE", [PG_VOICE] = "SEL AGAIN: SOUND"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
-            if (ui.page >= PG_OP1)           /* the operator's part in the algorithm */
+            if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);
             if (NEXT[ui.page])
                 cv_text(230 - text_w(&FONT_XS, NEXT[ui.page]), 1, &FONT_XS, NEXT[ui.page], C_DIM);
         }
         cv_rect(10, 18, 220, 1, C_LINE);
         for (i = 0; i < 4u; i++) {
-            uint32_t p = pg->p[i];
+            uint32_t p = page_knob(i);
             int32_t x = 10 + (int32_t)(i % 2u) * 116, y = 23 + (int32_t)(i / 2u) * 43;
             if (p == PX_NONE)                /* a page with fewer knobs */
                 continue;
@@ -1945,7 +2022,7 @@ static void draw(void)
             knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI, 1);
             cv_text(x + 38, y + 1, &FONT_S, par_name(p), C_GRAY);
             param_text(p, t);
-            if (text_w(&FONT_M, t) <= (i % 2u ? 66 : 74))   /* a long one (AS PLAYED, LINEAR) smaller */
+            if (text_w(&FONT_M, t) <= (i % 2u ? 66 : 68))   /* a long one (AS PLAYED, LEGATO) smaller */
                 cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
             else
                 cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_WHITE : C_HI);
@@ -1953,8 +2030,8 @@ static void draw(void)
         cv_blit(0, 34);
         cv_begin(240, 70, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
-        if (ui.page == PG_EDIT || ui.page >= PG_OP1)
-            algo_view(70, ui.page >= PG_OP1 ? (int32_t)op_now() : -1);
+        if (ui.page == PG_EDIT || IS_OP_PAGE(ui.page))
+            algo_view(70, IS_OP_PAGE(ui.page) ? (int32_t)op_now() : -1);
         else
             notes_view(70, 400u, 0);
         if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */
@@ -1964,6 +2041,48 @@ static void draw(void)
         cv_blit(0, 142);
     }
     state_line(now);
+}
+
+/* the boot screen (APP_SPLASH): a synthwave sun on the horizon, its lower half cut by bands, a grid running to it,
+ * and the name. Drawn in two bands (the canvas holds 240 x 144): everything at y - oy */
+static void splash_band(int32_t oy)
+{
+    static const uint8_t CUT[][2] = {{70, 2}, {78, 3}, {86, 4}, {94, 5}};   /* the sun's bands: from y, rows */
+    static const uint8_t GRID_Y[] = {3, 7, 12, 19, 28, 40, 55};            /* the grid's rows below the horizon */
+    int32_t y, k, hy = 104, cx = 120, r = 50;
+    uint32_t i;
+    for (y = hy - r; y < hy; y++) {      /* the sun: pink at the top to purple at the horizon */
+        int32_t dy = hy - y, half = (int32_t)fm_sqrtf((float)(r * r - dy * dy)), cut = 0;
+        for (i = 0; i < sizeof CUT / sizeof CUT[0]; i++)
+            if (y >= CUT[i][0] && y < CUT[i][0] + CUT[i][1])
+                cut = 1;
+        if (!cut)
+            cv_rect(cx - half, y - oy, 2 * half + 1, 1, mix565(C_HI, C_AMB, (uint32_t)(y - (hy - r)) * 256u / (uint32_t)r));
+    }
+    cv_rect(0, hy - oy, 240, 1, C_HI);   /* the horizon, and the grid running into the distance */
+    for (i = 0; i < sizeof GRID_Y; i++)
+        cv_rect(0, hy + GRID_Y[i] - oy, 240, 1, mix565(C_LINE, C_AMB, 60u + i * 25u));
+    for (k = -7; k <= 7; k++)
+        cv_line(cx + k * 6, hy - oy, cx + k * 48, hy + 60 - oy, mix565(C_LINE, C_AMB, 90u));
+    {                                    /* the name, and what it is */
+        int32_t w = text_w(&FONT_L, "MIGHTY ARP"), x = (240 - w) / 2;
+        x = cv_text(x, 176 - oy, &FONT_L, "MIGHTY", C_GRAY);
+        cv_text(x + text_w(&FONT_L, " "), 176 - oy, &FONT_L, "ARP", C_HI);
+        w = text_w(&FONT_XS, "FM SYNTH  CHANCE ARP");
+        cv_text((240 - w) / 2, 214 - oy, &FONT_XS, "FM SYNTH  CHANCE ARP", C_DIM);
+    }
+}
+
+void app_splash(void)
+{
+    theme();
+    lcd_fill(0, 0, 240, 240, C_BG);
+    cv_begin(240, 144, C_BG);
+    splash_band(0);
+    cv_blit(0, 0);
+    cv_begin(240, 96, C_BG);
+    splash_band(144);
+    cv_blit(0, 144);
 }
 
 void app_ui_init(void)
@@ -2039,6 +2158,10 @@ int app_expect(const char *what, int *got)
         const char *f = what + 4;
         *got = !strcmp(f, "ratio") ? set.op_ratio[k] : !strcmp(f, "level") ? set.op_level[k]
              : !strcmp(f, "wave") ? set.op_wave[k] : set.op_decay[k];
+    }
+    else if (!strcmp(what, "splash")) {      /* (always 0) the boot screen drawn again, for a shot (the host shows none) */
+        app_splash();
+        *got = 0;
     }
     else if (!strcmp(what, "shed_note"))     /* the note the last shed let go */
         *got = (int)eng_shed_note();

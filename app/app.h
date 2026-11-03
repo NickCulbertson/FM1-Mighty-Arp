@@ -11,6 +11,7 @@
 #define APP_BLOCK 256u                   /* frames per audio block: 5.8 ms at 44.1 kHz */
 #define APP_TOUCH                        /* velocity and pressure from the keys (lib/touch.h) */
 #define APP_OVERLOAD                     /* the render ran late: app_overload sheds voices */
+#define APP_SPLASH                       /* the boot screen is app_splash's */
 
 /* the store: the app's settings and the panel calibration (the platform's), and their flash offsets */
 enum { OBJ_SETTINGS, OBJ_PANEL, OBJ_NOBJ };
@@ -25,6 +26,7 @@ void app_frame(void);                    /* the UI: input and a redraw, about 60
 void app_input_only(void);               /* between frames: input only */
 void app_say(const char *a, const char *b);   /* a short message on the screen and to a screen reader */
 void app_overload(void);
+void app_splash(void);
 
 /* the host simulator's checks (host/plat_host.c "expect") */
 #define APP_HOST_EXPECT
