@@ -303,7 +303,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
 {
     const eng_sound_t *s = snd;
     voice_t *v = 0;
-    uint32_t i, k, oldest = 0xFFFFFFFFu, car, c;
+    uint32_t i, k, oldest = 0xFFFFFFFFu, car, c, fresh, rph;
     float f, velf, amp, bright, kscale, dscale, pos, rk;
     if (!s)
         return;
@@ -358,11 +358,10 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     bright = prm.tone * (1.0f - prm.velo * (1.0f - velf) * 0.7f) * kscale;
     pos = fm_clampf((float)(note - 60) / 36.0f, -0.5f, 0.5f) * 0.6f;         /* low notes left, high right */
     rk = fall_coef(prm.rel);
-    if (!v->on) {
-        for (k = 0; k < 4u; k++) {
-            v->ph[k] = 0.0f;
+    fresh = !v->on;                      /* a voice re-struck while it sounds runs on from where it is */
+    if (fresh) {
+        for (k = 0; k < 4u; k++)
             v->env[k] = 0.0f;
-        }
         v->fb1 = v->fb2 = 0.0f;
     }
     if (!s->mono || s->glide <= 0.0f || v->f <= 0.0f)
@@ -376,6 +375,11 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         uint32_t is_car = car >> k & 1u, own = !is_car || o->strike;
         float a, d, su, pk;
         v->wv[k] = (uint8_t)(is_car || prm.wave == 0xFFu ? o->wave : prm.wave);   /* 0..12 (8..12: the tables') */
+        rph = fresh && is_car && v->wv[k] >= 8u;   /* a carrier's saw, square, pulse or triangle from anywhere in
+                                          * its cycle (two detuned saws never start together: not dull, as synced
+                                          * ones are); sines and the modulators from 0, so FM's attack is the same */
+        if (fresh)
+            v->ph[k] = rph ? (float)(rnd() >> 8) * (1.0f / 16777216.0f) : 0.0f;
         v->rat[k] = o->ratio * (is_car ? 1.0f : prm.ratio)
                     * fm_exp2f((o->det + DSIGN[k] * prm.detune * 14.0f) * (1.0f / 1200.0f));
 
@@ -391,6 +395,8 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
             pk = 1.0f;
         }
         v->pk[k] = pk;
+        if (rph && a < 0.001f)           /* a wave begun mid-cycle: 1 ms in, never a click */
+            a = 0.001f;
         v->ai[k] = a < 0.0005f ? 1e9f : pk / (a * SR);
         v->sus[k] = su;
         v->dk[k] = fall_coef(d);
