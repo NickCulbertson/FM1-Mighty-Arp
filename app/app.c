@@ -234,10 +234,9 @@ static const preset_t PRESET[] = {
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
 static uint32_t preset_wave(const preset_t *pr)
 {
-    static const uint8_t car[8] = {0x1, 0x1, 0x1, 0x1, 0x5, 0x7, 0x7, 0xF};
     uint32_t k;
     for (k = 0; k < 4u; k++)
-        if (!(car[pr->alg & 7u] >> k & 1u))
+        if (!(ENG_CAR[pr->alg & 7u] >> k & 1u))
             return pr->s.op[k].wave & 7u;
     return 0;
 }
@@ -1578,23 +1577,74 @@ static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
     }
 }
 
-static void wave_view(int32_t h)
+/* EDIT's ALGO, drawn: the four operators where the algorithm puts them (carriers along the bottom, pink; modulators
+ * above what they modulate, outlined), an arrow each modulation (from engine.h's ENG_MOD, the sound's own), and
+ * operator 4's loop when FEEDBACK is up. Beside it the modulators' wave (WAVE), a turn of it */
+static const uint8_t ALG_X[8][4] = {     /* each operator's place (its centre), per algorithm */
+    {44, 44, 44, 44}, {50, 50, 30, 70}, {50, 30, 30, 70}, {50, 70, 30, 30},
+    {30, 30, 80, 80}, {25, 60, 95, 60}, {25, 60, 95, 95}, {20, 52, 84, 116},
+};
+static const uint8_t ALG_ROW[8][4] = {   /* and its row, 0 the top, 3 the carriers' */
+    {3, 2, 1, 0}, {3, 2, 1, 1}, {3, 2, 1, 2}, {3, 2, 2, 1},
+    {3, 2, 3, 2}, {3, 3, 3, 2}, {3, 3, 3, 2}, {3, 3, 3, 3},
+};
+
+static void algo_view(int32_t h)
 {
-    uint32_t w = (uint32_t)set.p[P_WAVE];
-    int32_t x, y0 = h / 2 + 6, amp = h / 2 - 12, py = 0;
-    char t[40] = "W";
+    uint32_t a = (uint32_t)set.p[P_ALGO] & 7u, w = (uint32_t)set.p[P_WAVE], fb = (uint32_t)set.p[P_FDBK], k, j;
+    int32_t x, py = 0, lo = 240, hi = 0, y0 = 44, amp = 16;
+    char t[24] = "ALGO ";
+#define OPX(k) ((int32_t)ALG_X[a][k] + 4)
+#define OPY(k) (7 + (int32_t)ALG_ROW[a][k] * 17)
+    for (k = 0; k < 4u; k++)             /* the arrows first, under the boxes */
+        for (j = k + 1u; j < 4u; j++)
+            if (ENG_MOD[a][k] >> j & 1u) {
+                int32_t x0 = OPX(j), y0a = OPY(j) + 5, x1 = OPX(k), y1 = OPY(k) - 6;
+                cv_line(x0, y0a, x1, y1, C_GRAY);
+                cv_rect(x1 - 1, y1 - 1, 3, 2, C_GRAY);
+            }
+    if (fb) {                            /* operator 4 into itself */
+        int32_t fx = OPX(3), fy = OPY(3);
+        uint16_t c = fb > 4u ? C_HI : C_AMB;
+        cv_rect(fx + 9, fy, 5, 1, c);
+        cv_rect(fx + 13, fy - 8, 1, 9, c);
+        cv_rect(fx, fy - 8, 14, 1, c);
+        cv_rect(fx, fy - 8, 1, 3, c);
+    }
+    for (k = 0; k < 4u; k++) {           /* the boxes: the carriers filled */
+        int32_t bx = OPX(k) - 8, by = OPY(k) - 5;
+        char n[2] = {(char)('1' + k), 0};
+        if (ENG_CAR[a] >> k & 1u) {
+            cv_rect(bx, by, 17, 11, C_HI);
+            cv_text(bx + 6, by - 1, &FONT_T, n, C_BLACK);
+            lo = OPX(k) < lo ? OPX(k) : lo;
+            hi = OPX(k) > hi ? OPX(k) : hi;
+        } else {
+            cv_rect(bx, by, 17, 1, C_GRAY);
+            cv_rect(bx, by + 10, 17, 1, C_GRAY);
+            cv_rect(bx, by, 1, 11, C_GRAY);
+            cv_rect(bx + 16, by, 1, 11, C_GRAY);
+            cv_text(bx + 6, by - 1, &FONT_T, n, C_GRAY);
+        }
+    }
+    cv_rect(lo, h - 3, hi - lo + 1, 1, C_HI);   /* the carriers summed: the sound out */
+    for (k = 0; k < 4u; k++)
+        if (ENG_CAR[a] >> k & 1u)
+            cv_rect(OPX(k), OPY(k) + 6, 1, h - 3 - OPY(k) - 6, C_HI);
+#undef OPX
+#undef OPY
+    int_text((int32_t)a + 1, t + 5);     /* the caption and the wave, at the right */
+    cv_text(150, 4, &FONT_XS, t, C_GRAY);
+    t[0] = 'W';
     int_text((int32_t)w + 1, t + 1);
-    text_cat(t, ": ");
+    text_cat(t, " ");
     text_cat(t, WAVE_NAME[w]);
-    text_cat(t, ", ON THE MODULATORS");
-    cv_text(10, 4, &FONT_T, t, C_DIM);
-    cv_rect(10, y0, 220, 1, C_LINE);
-    for (x = 0; x <= 220; x++) {         /* two turns across */
-        float ph = (float)(x % 110) / 110.0f;
-        int32_t y = y0 - (int32_t)(wave_shape(ph, w) * (float)amp);
+    cv_text(150, 20, &FONT_T, t, C_DIM);
+    cv_rect(150, y0, 80, 1, C_LINE);
+    for (x = 0; x <= 80; x++) {
+        int32_t y = y0 - (int32_t)(wave_shape((float)x / 80.0f, w) * (float)amp);
         if (x)
-            cv_line(9 + x, py, 10 + x, y, C_HI);
-        cv_rect(10 + x, y, 1, 2, C_HI);
+            cv_line(149 + x, py, 150 + x, y, C_HI);
         py = y;
     }
 }
@@ -1674,7 +1724,7 @@ static void draw(void)
         cv_begin(240, 70, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
         if (ui.page == PG_EDIT)
-            wave_view(70);
+            algo_view(70);
         else
             notes_view(70, 400u, 0);
         if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */

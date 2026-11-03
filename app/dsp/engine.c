@@ -74,7 +74,7 @@ static float fall_coef(float s) { return fm_exp2f(-9.965784f / (fm_maxf(s, 0.000
 /* ------------------------------------------------------------- algorithms --- */
 /* MOD[alg][k]: the operators (bit j = operator j + 1) that modulate operator k + 1. They are computed 4, 3, 2, 1, so
  * a modulator always comes first. CAR[alg]: the carriers */
-static const uint8_t MOD[8][4] = {
+const uint8_t ENG_MOD[8][4] = {
     {0x2, 0x4, 0x8, 0},                  /* 1: 4 > 3 > 2 > 1 */
     {0x2, 0xC, 0, 0},                    /* 2: (3 + 4) > 2 > 1 */
     {0xA, 0x4, 0, 0},                    /* 3: 3 > 2 > 1, 4 > 1 */
@@ -84,7 +84,9 @@ static const uint8_t MOD[8][4] = {
     {0, 0, 0x8, 0},                      /* 7: 4 > 3, 2, 1 */
     {0, 0, 0, 0},                        /* 8: four carriers */
 };
-static const uint8_t CAR[8] = {0x1, 0x1, 0x1, 0x1, 0x5, 0x7, 0x7, 0xF};
+const uint8_t ENG_CAR[8] = {0x1, 0x1, 0x1, 0x1, 0x5, 0x7, 0x7, 0xF};
+#define MOD ENG_MOD
+#define CAR ENG_CAR
 static const float DSIGN[4] = {-1.0f, 0.5f, 1.0f, -0.5f};   /* DETUNE: each operator's way */
 
 /* ------------------------------------------------------------------ voices --- */

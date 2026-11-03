@@ -49,6 +49,10 @@ typedef struct {
     float rev_mix, rev_secs, rev_dark, shimmer;
 } eng_params_t;
 
+/* the 8 algorithms (DX21 / TX81Z): ENG_MOD[alg][k], the operators (bit j = operator j + 1) that modulate operator
+ * k + 1; ENG_CAR[alg], the carriers. The screen draws them from these too */
+extern const uint8_t ENG_MOD[8][4], ENG_CAR[8];
+
 void eng_init(void);
 void eng_set(const eng_sound_t *s, const eng_params_t *p, uint32_t n);   /* the sound and the knobs, at the start of
                                                                            * a block of n */

@@ -24,7 +24,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Chorus |
 | ENV | Attack | Decay | Sustain | Release |
 | LFO | Rate | Shape (sine, tri, square, S&H, drift) | Vibrato | Tremolo (stereo) |
-| EDIT | Algorithm (1-8) | Ratio (the modulators') | Feedback (0-7) | Wave (W1-W8, drawn below the knobs) |
+| EDIT | Algorithm (1-8, drawn below: carriers pink, modulators outlined) | Ratio (the modulators') | Feedback (0-7) | Wave (W1-W8, drawn beside it) |
 | ARP | Rate (1/1 .. 1/32, dotted and triplet) | Octaves | Mode (random, up, down, up-down, as played, converge, diverge, thumb up, thumb up-down, pinky up, pinky up-down, chord, walk) | Gate |
 | SEQ | Humanize (steps up to 40 ms late) | Octave-jump chance | Velocity random | Swing |
 | FX: delay | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Mix | Width |

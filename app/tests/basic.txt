@@ -196,3 +196,16 @@ spin K4 2
 wait 30
 expect wave 2
 shot edit_wave.png
+shot algo5.png
+spin K1 -10
+wait 30
+expect algo 0
+shot algo1.png
+spin K1 5
+spin K3 6
+wait 30
+expect algo 5
+shot algo6.png
+spin K1 2
+wait 30
+shot algo8.png
