@@ -727,8 +727,11 @@ int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain)
         dly_odd ^= 1u;
         dmix_now += (p->dly_mix - dmix_now) * 0.001f;
         rmix_now += (p->rev_mix - rmix_now) * 0.001f;
-        outl = xl + dl * dmix_now;
-        outr = xr + dr * dmix_now;
+        {                                /* WIDTH: the echoes from the middle out to either side */
+            float m = (dl + dr) * 0.5f, sd = (dl - dr) * 0.5f * p->dly_width;
+            outl = xl + (m + sd) * dmix_now;
+            outr = xr + (m - sd) * dmix_now;
+        }
         /* the reverb, fed the voices and the delay */
         if (!reverb((outl + outr) * 0.25f, damp, shim, rm1, rm3, &rl, &rr))
             bad = 1;

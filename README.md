@@ -21,15 +21,15 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |
 | HOME | Arp chance | Rate | Space (reverb mix + length) | Drift (vibrato) |
-| SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Velocity |
+| SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Chorus |
 | ENV | Attack | Decay | Sustain | Release |
 | LFO | Rate | Shape (sine, tri, square, S&H, drift) | Vibrato | Tremolo (stereo) |
-| EDIT | Algorithm (1-8) | Ratio (the modulators') | Feedback (0-7) | Wave (W1-W8) |
+| EDIT | Algorithm (1-8) | Ratio (the modulators') | Feedback (0-7) | Wave (W1-W8, drawn below the knobs) |
 | ARP | Rate (1/1 .. 1/32, dotted and triplet) | Octaves | Mode (random, up, down, up-down, as played, converge, diverge, thumb up, thumb up-down, pinky up, pinky up-down, chord, walk) | Gate |
-| SEQ | Ratchet chance | Octave-jump chance | Velocity random | Swing |
-| FX: delay | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Mix | Chorus |
+| SEQ | Humanize (steps up to 40 ms late) | Octave-jump chance | Velocity random | Swing |
+| FX: delay | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Mix | Width |
 | FX again: reverb | Mix | Length (0.5-15 s) | Dark | Shimmer |
-| GLO | Sync (int / ext MIDI clock) | Clock out | MIDI channel | Velocity curve |
+| GLO | Clock (int, int sent out, ext MIDI clock) | Velocity | MIDI channel | Velocity curve |
 
 Every note the arp plays also goes out over USB MIDI; MIDI notes in feed the arp like the keys. The mod wheel adds
 vibrato; pitch bend is two semitones.

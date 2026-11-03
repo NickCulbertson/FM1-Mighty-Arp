@@ -30,15 +30,15 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |
 | HOME | CHANCE | RATE | SPACE (reverb mix and length together) | DRIFT (= LFO vibrato) |
-| SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | VELOCITY |
+| SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | CHORUS |
 | ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
 | EDIT | ALGO (1-8) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8) |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
-| SEQ | RATCHET (chance) | OCT JUMP (chance) | VEL RAND | SWING |
-| DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | CHORUS |
+| SEQ | HUMANIZE (up to 40 ms late) | OCT JUMP (chance) | VEL RAND | SWING |
+| DELAY | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | MIX | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
-| GLOBAL | SYNC (INT / EXT) | CLOCK OUT (OFF / ON) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) |
+| GLOBAL | CLOCK (INT, OUT, EXT) | VELOCITY | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) |
 
 A sound sets the SOUND, ENVELOPE, LFO and EDIT pages. ARP, SEQ, effects and GLOBAL stay as they are, so changing
 sound mid-piece keeps its rhythm and its space.
@@ -58,7 +58,7 @@ sound mid-piece keeps its rhythm and its space.
 
 - A 24 PPQN clock drives every step: internal from BPM, or MIDI clock in (SYNC EXT; Start resets, Stop pauses).
   CLOCK OUT sends it (internal only).
-- RATCHET: a step plays 2 or 3 quick repeats. OCT JUMP: a note an octave up or down. VEL RAND: velocity spread.
+- HUMANIZE: each step up to 40 ms late, at random. OCT JUMP: a note an octave up or down. VEL RAND: velocity spread.
   SWING: every second step late.
 - Hold: OFF (a key let go stops), HOLD (a new chord replaces the last), LATCH (each key on / off by itself).
 - MIDI in on MIDI CH; the arp's notes out on it (ALL: channel 1).

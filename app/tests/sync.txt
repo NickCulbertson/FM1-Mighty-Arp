@@ -1,13 +1,13 @@
-# MIDI clock: SYNC EXT follows the clock coming in, Stop holds it; CLOCK OUT sends the tempo (tests/run_tests.sh)
+# MIDI clock: CLOCK EXT follows the clock coming in, Stop holds it; CLOCK OUT sends the tempo (tests/run_tests.sh)
 wait 600
 turn ALGO 40
 wait 30
 expect chance 100
 tap GLO
 wait 30
-spin K1 1
+spin K1 2
 wait 30
-expect sync 1
+expect clock 2
 tap REC
 wait 30
 key 7 down 90
@@ -37,12 +37,9 @@ expect arp_notes 0
 midi FA 00 00
 clock 48 21
 expect arp_notes >2
-# SYNC INT with CLOCK OUT: the tempo goes out
+# CLOCK OUT: its own tempo, and sent
 spin K1 -1
 wait 30
-expect sync 0
-spin K2 1
-wait 30
-expect clock_out 1
+expect clock 1
 wait 1000
 expect clocks_out >30

@@ -67,7 +67,7 @@ wait 100
 expect arp_mark 0
 wait 3000
 expect arp_notes 0
-# RATCHET at 100 %: every step two or three hits (6 steps in 2 s)
+# HUMANIZE at 100 %: every step still plays, up to 40 ms late (6 steps in 2 s)
 turn ALGO 60
 wait 50
 expect chance 100
@@ -76,12 +76,13 @@ wait 30
 expect page 6
 spin K1 100
 wait 30
-expect ratchet 100
+expect humanize 100
 shot seq.png
 wait 100
 expect arp_mark 0
 wait 2000
-expect arp_notes >11
+expect arp_notes >4
+expect arp_notes <8
 spin K1 -100
 wait 30
 # REC again: NO HOLD, and what no key holds goes
@@ -142,7 +143,7 @@ wait 30
 expect rev_mix 50
 expect rev_len 65
 # a page, a knob, a sound, then SAVE and a reboot keep them
-tap FX
+tap SEL
 wait 30
 turn K4 10
 wait 30
@@ -187,3 +188,11 @@ expect held 1
 midi 81 3C 00
 wait 50
 expect held 0
+# EDIT draws the modulators' wave
+tap EDIT
+wait 30
+spin K4 -10
+spin K4 2
+wait 30
+expect wave 2
+shot edit_wave.png

@@ -17,15 +17,15 @@
 #define NHELD 16
 
 /* ------------------------------------------------------------- parameters --- */
-enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
+enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND (VELOCITY: on GLOBAL) */
        P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE,       /* ENVELOPE */
        P_LRATE, P_LSHAPE, P_VIB, P_TREM,              /* LFO */
        P_ALGO, P_RATIO, P_FDBK, P_WAVE,               /* EDIT */
        P_RATE, P_OCTAVES, P_MODE, P_GATE,             /* ARP */
-       P_RATCHET, P_OJUMP, P_VRAND, P_SWING,          /* SEQ */
-       P_DTIME, P_DFDBK, P_DMIX, P_CHORUS,            /* DELAY */
+       P_HUMAN, P_OJUMP, P_VRAND, P_SWING,            /* SEQ */
+       P_DTIME, P_DFDBK, P_DMIX, P_CHORUS,            /* DELAY (CHORUS: on SOUND) */
        P_RMIX, P_RLEN, P_RDARK, P_SHIMMER,            /* REVERB */
-       P_SYNC, P_CLKOUT, P_MIDICH, P_VCURVE,          /* GLOBAL */
+       P_CLOCK, P_WIDTH, P_MIDICH, P_VCURVE,          /* GLOBAL (WIDTH: on DELAY) */
        P_TEMPO, P_CHANCE,                             /* SELECT and ALGO */
        NP,
        PX_SPACE = NP };                               /* HOME's macro: the reverb's mix and length together */
@@ -50,13 +50,13 @@ static const param_t PAR[NP] = {
     {"FEEDBACK", "fm_fdbk", 0, 7, 0, U_NUM},     {"WAVE", "wave", 0, 7, 0, U_WAVE},
     {"RATE", "rate", 0, 10, 5, U_DIV},            {"OCTAVES", "octaves", 1, 4, 2, U_OCT},
     {"MODE", "mode", 0, NMODE - 1, M_RANDOM, U_MODE},           {"GATE", "gate", 5, 100, 50, U_PCT},
-    {"RATCHET", "ratchet", 0, 100, 0, U_PCT},    {"OCT JUMP", "oct_jump", 0, 100, 0, U_PCT},
+    {"HUMANIZE", "humanize", 0, 100, 0, U_PCT},  {"OCT JUMP", "oct_jump", 0, 100, 0, U_PCT},
     {"VEL RAND", "vel_rand", 0, 100, 20, U_PCT}, {"SWING", "swing", 0, 100, 0, U_PCT},
     {"TIME", "dly_time", 0, 8, 4, U_DDIV},       {"FEEDBACK", "dly_fdbk", 0, 95, 45, U_PCT},
     {"MIX", "dly_mix", 0, 100, 30, U_PCT},       {"CHORUS", "chorus", 0, 100, 25, U_PCT},
     {"MIX", "rev_mix", 0, 100, 40, U_PCT},       {"LENGTH", "rev_len", 0, 100, 55, U_SECS},
     {"DARK", "rev_dark", 0, 100, 40, U_PCT},     {"SHIMMER", "shimmer", 0, 100, 0, U_PCT},
-    {"SYNC", "sync", 0, 1, 0, U_SYNC},           {"CLOCK OUT", "clock_out", 0, 1, 0, U_ONOFF},
+    {"CLOCK", "clock", 0, 2, 0, U_SYNC},         {"WIDTH", "width", 0, 100, 100, U_PCT},
     {"MIDI CH", "midi_ch", 0, 16, 0, U_CH},      {"VEL CURVE", "vel_curve", 0, 3, 1, U_CURVE},
     {"TEMPO", "tempo", 40, 200, 90, U_BPM},      {"CHANCE", "chance", 0, 100, 33, U_PCT},
 };
@@ -69,15 +69,15 @@ typedef struct {
 } page_t;
 static const page_t PAGE[NPAGE] = {
     {"HOME", B_HOME, {P_CHANCE, P_RATE, PX_SPACE, P_VIB}},
-    {"SOUND", B_SEL, {P_TONE, P_STRIKE, P_DETUNE, P_VELO}},
+    {"SOUND", B_SEL, {P_TONE, P_STRIKE, P_DETUNE, P_CHORUS}},
     {"ENVELOPE", B_ENV, {P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE}},
     {"LFO", B_LFO, {P_LRATE, P_LSHAPE, P_VIB, P_TREM}},
     {"EDIT", B_EDIT, {P_ALGO, P_RATIO, P_FDBK, P_WAVE}},
     {"ARP", B_ARP, {P_RATE, P_OCTAVES, P_MODE, P_GATE}},
-    {"SEQ", B_SEQ, {P_RATCHET, P_OJUMP, P_VRAND, P_SWING}},
-    {"DELAY", B_FX, {P_DTIME, P_DFDBK, P_DMIX, P_CHORUS}},
+    {"SEQ", B_SEQ, {P_HUMAN, P_OJUMP, P_VRAND, P_SWING}},
+    {"DELAY", B_FX, {P_DTIME, P_DFDBK, P_DMIX, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
-    {"GLOBAL", B_GLO, {P_SYNC, P_CLKOUT, P_MIDICH, P_VCURVE}},
+    {"GLOBAL", B_GLO, {P_CLOCK, P_VELO, P_MIDICH, P_VCURVE}},
 };
 
 /* the arp's steps (in MIDI clocks: 24 a beat) and the delay's times (in beats) */
@@ -243,8 +243,9 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-#define SET_MAGIC 0x3452414Du            /* "MAR4": the settings record; another magic loads defaults */
-#define SET_MAGIC_3 0x3352414Du          /* "MAR3": the same record, the arp's modes in their old order */
+#define SET_MAGIC 0x3552414Du            /* "MAR5": the settings record; another magic loads defaults */
+#define SET_MAGIC_4 0x3452414Du          /* "MAR4": the same record with RATCHET, SYNC and CLOCK OUT in three slots */
+#define SET_MAGIC_3 0x3352414Du          /* "MAR3": MAR4 with the arp's modes in their old order */
 static const uint8_t MODE_FROM_3[11] = {M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_PINKY,
                                         M_CHORD, M_RANDOM, M_WALK};
 typedef struct {
@@ -393,10 +394,10 @@ static void held_clear(void)
 /* ---- the clock: 24 a beat, from the tempo or from MIDI clock in (SYNC EXT); every step lands on it */
 static float tick_acc;                   /* the internal clock: fractions of a tick */
 static uint32_t tick_n = CLK_WRAP - 1u;  /* the clock's tick, 0 .. CLK_WRAP - 1 */
-static int32_t swing_wait, rat_wait;     /* samples to a swung step, and to the next ratchet hit */
-static int32_t rat_left, rat_gate, rat_sub;
+static int32_t swing_wait, hum_wait;     /* samples to a swung step, and to a step HUMANIZE made late */
+static int32_t hum_gate;
 static int32_t arp_s = -1, arp_k;        /* steps since the pattern began; WALK's place */
-static int32_t st_note[NHELD];           /* the step's notes (one, or CHORD's), for its ratchet hits */
+static int32_t st_note[NHELD];           /* the step's notes (one, or CHORD's), for HUMANIZE to play late */
 static uint8_t st_vel[NHELD];
 static uint32_t st_n;
 static volatile int32_t last_played = -1;
@@ -533,7 +534,7 @@ static void arp_step(void)
     for (i = 0; i < st_n; i++)
         while (st_note[i] > 127)
             st_note[i] -= 12;
-    rat_wait = 0;
+    hum_wait = 0;
     if (rnd_n(100) >= (uint32_t)set.p[P_CHANCE]) {   /* the chance: this step rests (ghosts on the screen) */
         for (i = 0; i < st_n; i++) {
             viz[viz_w % VIZ_N] = (uint32_t)st_note[i] | (sample_clock / 441u) << 16;
@@ -554,27 +555,22 @@ static void arp_step(void)
     for (i = 0; i < st_n; i++)
         st_vel[i] = (uint8_t)clamp((int32_t)st_vel[i] + (vr ? (int32_t)rnd_n((uint32_t)(2 * vr + 1)) - vr : 0), 1, 127);
     gate = (int32_t)(step * (float)set.p[P_GATE] / 100.0f);
-    if (rnd_n(100) < (uint32_t)set.p[P_RATCHET]) {   /* RATCHET: the step in 2 or 3 quick hits */
-        int32_t hits = 2 + (int32_t)rnd_n(2);
-        rat_sub = (int32_t)(step / (float)hits);
-        gate = gate / hits;
-        rat_left = hits - 1;
-        rat_wait = rat_sub;
+    hum_gate = gate < 64 ? 64 : gate;
+    if (set.p[P_HUMAN]) {                /* HUMANIZE: the step a little late, at random: up to 40 ms (half a step) */
+        uint32_t most = (uint32_t)fm_minf((float)set.p[P_HUMAN] * 17.64f, step * 0.5f);
+        hum_wait = (int32_t)rnd_n(most + 1u);
+        if (hum_wait > 0)
+            return;
     }
-    rat_gate = gate < 64 ? 64 : gate;
     for (i = 0; i < st_n; i++)
-        play(st_note[i], st_vel[i], rat_gate);
+        play(st_note[i], st_vel[i], hum_gate);
 }
 
-static void ratchet_hit(void)
+static void humanized(void)              /* the step HUMANIZE held back, now */
 {
     uint32_t i;
-    for (i = 0; i < st_n; i++) {
-        st_vel[i] = (uint8_t)(st_vel[i] * 4u / 5u < 1u ? 1u : st_vel[i] * 4u / 5u);
-        play(st_note[i], st_vel[i], rat_gate);
-    }
-    if (--rat_left > 0)
-        rat_wait = rat_sub;
+    for (i = 0; i < st_n; i++)
+        play(st_note[i], st_vel[i], hum_gate);
 }
 
 static void on_tick(void)                /* a clock tick: MIDI out, and a step where one falls */
@@ -596,7 +592,7 @@ static void arp_restart(void)            /* the first note of a new chord: the c
 {
     tick_n = 0;
     tick_acc = 0.0f;
-    swing_wait = rat_wait = 0;
+    swing_wait = hum_wait = 0;
     arp_s = -1;                          /* the pattern from its top */
     arp_step();
 }
@@ -662,7 +658,7 @@ static void modes_follow(void)
         arp_on_now = set.arp_on;
         eng_release_all();               /* every note let go into its release */
         out_all_off();
-        swing_wait = rat_wait = 0;
+        swing_wait = hum_wait = 0;
         if (!arp_on_now)                 /* the arp stopped: the notes held sound again */
             for (i = 0; i < nheld; i++) {
                 eng_note_on(held[i], held_vel[i], -1);
@@ -684,13 +680,13 @@ static void modes_follow(void)
             held_publish();
         }
     }
-    if ((uint8_t)set.p[P_SYNC] != sync_now) {
-        sync_now = (uint8_t)set.p[P_SYNC];
+    if ((uint8_t)(set.p[P_CLOCK] == 2) != sync_now) {
+        sync_now = (uint8_t)(set.p[P_CLOCK] == 2);
         ext_run = 1;
-        swing_wait = rat_wait = 0;
+        swing_wait = hum_wait = 0;
     }
-    if ((uint8_t)(set.p[P_CLKOUT] && !sync_now) != clk_out_now) {
-        clk_out_now = (uint8_t)(set.p[P_CLKOUT] && !sync_now);
+    if ((uint8_t)(set.p[P_CLOCK] == 1) != clk_out_now) {
+        clk_out_now = (uint8_t)(set.p[P_CLOCK] == 1);
         midi_rt(clk_out_now ? 0xFAu : 0xFCu);   /* Start, Stop */
     }
 }
@@ -732,7 +728,7 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
                     tick_n = CLK_WRAP - 1u;   /* the next clock is the first step */
                     arp_s = -1;
                 }
-                swing_wait = rat_wait = 0;
+                swing_wait = hum_wait = 0;
             }
             continue;
         }
@@ -816,6 +812,7 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
         ep.dly_samples *= 0.5f;
     ep.dly_fb = (float)set.p[P_DFDBK] / 100.0f;
     ep.dly_mix = (float)set.p[P_DMIX] / 100.0f;
+    ep.dly_width = (float)set.p[P_WIDTH] / 100.0f;
     ep.rev_mix = (float)set.p[P_RMIX] / 100.0f * 0.6f;
     ep.rev_secs = rev_secs(set.p[P_RLEN]);
     ep.rev_dark = (float)set.p[P_RDARK] / 100.0f;
@@ -844,7 +841,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         }
         if (swing_wait > 0 && --swing_wait == 0)
             ev |= 2u;
-        if (rat_wait > 0 && --rat_wait == 0)
+        if (hum_wait > 0 && --hum_wait == 0)
             ev |= 4u;
         if (!ev)
             continue;
@@ -855,7 +852,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         if (ev & 2u && arp_on_now)
             arp_step();
         if (ev & 4u && arp_on_now && nheld)
-            ratchet_hit();
+            humanized();
     }
     eng_voices(buf_l, buf_r, seg, n);
     if (eng_out(buf_l, buf_r, lr, n, gain))   /* a bad number: silence, then everything starts clean */
@@ -945,6 +942,12 @@ void app_init(void)
     if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) == (int)sizeof set && set.magic == SET_MAGIC_3
         && (uint16_t)set.p[P_MODE] < 11u) {   /* a save from before RANDOM came first: its mode moved */
         set.p[P_MODE] = MODE_FROM_3[set.p[P_MODE]];
+        set.magic = SET_MAGIC_4;
+    }
+    if (set.magic == SET_MAGIC_4) {      /* a save from before HUMANIZE, CLOCK and WIDTH: those three slots anew */
+        set.p[P_HUMAN] = 0;              /* (was RATCHET) */
+        set.p[P_CLOCK] = set.p[P_CLOCK] ? 2 : set.p[P_WIDTH] ? 1 : 0;   /* (were SYNC and CLOCK OUT) */
+        set.p[P_WIDTH] = PAR[P_WIDTH].def;
         set.magic = SET_MAGIC;
     }
     if (set.magic != SET_MAGIC || !settings_ok())
@@ -1069,8 +1072,8 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     case U_CURVE:
         text_cat(t, CURVE_NAME[v]);
         break;
-    case U_SYNC:
-        text_cat(t, v ? "EXT" : "INT");
+    case U_SYNC:                         /* CLOCK: its own, its own sent out, MIDI clock in */
+        text_cat(t, v == 2 ? "EXT" : v ? "OUT" : "INT");
         break;
     case U_ONOFF:
         text_cat(t, v ? "ON" : "OFF");
@@ -1486,6 +1489,51 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
     }
 }
 
+/* EDIT's WAVE, drawn: two turns of the modulators' wave (dsp/engine.c wave(), the TX81Z's eight), and its name */
+static const char *const WAVE_NAME[8] = {"SINE", "PEAKED SINE", "HALF SINE", "HALF PEAKED", "FAST HALF",
+                                         "FAST PEAKED", "FAST BUMPS", "FAST SOFT BUMPS"};
+static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
+{
+    float s, f = ph;
+    if (w >= 4u) {                       /* W5..W8: twice as fast in the first half, silent in the second */
+        if (f >= 0.5f)
+            return 0.0f;
+        f *= 2.0f;
+    }
+    s = fm_sinf(f * FM_TWO_PI);
+    switch (w & 3u) {
+    case 0:
+        return s;
+    case 1:
+        return s * fm_fabsf(s);
+    case 2:
+        return w >= 4u ? (w == 6u ? fm_fabsf(s) : s) : (s > 0.0f ? s : 0.0f);
+    default:
+        return w >= 4u ? s * s : (s > 0.0f ? s * s : 0.0f);
+    }
+}
+
+static void wave_view(int32_t h)
+{
+    uint32_t w = (uint32_t)set.p[P_WAVE];
+    int32_t x, y0 = h / 2 + 6, amp = h / 2 - 12, py = 0;
+    char t[40] = "W";
+    int_text((int32_t)w + 1, t + 1);
+    text_cat(t, ": ");
+    text_cat(t, WAVE_NAME[w]);
+    text_cat(t, ", ON THE MODULATORS");
+    cv_text(10, 4, &FONT_T, t, C_DIM);
+    cv_rect(10, y0, 220, 1, C_LINE);
+    for (x = 0; x <= 220; x++) {         /* two turns across */
+        float ph = (float)(x % 110) / 110.0f;
+        int32_t y = y0 - (int32_t)(wave_shape(ph, w) * (float)amp);
+        if (x)
+            cv_line(9 + x, py, 10 + x, y, C_HI);
+        cv_rect(10 + x, y, 1, 2, C_HI);
+        py = y;
+    }
+}
+
 static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC, then tempo and chance */
 {
     char t[24];
@@ -1495,7 +1543,7 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
     cv_text(52, 0, &FONT_XS, "REC", C_DIM);
     cv_text(52, 12, &FONT_B, HOLD_NAME[set.hold], set.hold ? C_HI : C_GRAY);
     cv_text(120, 0, &FONT_XS, "TEMPO", C_DIM);
-    if (set.p[P_SYNC]) {
+    if (set.p[P_CLOCK] == 2) {
         t[0] = 0;
         if (ext_bpm_x10) {
             int_text((int32_t)((ext_bpm_x10 + 5u) / 10u), t);
@@ -1560,7 +1608,10 @@ static void draw(void)
         cv_blit(0, 34);
         cv_begin(240, 70, C_BG);
         cv_rect(10, 0, 220, 1, C_LINE);
-        notes_view(70, 400u, 0);
+        if (ui.page == PG_EDIT)
+            wave_view(70);
+        else
+            notes_view(70, 400u, 0);
         if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */
             load_text(t);
             cv_text(10, 4, &FONT_T, t, C_DIM);
