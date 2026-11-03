@@ -1514,6 +1514,8 @@ void app_init(void)
  * notes, electric purple for the rest */
 #define C_BG C_BLACK
 #define C_GHOST RGB(84, 62, 136)
+#define C_NOW RGB(255, 226, 0)              /* yellow: what is happening this moment (the note just played, the knob being
+                                             * turned, the operator OP edits): cyan, magenta, yellow, CMYK */
 static void theme(void)
 {
     pal[0] = RGB(50, 32, 82);            /* C_LINE: rules, the knobs' tracks */
@@ -2303,7 +2305,7 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
             continue;
         }
         s = (big ? 2 : 1) + (int32_t)(vel / 43u);
-        cv_rect(x - s, y - s, 2 * s + 1, 2 * s + 1, age < 25u ? C_WHITE : age < secs_cs / 4u ? C_HI : age < secs_cs / 2u ? C_AMB : C_DIM);
+        cv_rect(x - s, y - s, 2 * s + 1, 2 * s + 1, age < 25u ? C_NOW : age < secs_cs / 4u ? C_HI : age < secs_cs / 2u ? C_AMB : C_DIM);
     }
 }
 
@@ -2438,10 +2440,10 @@ static void algo_view(int32_t h, int32_t hl)   /* hl: the operator OP is editing
         int32_t bx = OPX(k) - 8, by = OPY(k) - 5;
         char n[2] = {(char)('1' + k), 0};
         if ((int32_t)k == hl) {          /* the one being edited */
-            cv_rect(bx - 2, by - 2, 21, 1, C_WHITE);
-            cv_rect(bx - 2, by + 12, 21, 1, C_WHITE);
-            cv_rect(bx - 2, by - 2, 1, 15, C_WHITE);
-            cv_rect(bx + 18, by - 2, 1, 15, C_WHITE);
+            cv_rect(bx - 2, by - 2, 21, 1, C_NOW);
+            cv_rect(bx - 2, by + 12, 21, 1, C_NOW);
+            cv_rect(bx - 2, by - 2, 1, 15, C_NOW);
+            cv_rect(bx + 18, by - 2, 1, 15, C_NOW);
         }
         if (ENG_CAR[a] >> k & 1u) {
             cv_rect(bx, by, 17, 11, C_HI);
@@ -2496,11 +2498,11 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
             text_cat(t, "EXT WAIT");
     } else
         param_text(P_TEMPO, t);
-    cv_text(120, 12, &FONT_B, t, ui.tempo_at && now - ui.tempo_at < 400u ? C_WHITE : C_AMB);
+    cv_text(120, 12, &FONT_B, t, ui.tempo_at && now - ui.tempo_at < 400u ? C_NOW : C_AMB);
     cv_text(184, 0, &FONT_XS, "CHANCE", C_DIM);
     int_text(set.p[P_CHANCE], t);
     text_cat(t, "%");
-    cv_text(184, 12, &FONT_B, t, ui.chance_at && now - ui.chance_at < 400u ? C_WHITE : C_AMB);
+    cv_text(184, 12, &FONT_B, t, ui.chance_at && now - ui.chance_at < 400u ? C_NOW : C_AMB);
     cv_blit(0, 212);
 }
 
@@ -2525,9 +2527,9 @@ static void draw(void)
             int32_t cx = 37 + (int32_t)i * 55;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
             const char *nm = par_name(p);
-            knob_draw(&kn_small, cx, 19, par_frac(p, 240), lit ? C_WHITE : C_HI, 0);
+            knob_draw(&kn_small, cx, 19, par_frac(p, 240), lit ? C_NOW : C_HI, 0);
             param_text(p, t);
-            cv_text(cx - text_w(&FONT_B, t) / 2, 34, &FONT_B, t, lit ? C_WHITE : C_HI);
+            cv_text(cx - text_w(&FONT_B, t) / 2, 34, &FONT_B, t, lit ? C_NOW : C_HI);
             cv_text(cx - text_w(&FONT_XS, nm) / 2, 52, &FONT_XS, nm, C_GRAY);
         }
         cv_blit(0, 144);
@@ -2554,17 +2556,17 @@ static void draw(void)
             if (p == PX_NONE)                /* a page with fewer knobs */
                 continue;
             int lit = ui.turned_at[i] && now - ui.turned_at[i] < 400u;
-            knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_WHITE : C_HI, 1);
+            knob_draw(&kn_big, x + 16, y + 20, par_frac(p, 240), lit ? C_NOW : C_HI, 1);
             cv_text(x + 38, y + 1, &FONT_S, par_name(p), C_GRAY);
             param_text(p, t);
             {                                /* a long one (AS PLAYED, LEGATO, a sound's name) smaller */
                 int32_t room = i % 2u ? 66 : 68;
                 if (text_w(&FONT_M, t) <= room)
-                    cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_WHITE : C_HI);
+                    cv_text(x + 38, y + 16, &FONT_M, t, lit ? C_NOW : C_HI);
                 else if (text_w(&FONT_B, t) <= room + 8)
-                    cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_WHITE : C_HI);
+                    cv_text(x + 38, y + 20, &FONT_B, t, lit ? C_NOW : C_HI);
                 else
-                    cv_text(x + 38, y + 21, &FONT_XS, t, lit ? C_WHITE : C_HI);
+                    cv_text(x + 38, y + 21, &FONT_XS, t, lit ? C_NOW : C_HI);
             }
         }
         cv_blit(0, 34);
