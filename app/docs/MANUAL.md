@@ -41,7 +41,7 @@ Each button opens a page for the four knobs. Press it again for its second page.
 | ARP | RATE, OCTAVES, MODE, GATE | CHORDS: CHORD, STRUM, KEY, SCALE |
 | SEQ | HUMANIZE, OCT JUMP, VEL RAND, SWING | |
 | FX | DELAY | REVERB, then CHORUS |
-| GLO | CLOCK, MIDI CH, VEL CURVE, PARAMS (reset) | |
+| GLO | CLOCK, MIDI CH, VEL CURVE | RESETS: PARAMS, FACTORY |
 
 **CHORDS** turns each arp note into a chord in your key and scale (TRIAD, 7TH, LUSH, OPEN), or makes the arp pick
 from your chords' notes (the TONES settings). STRUM rolls each chord from low to high.
@@ -60,8 +60,9 @@ arp, chords, effects and tempo. It gets a name like FROG MULLET.
 effects carry on. On **CHANGE**, a USER preset brings back everything it saved, and a factory sound starts from the
 default arp and effects.
 
-**Reset:** on GLO, turn PARAMS one click right to RESET. The arp, chords and effects go back to their defaults; the
-sound and tempo stay.
+**Reset:** press GLO twice for RESETS. Turn PARAMS one click right to RESET: the arp, chords and effects go back to
+their defaults; the sound and tempo stay. FACTORY, two clicks right (SURE?, then reset), puts everything back as
+new and deletes every USER preset.
 
 **SAVE on any other page** keeps how things are now for the next power-on.
 

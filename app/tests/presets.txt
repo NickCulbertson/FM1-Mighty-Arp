@@ -88,8 +88,10 @@ wait 30
 expect tempo 100
 tap GLO
 wait 30
-expect page 9
-spin K4 1
+tap GLO
+wait 30
+expect page 21
+spin K1 1
 wait 30
 expect strum 0
 expect chord 0
@@ -100,13 +102,13 @@ expect loads 1
 turn ALGO -10
 wait 30
 expect chance 13
-spin K4 3
+spin K1 3
 wait 30
 expect chance 13
-spin K4 -1
+spin K1 -1
 wait 30
 expect chance 13
-spin K4 1
+spin K1 1
 wait 30
 expect chance 33
 # A USER preset's name: given at its first save, kept when saved over; none another slot has
@@ -123,3 +125,31 @@ wait 30
 expect user2_used 1
 expect user2_name >0
 shot sounds_named.png
+# RESETS's FACTORY: a detent SURE?, back left KEEP; two detents: every USER preset gone, the settings as new, kept
+tap GLO
+wait 30
+tap GLO
+wait 30
+expect page 21
+spin K2 1
+wait 30
+expect user1_used 1
+spin K2 -1
+wait 30
+spin K2 1
+wait 30
+expect user1_used 1
+spin K2 1
+wait 30
+expect user1_used 0
+expect user2_used 0
+expect preset 0
+expect tempo 90
+expect loads 0
+expect page 0
+reboot
+wait 600
+expect user1_used 0
+expect preset 0
+expect tempo 90
+expect loads 0

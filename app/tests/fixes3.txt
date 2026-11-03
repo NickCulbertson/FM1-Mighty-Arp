@@ -112,10 +112,12 @@ expect arp_notes >9
 # RESET in the middle of a strum: what it had queued under the old settings goes (never played after: CHORD OFF)
 tap GLO
 wait 30
-expect page 9
-wait 80
+tap GLO
+wait 30
+expect page 21
+wait 50
 expect queued 1
-spin K4 1
+spin K1 1
 expect queued 0
 expect chord 0
 midi 80 3C 00
@@ -149,9 +151,12 @@ expect dsp_resets 0
 # All Sound Off on channel 1 mid-strum, channel 2 still holding: C's E and G never play; D's chord plays on
 tap GLO
 wait 30
-spin K4 -1
+tap GLO
 wait 30
-spin K4 1
+expect page 21
+spin K1 -1
+wait 30
+spin K1 1
 wait 30
 turn ALGO 40
 wait 30

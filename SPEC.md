@@ -45,7 +45,8 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
-| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | PARAMS (KEEP; a detent right, RESET: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
+| RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) | FACTORY (KEEP; a detent right SURE?, another: the settings as new, every USER preset gone, both saved) | | |
 
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
 A USER preset keeps everything: the sound pages, ARP, SEQ, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's

@@ -39,7 +39,8 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
        PX_CAT, PX_SND, PX_SLOT,                       /* SOUNDS: the kind, the sound, the USER slot SAVE writes */
-       PX_RESET,                                      /* GLOBAL's fourth: RESET, turned right all the way */
+       PX_RESET,                                      /* RESETS: PARAMS, KEEP or (a detent right) RESET */
+       PX_FACTORY,                                    /* RESETS: FACTORY, KEEP, SURE?, then everything as new */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 13u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE */
 static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI"};
@@ -99,7 +100,7 @@ static const param_t PAR[NP] = {
 
 /* the pages: each button's four knobs */
 enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, PG_CHORUS,
-       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, PG_CHORDS, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
+       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, PG_CHORDS, PG_RESETS, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
                                                              * again: VOICE */
 typedef struct {
     const char *name;
@@ -115,7 +116,7 @@ static const page_t PAGE[NPAGE] = {
     {"SEQ", B_SEQ, {P_HUMAN, P_OJUMP, P_VRAND, P_SWING}},
     {"DELAY", B_FX, {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
-    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_RESET}},
+    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_NONE}},
     {"CHORUS", B_FX, {P_CHORUS, P_CRATE, P_CDEPTH, PX_NONE}},
     {"OP 1", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 2", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
@@ -127,6 +128,7 @@ static const page_t PAGE[NPAGE] = {
     {"LFO 2", B_LFO, {P_PWM, P_LFOCUT, PX_NONE, PX_NONE}},
     {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
     {"CHORDS", B_ARP, {P_CHORD, P_STRUM, P_KEY, P_SCALE}},
+    {"RESETS", B_GLO, {PX_RESET, PX_FACTORY, PX_NONE, PX_NONE}},   /* GLO again */
 };
 static const char *const CHORD_NAME[NCHORD] = {"OFF", "TRIAD", "7TH", "LUSH", "OPEN", "TRIAD TONES", "7TH TONES",
                                                "OMNI TONES"};
@@ -2027,6 +2029,7 @@ static struct {
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
     uint32_t reset_arm;                  /* GLOBAL's PARAMS: KEEP, or turned right RESET (done) */
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
+    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (a detent more: done) */
     uint8_t redraw;
 } ui;
 
@@ -2087,6 +2090,8 @@ static const char *par_name(uint32_t p)
         return "SAVE TO";
     if (p == PX_RESET)
         return "PARAMS";
+    if (p == PX_FACTORY)
+        return "FACTORY";
     if (p >= PX_OPR && p <= PX_OPD)
         return OPN[p - PX_OPR];
     return p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name;
@@ -2147,6 +2152,10 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     }
     if (p == PX_RESET) {                     /* GLOBAL's RESET: turn right until it goes */
         text_cat(t, ui.reset_arm ? "RESET" : "KEEP");
+        return;
+    }
+    if (p == PX_FACTORY) {
+        text_cat(t, ui.factory_arm ? "SURE?" : "KEEP");
         return;
     }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4's */
@@ -2338,6 +2347,8 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
         return (int32_t)ui.save_slot * w / (int32_t)(NUSER - 1u);
     case PX_RESET:
         return (int32_t)ui.reset_arm * w / (int32_t)RESET_TURNS;
+    case PX_FACTORY:
+        return (int32_t)ui.factory_arm * w / 2;
     case PX_OPR:
         return (int32_t)set.op_ratio[k] * w / (int32_t)(N_OPRATIO - 1u);
     case PX_OPL:
@@ -2453,6 +2464,33 @@ static int set_par(uint32_t p, int32_t v)    /* 1 = changed */
     return 1;
 }
 
+static void page_go(uint32_t pg);
+/* RESETS's FACTORY: as a new FM-1 (for testing): the settings as new, every USER preset gone, both written to the
+ * flash, then HOME */
+static void factory_reset(void)
+{
+    uint32_t f = plat_lock(), k;
+    uint8_t *b = (uint8_t *)&users;
+    held_clear();
+    arp_cancel();
+    eng_release_all();
+    for (k = 0; k < sizeof users; k++)
+        b[k] = 0;
+    users.magic = USER_MAGIC;
+    settings_defaults();
+    plat_unlock(f);
+    ui.save_slot = 0;
+    if (plat_store_save(OBJ_USER, &users, sizeof users) != 0 || plat_store_save(OBJ_SETTINGS, &set, sizeof set) != 0) {
+        set_dirty = 1;
+        page_go(PG_HOME);
+        app_say("FACTORY RESET", "NOT SAVED");
+        return;
+    }
+    set_dirty = 0;
+    page_go(PG_HOME);
+    app_say("FACTORY", "RESET");
+}
+
 static void param_turn(uint32_t p, int32_t d)
 {
     char t[16];
@@ -2529,6 +2567,17 @@ static void param_turn(uint32_t p, int32_t d)
         }
         return;
     }
+    if (p == PX_FACTORY) {                   /* FACTORY: a detent right SURE?, another everything as new; left, KEEP */
+        if (d < 0)
+            ui.factory_arm = 0;
+        else if (++ui.factory_arm >= 2u) {
+            ui.factory_arm = 0;
+            factory_reset();
+            return;
+        }
+        ui.redraw = 1;
+        return;
+    }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4: the operator's own */
         uint32_t k = op_now();
         uint8_t *f = p == PX_OPR ? &set.op_ratio[k] : p == PX_OPL ? &set.op_level[k] : p == PX_OPW ? &set.op_wave[k]
@@ -2598,6 +2647,7 @@ static void page_go(uint32_t pg)
 {
     ui.page = pg;
     ui.reset_arm = 0;
+    ui.factory_arm = 0;
     ui.user_peek = 0;
     cpu_peak = 0;
     ui.turned_at[0] = ui.turned_at[1] = ui.turned_at[2] = ui.turned_at[3] = 0;
@@ -2632,6 +2682,10 @@ static void input(void)
         }
         if (k == B_ENV) {                    /* ENV: the amp's envelope, again FILTER, again its envelope, round */
             page_go(ui.page == PG_ENV ? PG_FILTER : ui.page == PG_FILTER ? PG_FENV : PG_ENV);
+            continue;
+        }
+        if (k == B_GLO) {                    /* GLO: GLOBAL, again RESETS, and back */
+            page_go(ui.page == PG_GLOBAL ? PG_RESETS : PG_GLOBAL);
             continue;
         }
         if (k == B_ARP) {                    /* ARP: the arp, again CHORDS, and back */
@@ -3113,7 +3167,8 @@ static void draw(void)
                 [PG_SOUND] = "SEL AGAIN: VOICE", [PG_VOICE] = "SEL AGAIN: SOUND",
                 [PG_SOUNDS] = "SAVE: INTO THE SLOT", [PG_ENV] = "ENV AGAIN: FILTER",
                 [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1",
-                [PG_ARP] = "ARP AGAIN: CHORDS", [PG_CHORDS] = "ARP AGAIN: ARP"};
+                [PG_ARP] = "ARP AGAIN: CHORDS", [PG_CHORDS] = "ARP AGAIN: ARP",
+                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "GLO AGAIN: GLOBAL"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);
