@@ -858,7 +858,16 @@ static uint32_t chord_of(int32_t root, uint32_t kind, int32_t *out)
 /* the strum: a chord's notes after its first, STRUM apart (st_i the next, strum_wait the samples to it) */
 static uint32_t st_i;
 static int32_t strum_wait;
-static int32_t strum_samples(void) { return (int32_t)((float)set.p[P_STRUM] * 0.0008f * SR); }   /* 0.8 ms a step */
+/* STRUM's time between notes: 0 off, else 2 ms .. 250 ms (exponential), but never so long the chord would not finish
+ * before the next step (all its notes within 90 % of it) */
+static float strum_ms(int32_t v) { return v ? 2.0f * fm_exp2f((float)v * 0.0696578f) : 0.0f; }   /* 125^(v/100) */
+static int32_t strum_samples(void)
+{
+    float t = strum_ms(set.p[P_STRUM]) * 0.001f * SR;
+    if (st_n > 1u)
+        t = fm_minf(t, step_samples() * 0.9f / (float)(st_n - 1u));
+    return (int32_t)t;
+}
 
 static void chord_play(void)             /* the step's notes: all at once, or the first now and the rest strummed */
 {
@@ -2003,7 +2012,7 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         if (!v)
             text_cat(t, "OFF");
         else {
-            int_text((v * 8 + 5) / 10, t);   /* 0.8 ms a step: up to 80 ms */
+            int_text((int32_t)(strum_ms(v) + 0.5f), t);
             text_cat(t, " MS");
         }
         break;

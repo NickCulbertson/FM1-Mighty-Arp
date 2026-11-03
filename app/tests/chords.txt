@@ -101,3 +101,22 @@ wait 333
 expect last_note 64
 wait 333
 expect last_note 67
+# STRUM at its longest at 1/2: a chord's notes still all play within the step
+spin K1 -10
+spin K1 3
+wait 30
+expect chord 3
+spin K2 100
+wait 30
+expect strum 100
+tap GLO
+wait 30
+tap ARP
+wait 30
+spin K1 -4
+wait 30
+expect rate 1
+expect arp_mark 0
+wait 2700
+expect arp_notes >9
+expect dsp_resets 0
