@@ -1,17 +1,18 @@
-# DRIFT in the host simulator: ./build.sh --host, then tests/run_tests.sh
+# Mighty Arp in the host simulator: ./build.sh --host, then tests/run_tests.sh
 wait 600
 shot boot.png
 expect arp 1
 expect hold 0
 expect preset 0
-# HOLD on for the arp checks below (REC)
+expect page 0
+# REC: NO HOLD -> HOLD
 tap REC
 wait 30
 expect hold 1
-# the arp at full chance: a held chord plays on every step (90 BPM 1/8: 3 steps in a second)
+# the arp at full chance: a held chord plays on every step (90 BPM 1/8: 3 steps a second)
 turn ALGO 40
 wait 50
-expect p9 100
+expect chance 100
 key 7 down 90
 key 11 down 90
 wait 50
@@ -20,7 +21,7 @@ wait 1000
 expect arp_notes >2
 expect voices >0
 expect midi_out >2
-shot playing.png
+shot home.png
 # HOLD keeps the chord after the keys go; a new chord replaces it
 key 7 up
 key 11 up
@@ -30,23 +31,68 @@ key 14 down 80
 wait 30
 expect held 1
 key 14 up
+wait 30
+# REC again: LATCH, each key on or off by itself
+tap REC
+wait 30
+expect hold 2
+key 7 down 90
+wait 30
+key 7 up
+wait 30
+expect held 2
+key 14 down 90
+wait 30
+key 14 up
+wait 30
+expect held 1
+key 7 down 90
+wait 30
+key 7 up
+wait 30
+expect held 0
+key 7 down 90
+wait 30
+key 7 up
+key 11 down 90
+wait 30
+key 11 up
+wait 30
+expect held 2
 # chance 0: the arp rests on every step
 turn ALGO -60
 wait 50
-expect p9 0
+expect chance 0
 wait 100
 expect arp_mark 0
 wait 3000
 expect arp_notes 0
-# keys only (PLAY off): the notes play as held, and HOLD off lets them go
-turn ALGO 17
-tap PLAY
+# RATCHET at 100 %: every step two or three hits (6 steps in 2 s)
+turn ALGO 60
+wait 50
+expect chance 100
+tap SEQ
 wait 30
-expect arp 0
+expect page 6
+spin K1 100
+wait 30
+expect ratchet 100
+shot seq.png
+wait 100
+expect arp_mark 0
+wait 2000
+expect arp_notes >11
+spin K1 -100
+wait 30
+# REC again: NO HOLD, and what no key holds goes
 tap REC
 wait 30
 expect hold 0
 expect held 0
+# keys only (PLAY off): the notes play as held, and a key let go goes
+tap PLAY
+wait 30
+expect arp 0
 key 7 down 100
 wait 30
 expect held 1
@@ -57,26 +103,61 @@ expect peak_db_min -30
 key 7 up
 wait 30
 expect held 0
+# the pages: FX is DELAY, again REVERB, again DELAY
+tap FX
+wait 30
+expect page 7
+shot delay.png
+tap FX
+wait 30
+expect page 8
+shot reverb.png
+tap FX
+wait 30
+expect page 7
+tap EDIT
+wait 30
+expect page 4
+shot edit.png
+tap LFO
+wait 30
+expect page 3
+shot lfo.png
+tap GLO
+wait 30
+expect page 9
+shot global.png
+tap SEL
+wait 30
+expect page 1
+shot sound.png
+tap HOME
+wait 30
+expect page 0
+# HOME's SPACE turns the reverb's mix and length together
+expect rev_mix 40
+expect rev_len 55
+spin K3 10
+wait 30
+expect rev_mix 50
+expect rev_len 65
 # a page, a knob, a sound, then SAVE and a reboot keep them
 tap FX
 wait 30
-expect page 3
 turn K4 10
 wait 30
-expect p15 50
+expect chorus 35
 turn PRESET 1
 wait 30
 expect preset 1
-tap ENV
-wait 30
-shot env.png
 tap SAVE
 wait 30
 expect dirty 0
 reboot
 wait 600
 expect preset 1
-expect p15 50
+expect chorus 35
+expect rev_mix 50
 expect arp 0
 expect hold 0
 # MIDI in feeds the arp too
@@ -88,3 +169,21 @@ wait 400
 expect held 1
 expect arp_notes >0
 midi 80 3C 00
+wait 50
+expect held 0
+# MIDI CH 2: channel 1 is not heard, channel 2 is
+tap GLO
+wait 30
+spin K3 2
+wait 30
+expect midi_ch 2
+midi 90 3C 64
+wait 100
+expect held 0
+midi 80 3C 00
+midi 91 3C 64
+wait 100
+expect held 1
+midi 81 3C 00
+wait 50
+expect held 0

@@ -1,13 +1,13 @@
-# DRIFT's build settings (tools/build.py)
-name = "DRIFT"                 # APP_NAME is in app.h; this names the build's files
+# Mighty Arp's build settings (tools/build.py)
+name = "MightyArp"             # APP_NAME is in app.h; this names the build's files
 id_prefix = "FM-1_11"          # TODO: its own before a release (each firmware its own): dev FM-1_1100, releases FM-1_11XXYYZZ
 usb_manufacturer = "Nick Culbertson"
-usb_product = "DRIFT FM-1"
-o2 = []                        # separate units compiled at -O2 (an app's DSP)
+usb_product = "Mighty Arp FM-1"
+o2 = ["dsp/engine.c"]          # the sound, compiled at -O2 (the unity build is -Os)
 words = "words.tsv"
 ble = false                    # Bluetooth MIDI: off for now (true adds it, with OBJ_BLE in app.h)
 # the site (tools/make_site.py, tools/publish_site.sh)
-tagline = "FM keys with a chance arpeggiator, for generative playing"
+tagline = "An FM synth with a chance arpeggiator, for generative playing"
 repo = ""                      # TODO: this firmware's repository
 licence = "MPL-2.0"
 credits = "Built on fm1-base by Charles Vestal"                   # a sentence for the installer's footer: what your firmware is built from

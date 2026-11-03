@@ -1,0 +1,41 @@
+# The reverb at its longest with shimmer, and the delay at its most: the tail rings on and stays bounded
+# (tests/run_tests.sh)
+wait 600
+tap PLAY
+wait 30
+tap FX
+wait 30
+tap FX
+wait 30
+expect page 8
+spin K1 100
+spin K2 100
+spin K3 -100
+spin K4 100
+wait 30
+expect rev_mix 100
+expect rev_len 100
+expect rev_dark 0
+expect shimmer 100
+tap FX
+wait 30
+spin K2 100
+spin K3 100
+wait 30
+expect dly_fdbk 95
+key 7 down 127
+key 11 down 127
+key 14 down 127
+wait 2000
+key 7 up
+key 11 up
+key 14 up
+wait 20000
+expect dsp_resets 0
+peakreset
+wav space_tail.wav
+wait 5000
+wavstop
+expect peak_db_max <-1
+expect peak_db_min -60
+expect dsp_resets 0

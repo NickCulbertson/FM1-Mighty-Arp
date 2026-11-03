@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-# DRIFT's words for a screen reader (fm1-reader): the text on the screen <TAB> what to say.
-# url: https://nickculbertson.github.io/drift/words/
+# Mighty Arp's words for a screen reader (fm1-reader): the text on the screen <TAB> what to say.
+# url: https://nickculbertson.github.io/mightyarp/words/
 # (TODO: where this firmware's site will publish its words; a guess until it has one)
-DRIFT	drift
+MIGHTY ARP	mighty arp

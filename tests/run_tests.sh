@@ -1,10 +1,11 @@
 #!/bin/sh
-# The app in fm1-base's host simulator (app/tests/basic.txt). fm1-base's own tests: base/tests/run_tests.sh.
+# The app in fm1-base's host simulator (app/tests/*.txt). fm1-base's own tests: base/tests/run_tests.sh.
 #   tests/run_tests.sh
 set -u
 cd "$(dirname "$0")/.."
 B=app/build
 OUT=$B/tests
+H=$B/host/mightyarp_host                 # NAME_host: fm1.toml's name in lower case
 FAIL=0
 mkdir -p "$OUT"
 run() {
@@ -17,8 +18,12 @@ run() {
         FAIL=1
     fi
 }
+python3 tests/make_sounds_test.py > app/tests/sounds.txt   # every sound, from app.c's list
 run host-build sh build.sh --host
-run basic $B/host/drift_host app/tests/basic.txt $B/host   # NAME_host: fm1.toml's name in lower case
-run release $B/host/drift_host app/tests/release.txt $B/host
-run recover $B/host/drift_host app/tests/recover.txt $B/host
+run basic $H app/tests/basic.txt $B/host
+run release $H app/tests/release.txt $B/host
+run recover $H app/tests/recover.txt $B/host
+run sync $H app/tests/sync.txt $B/host
+run space $H app/tests/space.txt $B/host
+run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL

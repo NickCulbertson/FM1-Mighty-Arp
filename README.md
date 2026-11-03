@@ -1,38 +1,45 @@
-# DRIFT
+# Mighty Arp
 
-An FM keys synth with a chance arpeggiator, a ping-pong delay and a reverb for the M-VAVE FM-1, for generative
-playing: you choose the notes, the arp chooses when. Built on [fm1-base](https://github.com/charlesvestal/fm1-base)
-(MPL-2.0), a git submodule in `base/`; the app is in `app/`.
+An FM synth with a chance arpeggiator, a chorus, a ping-pong delay and a reverb with shimmer for the M-VAVE FM-1,
+for generative playing: you choose the notes, the arp chooses when. Built on
+[fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0), a git submodule in `base/`; the app is in `app/`
+(the sound in `app/dsp/`). [SPEC.md](SPEC.md) is the design.
 
 ## Controls
 
 | Control | What it does |
 | --- | --- |
-| Keys | Notes into the arp (or played straight, with the arp off). With HOLD, a new chord after you let go replaces the last |
+| Keys | Notes into the arp (or played straight, with the arp off) |
 | PLAY | Arp on / off |
-| REC | HOLD on / off (off by default: a key let go stops) |
-| PRESETS | The sound: E.PIANO, BELLS, GLASS, KALIMBA, MARIMBA, PAD, MUSIC BOX, HARP (loads its envelope) |
-| SELECT / ALGORITHM | Tempo / chance, on every page |
-| SEL, ENV, ARP, FX, GLO | The page K1-K4 edit (below) |
+| REC | Hold: NO HOLD (a key let go stops), HOLD (a new chord after you let go replaces the last), LATCH (each key on or off by itself) |
+| PRESETS | The sound (37: E.pianos, keys, bells, plucks, basses, synths, pads); it sets the ENV, LFO and EDIT pages |
+| SELECT / ALGORITHM | Tempo (BPM) / arp chance, on every page |
+| HOME, SEL, ENV, LFO, EDIT, ARP, SEQ, FX, GLO | The page K1-K4 edit (below); FX again flips DELAY and REVERB |
 | OCT- / OCT+ | Octave |
 | SAVE | Save everything (lit when there are unsaved changes) |
 
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |
-| SEL: sound | Bright (FM index) | Tine level | Detune (width) | Velocity |
+| HOME | Arp chance | Rate | Space (reverb mix + length) | Drift (vibrato) |
+| SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Velocity |
 | ENV | Attack | Decay | Sustain | Release |
-| ARP | Rate | Chance | Octaves | Mode (up, down, up-down, random) |
-| FX | Delay time | Feedback | Delay mix | Reverb mix |
-| GLO | Tempo | Reverb size | Reverb tone | Gate |
+| LFO | Rate | Shape (sine, tri, square, S&H, drift) | Vibrato | Tremolo (stereo) |
+| EDIT | Algorithm (1-8) | Ratio (the modulators') | Feedback (0-7) | Wave (W1-W8) |
+| ARP | Rate | Octaves | Mode (up, down, up-down, random) | Gate |
+| SEQ | Ratchet chance | Octave-jump chance | Velocity random | Swing |
+| FX: delay | Time | Feedback | Mix | Chorus |
+| FX again: reverb | Mix | Length (0.5-100 s) | Dark | Shimmer |
+| GLO | Sync (int / ext MIDI clock) | Clock out | MIDI channel | Velocity curve |
 
-Every note the arp plays also goes out over USB MIDI; MIDI notes in feed the arp like the keys.
+Every note the arp plays also goes out over USB MIDI; MIDI notes in feed the arp like the keys. The mod wheel adds
+vibrato; pitch bend is two semitones.
 
 ## Build
 
     git clone --recursive <this repo>
     ./build.sh --host && tests/run_tests.sh      # host simulator, no JieLi toolchain needed
     ./build.sh --web                             # browser emulator: app/build/emu/ (serve it over http)
-    ./build.sh                                   # the device package: app/build/drift.fwsc
+    ./build.sh                                   # the device package: app/build/mightyarp.fwsc
 
 On this Mac `build.sh` finds an arm64 FriBiDi in `~/.local/fribidi-arm64` (FRIBIDI_LIB) and Emscripten in `~/emsdk`
 (EMSDK).
@@ -40,5 +47,5 @@ On this Mac `build.sh` finds an arm64 FriBiDi in `~/.local/fribidi-arm64` (FRIBI
 ## Before a release
 
 An own `id_prefix` in `app/fm1.toml` (it still has the template's), the repository and the words `url:` in
-`app/words.tsv`, the `# <- yours` lines in `.github/workflows/release.yml` (`pkg=drift`), and a manual
+`app/words.tsv`, the `# <- yours` lines in `.github/workflows/release.yml` (`pkg=mightyarp`), and a manual
 (`app/docs/MANUAL.md` is still the template's).

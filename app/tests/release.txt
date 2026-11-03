@@ -1,4 +1,4 @@
-# Keys let go stop sounding, with HOLD off: the arp stops, and the keys mode releases (tests/run_tests.sh)
+# Keys let go stop sounding, with hold off: the arp stops, and the keys mode releases (tests/run_tests.sh)
 wait 600
 expect hold 0
 # arp on, hold off: a key let go stops the arp
@@ -12,7 +12,7 @@ expect held 0
 expect arp_mark 0
 wait 2000
 expect arp_notes 0
-# keys mode: a key let go releases; E.PIANO's release is 3.3 s, so after 8 s nothing sounds
+# keys mode: a key let go releases; TINE EP's release is 3.3 s, so after 8 s nothing sounds
 tap PLAY
 wait 30
 key 7 down 90
@@ -35,3 +35,4 @@ wait 20
 key 9 up
 wait 9000
 expect voices 0
+expect arp_notes 0

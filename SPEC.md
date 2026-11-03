@@ -1,0 +1,94 @@
+# Mighty Arp: the spec
+
+An FM synth with a chance arpeggiator for generative playing: the player picks the notes, the arp picks when.
+This is the plan for the first complete version (was DRIFT). Agreed with Nick on 3 Nov 2026.
+
+## Controls
+
+| Control | Does |
+| --- | --- |
+| MASTER | volume |
+| SELECT | tempo, shown as BPM (as now) |
+| ALGO | arp chance, labelled ARP CHANCE |
+| PRESET | the sound |
+| HOME | the performance screen: the arp's notes large, and four macros (below) |
+| SEL | SOUND page |
+| ENV | ENVELOPE page |
+| LFO | LFO page |
+| EDIT | EDIT page: the FM engine underneath |
+| ARP | ARP page |
+| SEQ | SEQ page: the arp's extra chances |
+| FX | DELAY page; FX again: REVERB page (and back) |
+| GLO | GLOBAL page: MIDI and the keys |
+| SAVE | saves everything (one slot, as now); lit when something changed |
+| PLAY | arp on / off (keys) |
+| REC | hold: OFF -> HOLD -> LATCH -> OFF |
+| OCT- / OCT+ | octave |
+
+## Pages (four knobs each)
+
+| Page | K1 | K2 | K3 | K4 |
+| --- | --- | --- | --- | --- |
+| HOME | CHANCE | RATE | SPACE (reverb mix and length together) | DRIFT (= LFO vibrato) |
+| SOUND | TONE (modulation: dark .. bright) | STRIKE (the attack's bite, the tine) | DETUNE | VELOCITY |
+| ENVELOPE | ATTACK | DECAY | SUSTAIN | RELEASE |
+| LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
+| EDIT | ALGO (1-8) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | WAVE (W1-W8) |
+| ARP | RATE (1/1 .. 1/32) | OCTAVES | MODE | GATE |
+| SEQ | RATCHET (chance) | OCT JUMP (chance) | VEL RAND | SWING |
+| DELAY | TIME | FEEDBACK | MIX | CHORUS |
+| REVERB | MIX | LENGTH (0.5 s .. 100 s) | DARK | SHIMMER |
+| GLOBAL | SYNC (INT / EXT) | CLOCK OUT (OFF / ON) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) |
+
+A sound sets the SOUND, ENVELOPE, LFO and EDIT pages. ARP, SEQ, effects and GLOBAL stay as they are, so changing
+sound mid-piece keeps its rhythm and its space.
+
+## Engine
+
+- 4 operators a voice, 8 algorithms (DX21 / TX81Z style), feedback on operator 4, 8 waveforms (W1 sine .. W8, as the
+  TX81Z's), computed from the sine table (no new tables).
+- Carriers follow the ENVELOPE page; modulators and STRIKE operators have the sound's own envelopes.
+- TONE scales the modulators; STRIKE scales the STRIKE operators and the modulators' attack burst.
+- Mono with glide, per sound (basses, leads).
+- One LFO for vibrato and tremolo; DRIFT gives each voice its own slow wander. The mod wheel (CC1) adds vibrato.
+- 10 voices. The DSP in its own unit at -O2 (fm1.toml o2); APP_OVERLOAD sheds voices if the render runs late.
+- No 64-bit multiplies in the audio code (felucca-bsp docs/CPU.md: they corrupt registers beside 16-bit loads).
+
+## Arp
+
+- A 24 PPQN clock drives every step: internal from BPM, or MIDI clock in (SYNC EXT; Start resets, Stop pauses).
+  CLOCK OUT sends it (internal only).
+- RATCHET: a step plays 2 or 3 quick repeats. OCT JUMP: a note an octave up or down. VEL RAND: velocity spread.
+  SWING: every second step late.
+- Hold: OFF (a key let go stops), HOLD (a new chord replaces the last), LATCH (each key on / off by itself).
+- MIDI in on MIDI CH; the arp's notes out on it (ALL: channel 1).
+
+## Effects
+
+Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
+
+- Chorus: stereo, two taps moving in opposite directions.
+- Reverb: the same 4-line feedback network, lines about 3x longer, stored 16-bit, slowly modulated; LENGTH as a
+  decay time up to 100 s. SHIMMER: an octave-up pitch shifter in the reverb's feedback.
+
+## Screen
+
+- Colours from Mighty Sampler: a deep slate-navy ground, lavender labels, orange values and the knob being turned,
+  yellow for notes the arp plays, faint lavender ghosts for the steps the chance skipped.
+- Knobs as arcs.
+- HOME: the arp's notes over the last seconds, large; the held notes; the macros.
+- The state line: PLAY ARP/KEYS, REC hold mode, BPM, ARP CHANCE.
+
+## Sounds (about 32)
+
+Mostly E.Piano and tines, then keys, bells and mallets, plucks, basses, synths and pads. Listed in app.c.
+
+## Testing
+
+The host simulator's scripts (tests/run_tests.sh): every sound sounds and stays finite; hold modes; ratchets; MIDI
+clock in; the reverb at its longest with shimmer stays bounded; save and reboot. Then the browser emulator and a
+device build (size, RAM, pool). Installing on the FM-1 waits for Nick.
+
+## Not now
+
+User preset slots (one save, as now), reverb freeze, Bluetooth MIDI, samples.

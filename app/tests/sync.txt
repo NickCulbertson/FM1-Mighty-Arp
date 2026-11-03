@@ -1,0 +1,48 @@
+# MIDI clock: SYNC EXT follows the clock coming in, Stop holds it; CLOCK OUT sends the tempo (tests/run_tests.sh)
+wait 600
+turn ALGO 40
+wait 30
+expect chance 100
+tap GLO
+wait 30
+spin K1 1
+wait 30
+expect sync 1
+tap REC
+wait 30
+key 7 down 90
+wait 30
+key 7 up
+wait 30
+expect held 1
+# no clock: no steps
+expect arp_mark 0
+wait 1500
+expect arp_notes 0
+shot ext_wait.png
+# 96 clocks at 119 BPM: four beats, eight 1/8 steps
+clock 96 21
+expect arp_notes >6
+expect arp_notes <10
+expect ext_bpm >110
+expect ext_bpm <130
+shot ext.png
+# Stop: the clocks still come, the arp holds
+midi FC 00 00
+wait 30
+expect arp_mark 0
+clock 48 21
+expect arp_notes 0
+# Start: from the top again
+midi FA 00 00
+clock 48 21
+expect arp_notes >2
+# SYNC INT with CLOCK OUT: the tempo goes out
+spin K1 -1
+wait 30
+expect sync 0
+spin K2 1
+wait 30
+expect clock_out 1
+wait 1000
+expect clocks_out >30
