@@ -20,7 +20,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | SEQ | SEQ page: the arp's extra chances |
 | FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
-| SAVE | saves everything (one slot); SAVE on SOUNDS: the sound into a USER slot |
+| SAVE | saves everything (one slot); SAVE on SOUNDS: a USER preset (everything but GLOBAL and LOADS) |
 | PLAY | arp on / off (keys) |
 | REC | hold: OFF -> HOLD -> LATCH -> OFF |
 | OCT- / OCT+ | octave |
@@ -45,10 +45,15 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
-| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | DEFAULTS (eight detents right: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) |
 
-A sound sets the SOUND, ENVELOPE, LFO and EDIT pages. ARP, SEQ, effects and GLOBAL stay as they are, so changing
-sound mid-piece keeps its rhythm and its space.
+A USER preset keeps everything: the sound pages, ARP, SEQ, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
+CLOCK, MIDI CH, VEL CURVE, or LOADS). LOADS (SOUNDS's fourth knob) says what a sound change sets:
+
+- SOUND (the default): the sound pages only. ARP, SEQ, CHORDS and the effects stay as they are, so changing sound
+  mid-piece keeps its rhythm and its space.
+- ALL: a USER preset brings back everything it kept; a factory sound starts from the arp and effects as new (TEMPO
+  kept). A USER preset from before 3 Nov 2026 (MAU3) kept its sound only, and loads with the arp and effects as new.
 
 ## Engine
 

@@ -16,12 +16,12 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | SELECT / ALGORITHM | Tempo (BPM) / arp chance, on every page |
 | HOME, SEL, ENV, LFO, EDIT, ARP, SEQ, FX, GLO | The page K1-K4 edit (below); SEL again: VOICE; FX again: DELAY, REVERB, CHORUS; EDIT again: OP 1-4 |
 | OCT- / OCT+ | Octave |
-| SAVE | Save everything |
+| SAVE | Save everything; on the sounds page, a USER preset (everything but GLO's settings and Loads) |
 
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |
 | HOME (above: the arp's notes; with the arp off, an oscilloscope) | Arp chance | Rate | Space (reverb mix + length) | Drift (vibrato) |
-| HOME again: sounds (SAVE: into the slot) | Kind (keys, bells, plucks, bass, leads, pads, user) | Sound | Save to (U01-U16) | |
+| HOME again: sounds (SAVE: into the slot) | Kind (keys, bells, plucks, bass, leads, pads, user) | Sound | Save to (U01-U16) | Loads (sound: a sound change sets only the sound; all: a USER preset brings back its arp, chords, effects and tempo too, a factory sound the arp and effects as new) |
 | SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Velocity |
 | SEL again: voice | Voices (poly, mono, legato) | Glide (mono and legato) | | |
 | ENV | Attack | Decay | Sustain | Release |
@@ -37,7 +37,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | FX: delay | Mix | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Width |
 | FX again: reverb | Mix | Length (0.5-15 s) | Dark | Shimmer |
 | FX again: chorus | Mix | Rate | Depth | |
-| GLO | Clock (int, int sent out, ext MIDI clock) | MIDI channel | Velocity curve | |
+| GLO | Clock (int, int sent out, ext MIDI clock) | MIDI channel | Velocity curve | Defaults (turn right eight detents: the arp, seq, chords, chance and effects as new) |
 
 Every note the arp plays also goes out over USB MIDI; MIDI notes in feed the arp like the keys. The mod wheel adds
 vibrato; pitch bend is two semitones.

@@ -1,0 +1,101 @@
+# USER presets keep everything; LOADS (SOUNDS's fourth) says what a sound change sets; GLOBAL's DEFAULTS (tests/run_tests.sh)
+wait 600
+tap PLAY
+wait 30
+expect arp 0
+expect loads 0
+# CHORDS: TRIAD, STRUM 30, then saved as U01 from sound 5
+tap ARP
+wait 30
+tap ARP
+wait 30
+expect page 20
+spin K1 1
+spin K2 30
+wait 30
+expect chord 1
+expect strum 30
+spin PRESET 5
+wait 30
+expect preset 5
+expect strum 30
+tap HOME
+wait 30
+tap HOME
+wait 30
+expect page 16
+tap SAVE
+wait 30
+expect user1_used 1
+expect preset 60
+# CHORDS off again; LOADS on SOUND: U01 brings back its sound only
+tap ARP
+wait 30
+tap ARP
+wait 30
+spin K1 -1
+spin K2 -30
+wait 30
+expect chord 0
+expect strum 0
+spin PRESET -1
+wait 30
+spin PRESET 1
+wait 30
+expect preset 60
+expect chord 0
+expect strum 0
+# LOADS on ALL: U01 brings back its CHORDS; a factory sound the arp and effects as new
+tap HOME
+wait 30
+tap HOME
+wait 30
+expect page 16
+spin K4 1
+wait 30
+expect loads 1
+spin PRESET -1
+wait 30
+spin PRESET 1
+wait 30
+expect preset 60
+expect chord 1
+expect strum 30
+spin PRESET -1
+wait 30
+expect preset 59
+expect chord 0
+expect strum 0
+spin PRESET 1
+wait 30
+expect strum 30
+# and after a reboot: the bank whole, LOADS kept (the player's own)
+tap SAVE
+wait 30
+reboot
+wait 600
+expect loads 1
+expect preset 60
+expect strum 30
+spin PRESET -1
+wait 30
+spin PRESET 1
+wait 30
+expect strum 30
+# DEFAULTS: seven detents nothing, the eighth the arp and effects as new (the sound and TEMPO kept)
+spin SELECT 10
+wait 30
+expect tempo 100
+tap GLO
+wait 30
+expect page 9
+spin K4 7
+wait 30
+expect strum 30
+spin K4 1
+wait 30
+expect strum 0
+expect chord 0
+expect tempo 100
+expect preset 60
+expect loads 1
