@@ -56,8 +56,8 @@ sound mid-piece keeps its rhythm and its space.
 
 ## Arp
 
-- A 24 PPQN clock drives every step: internal from BPM, or MIDI clock in (SYNC EXT; Start resets, Stop pauses).
-  CLOCK OUT sends it (internal only).
+- A 24 PPQN clock drives every step: internal from BPM, or MIDI clock in (CLOCK EXT; Start resets, Stop pauses).
+  CLOCK OUT runs the internal one and sends it.
 - HUMANIZE: each step up to 40 ms late, at random. OCT JUMP: a note an octave up or down. VEL RAND: velocity spread.
   SWING: every second step late.
 - Hold: OFF (a key let go stops), HOLD (a new chord replaces the last), LATCH (each key on / off by itself).
