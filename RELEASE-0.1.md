@@ -6,9 +6,9 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 
 ## 1. Review and fixes
 
-- [ ] GPT's seventh review: everything since `7980a4f` (USER presets keep everything, PARAMS, RESET, the header).
-      Waiting on GPT's credits; Claude writes `CODEX-REVIEW-PROMPT-5.md` when it's time
-- [ ] Fix what it finds, tests green (`./build.sh --host && sh tests/run_tests.sh`)
+- [x] GPT's seventh review (`2fb4dd1..ce7429c`): all five findings fixed in `2539d9b` (release workflow, panic and
+      the arp's chords, RESET mid-strum, swung strums, the names' generator); tests green
+- [ ] GPT's suggested beta test on the FM-1: ten VA notes, long releases, shimmer up, a swung strum, MIDI in and out
 - [ ] Open from before: MONO's fade-then-restart (decide: fix for 0.1, or later)
 - [ ] Open from before: migration fixtures from real old firmware (decide: worth it before 0.1, now that there
       are users' saves to protect, or not)
@@ -29,7 +29,7 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 - [ ] `app/fm1.toml`: `repo = "https://github.com/<you>/<repo>"`
 - [ ] `app/fm1.toml`: an `id_prefix` of its own (now `FM-1_11`, the template's TODO). **Nick:** ask Charles /
       the FM-1 community which prefix is free; releases are the prefix + XXYYZZ (0.1: `000100`)
-- [ ] `.github/workflows/release.yml`: the `# <- yours` lines: `pkg=mightyarp` (twice), the concurrency group and
+- [x] `.github/workflows/release.yml`: the `# <- yours` lines: `pkg=mightyarp` (twice), the concurrency group and
       the title `Mighty Arp`
 - [ ] `app/words.tsv`: the `url:` line where the site will put its words (now a guess)
 - [ ] The `CODEX-REVIEW-PROMPT*.md` files: into `docs/reviews/`, or out of the repository
