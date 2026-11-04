@@ -41,7 +41,7 @@ On Linux x86-64 the toolchain runs natively and no container is needed.
 
 ```
 ./build.sh                    # app/build/mightyarp.fwsc
-./build.sh --release X.Y      # app/build/mightyarp-X.Y.fwsc, identity FM-1_62791001XXYYZZ
+./build.sh --release X.Y      # app/build/mightyarp-X.Y.fwsc, identity FM-1_6279XXYYZZ
 ./build.sh --host             # the simulator: app/build/host/mightyarp_host
 ./build.sh --web              # the browser emulator: app/build/emu/ (serve it over http)
 ```
@@ -50,8 +50,9 @@ On Linux x86-64 the toolchain runs natively and no container is needed.
 `PYTHON` the Python that runs the build. The build also checks the image, RAM and pool sizes, that register access
 stays in felucca-bsp, and that no double-precision code is linked.
 
-Mighty Arp's package identity is `FM-1_62791001` (`id_prefix` in `app/fm1.toml`): development builds report
-`FM-1_6279100100`, release 1.0 `FM-1_62791001010000`. It stays the same for every release, so updates install over
+Mighty Arp's package identity is `FM-1_6279` (`id_prefix` in `app/fm1.toml`): development builds report
+`FM-1_627900`, release 1.0 `FM-1_6279010000`, 1.1 `FM-1_6279010100`. The part before the version stays the same for
+every release, so updates install over
 each other and keep what players saved.
 
 ## Tests
