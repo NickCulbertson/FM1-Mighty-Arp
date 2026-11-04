@@ -7,7 +7,9 @@ shimmer, 16 presets of your own, and MIDI and clock in and out.
 
 ![Mighty Arp's screen: HOME](app/docs/img/home.png) ![The sounds](app/docs/img/sounds.png) ![The sequencer](app/docs/img/seq.png)
 
-- **Read the manual**: [app/docs/MANUAL.md](app/docs/MANUAL.md), one page
+- **Try it in your browser** (no FM-1 needed): <https://nickculbertson.github.io/FM1-Mighty-Arp/emu/>
+- **Install it** (Chrome or Edge, with the FM-1 plugged in): <https://nickculbertson.github.io/FM1-Mighty-Arp/install/>
+- **Read the manual**: <https://nickculbertson.github.io/FM1-Mighty-Arp/manual/> (source: [app/docs/MANUAL.md](app/docs/MANUAL.md))
 - **Download the firmware file**: [releases](https://github.com/NickCulbertson/FM1-Mighty-Arp/releases)
 
 ## Quick start

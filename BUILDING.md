@@ -96,10 +96,11 @@ such packages as built from source.
 2. Push the tag (`vX.Y`; in GitHub Desktop: History, right-click the commit, Create Tag, then Push origin). The
    workflow builds, tests, attests, checks the SHA-256 sums and the signatures, then publishes the draft. A tag
    with a suffix (`v1.0-beta1`) is a prerelease. A published release is never rebuilt: a new build needs a new tag.
-3. The site from that package (optional): `gh release download vX.Y --pattern '*.fwsc' --dir app/build --clobber`,
-   then `base/tools/publish_site.sh app X.Y app/build/mightyarp-X.Y.fwsc`: it builds the browser emulator and the
-   site (landing page, emulator, fm1-base's web installer, manual, the words files, the firmware) and pushes it to
-   the `gh-pages` branch, which GitHub Pages serves at <https://nickculbertson.github.io/FM1-Mighty-Arp/>.
+3. The site from that package: download it into `app/build/` (from the release page, or `gh release download vX.Y
+   --pattern '*.fwsc' --dir app/build --clobber`), then `tools/make_pages.sh X.Y`: it builds the browser emulator
+   and the site (landing page, emulator, fm1-base's web installer, manual, the words files, the firmware) and
+   commits it to the local `gh-pages` branch. Push that branch (GitHub Desktop: switch to `gh-pages`, Push origin,
+   back to `main`); GitHub Pages serves it at <https://nickculbertson.github.io/FM1-Mighty-Arp/>.
 
 To check a downloaded package yourself (GitHub CLI, signed in):
 
