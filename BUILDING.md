@@ -51,8 +51,8 @@ On Linux x86-64 the toolchain runs natively and no container is needed.
 stays in felucca-bsp, and that no double-precision code is linked.
 
 Mighty Arp's package identity is `FM-1_6279` (`id_prefix` in `app/fm1.toml`): development builds report
-`FM-1_627900`, release 1.0 `FM-1_6279010000`, 1.1 `FM-1_6279010100`. The part before the version stays the same for
-every release, so updates install over
+`FM-1_627900`, release 1.1 `FM-1_6279010100`, 1.2 `FM-1_6279010200` (1.0 had `FM-1_62791001010000`). The part
+before the version stays the same for every release, so updates install over
 each other and keep what players saved.
 
 ## Tests
