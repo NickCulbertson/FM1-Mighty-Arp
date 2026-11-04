@@ -184,8 +184,8 @@ static const char *const HOLD_NAME[3] = {"NO HOLD", "HOLD", "LATCH"};
 #define OP(r, c, l, w, st, a, d, s) {(r), (c), (l), (w), (st), (a), (d), (s)}
 #define CARRIER(r, c, l) OP(r, c, l, 0, 0, 0.0f, 0.0f, 0.0f)
 /* the sounds' kinds: HOME again browses them so (SOUNDS); USER, the player's own (user[]) */
-enum { CAT_KEYS, CAT_BELLS, CAT_PLUCKS, CAT_BASS, CAT_LEADS, CAT_PADS, CAT_USER, NCAT };
-static const char *const CAT_NAME[NCAT] = {"KEYS", "BELLS", "PLUCKS", "BASS", "LEADS", "PADS", "USER"};
+enum { CAT_KEYS, CAT_BELLS, CAT_PLUCKS, CAT_BASS, CAT_LEADS, CAT_PADS, CAT_PERC, CAT_USER, NCAT };
+static const char *const CAT_NAME[NCAT] = {"KEYS", "BELLS", "PLUCKS", "BASS", "LEADS", "PADS", "PERC", "USER"};
 typedef struct {
     const char *name;
     uint8_t cat;
@@ -246,10 +246,10 @@ static const preset_t PRESET[] = {
     {"GLASS BELL", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(3.5f, 0, 0.38f, 0, 0, 0, 2.5f, 0.2f),
                            OP(1, 0, 0.5f, 0, 1, 0, 3.0f, 0), OP(1.41f, 0, 0.16f, 0, 0, 0, 1.5f, 0.1f)}, 0, 0},
      0, 86, 0, 88, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
-    /* a rock organ: the drawbars full, the 4' growling (operator 4's feedback into it), a fast rotary wobble */
-    {"ROCK ORGAN", CAT_KEYS, 6, 6, {{CARRIER(0.5f, 0, 0.32f), CARRIER(1, 0, 0.42f), CARRIER(2, 0, 0.32f),
-                           OP(2, 0, 0.38f, 0, 0, 0, 0.4f, 0.8f)}, 0, 0},
-     1, 50, 100, 30, 90, LFO_SINE, 35, 30, 0, 0, 0, 0, 0},
+    /* glassy and metallic, the 16-bit consoles' FM: an inharmonic bell over a detuned shimmer that rings on */
+    {"DOLPHIN", CAT_BELLS, 4, 4, {{CARRIER(1, 0, 1.0f), OP(3.5f, 0, 0.45f, 0, 0, 0, 1.5f, 0.3f),
+                        CARRIER(2, 7, 0.45f), OP(7, 0, 0.3f, 0, 0, 0, 0.8f, 0.15f)}, 0, 0},
+     0, 80, 30, 85, 30, LFO_DRIFT, 10, 0, 0, 0, 0, 0, 0},
     {"MARIMBA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.32f, 0, 0, 0, 0.03f, 0),
                         OP(1, 0, 0.6f, 0, 1, 0, 0.5f, 0), OP(1, 0, 0.08f, 0, 0, 0, 0.12f, 0)}, 0, 0},
      0, 58, 0, 66, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
@@ -286,10 +286,10 @@ static const preset_t PRESET[] = {
     {"SLAP BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.65f, 0, 0, 0, 0.15f, 0.2f),
                           OP(1.5f, 0, 0.5f, 0, 1, 0, 0.12f, 0), OP(3.5f, 0, 0.45f, 0, 0, 0, 0.06f, 0)}, 1, 0},
      0, 64, 45, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
-    /* the sub an octave down, and its octave above (warmed by operator 4) so a small speaker hears it too */
-    {"SUB BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 0.8f), OP(0.5f, 0, 0.06f, 0, 0, 0, 0.2f, 0.02f),
-                         CARRIER(1, 0, 0.6f), OP(1, 0, 0.16f, 0, 0, 0, 0.3f, 0.6f)}, 1, 0},
-     1, 70, 60, 35, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+    /* the 16-bit consoles' bass: a four-operator stack with full feedback, a growl that falls to a buzz */
+    {"16BIT BASS", CAT_BASS, 0, 6, {{CARRIER(0.5f, 0, 0.85f), OP(1, 0, 0.5f, 0, 0, 0, 0.2f, 0.35f),
+                           OP(1, 0, 0.35f, 0, 0, 0, 0.15f, 0.2f), OP(2, 0, 0.3f, 0, 0, 0, 0.1f, 0.1f)}, 1, 0},
+     0, 65, 60, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
     {"WOOD BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.2f, 0, 0, 0, 0.15f, 0.05f),
                           OP(1, 0, 0.2f, 0, 1, 0, 0.08f, 0), OP(2, 0, 0.15f, 0, 0, 0, 0.04f, 0)}, 1, 0},
      0, 70, 0, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
@@ -374,8 +374,8 @@ static const preset_t PRESET[] = {
     {"SYNTH BASS", CAT_BASS, 6, 0, {{SAWC(0.5f, 0, 0.6f), SAWC(0.5f, 10, 0.4f), CARRIER(0.5f, 0, 0.35f),
                                     OP(1, 0, 0.2f, 0, 0, 0, 0.1f, 0)}, 1, 0},
      0, 62, 55, 25, 45, LFO_SINE, 0, 0, 1, 28, 45, 55, 52},
-    /* the West Coast lead (G-funk's): two saws detuned wide, a long legato glide between notes, vibrato */
-    {"WEST COAST", CAT_LEADS, 7, 0, {{SAWC(1, -12, 0.5f), SAWC(1, 12, 0.5f), Z, Z}, 2, 0.09f},
+    /* the West Coast lead (G-funk's): two saws a little apart, a long legato glide between notes, vibrato */
+    {"WEST COAST", CAT_LEADS, 7, 0, {{SAWC(1, -4, 0.5f), SAWC(1, 4, 0.5f), Z, Z}, 2, 0.09f},
      4, 60, 90, 45, 62, LFO_SINE, 28, 0, 1, 70, 22, 15, 65},
     {"PULSE LEAD", CAT_LEADS, 7, 0, {{WAVC(1, 0, 0.6f, 10), WAVC(1, 7, 0.35f, 11), Z, Z}, 2, 0.04f},
      0, 60, 80, 40, 76, LFO_SINE, 30, 0, 1, 60, 25, 25, 62},
@@ -390,14 +390,28 @@ static const preset_t PRESET[] = {
     {"SWEEP PAD", CAT_PADS, 4, 0, {{SAWC(1, 0, 0.55f), OP(1, 0, 0.1f, 0, 0, 2.0f, 4.0f, 0.6f),
                                    SAWC(1, 7, 0.55f), OP(1, 0, 0.08f, 0, 0, 3.0f, 4.0f, 0.5f)}, 0, 0},
      70, 85, 85, 92, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 92},
+    /* gnarly FM, the 16-bit consoles' way: feedback and inharmonic ratios */
+    {"METAL LEAD", CAT_LEADS, 0, 6, {{CARRIER(1, 0, 0.9f), OP(2, 0, 0.4f, 0, 0, 0, 0.6f, 0.7f),
+                           OP(3, 0, 0.25f, 0, 0, 0, 0.5f, 0.6f), OP(1, 0, 0.2f, 0, 0, 0, 0.4f, 0.5f)}, 2, 0.03f},
+     2, 60, 85, 50, 76, LFO_SINE, 20, 0, 0, 0, 0, 0, 0},
+    {"DEEP SEA", CAT_PADS, 5, 3, {{CARRIER(0.5f, 0, 0.45f), CARRIER(1, -6, 0.4f), CARRIER(1, 6, 0.4f),
+                         OP(1.41f, 0, 0.2f, 0, 0, 1.0f, 4.0f, 0.7f)}, 0, 0},
+     70, 85, 85, 90, 20, LFO_DRIFT, 25, 15, 0, 0, 0, 0, 0},
+    /* percussion: the noise from full feedback on operator 4 (no noise wave), short and falling */
+    {"FM SNARE", CAT_PERC, 4, 7, {{CARRIER(1, 0, 0.6f), OP(1.41f, 0, 0.4f, 0, 0, 0, 0.05f, 0),
+                         CARRIER(5, 0, 0.7f), OP(7, 0, 0.9f, 0, 0, 0, 0.15f, 0.2f)}, 0, 0},
+     0, 52, 0, 45, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+    {"NOISE HAT", CAT_PERC, 4, 7, {{CARRIER(9, 0, 0.6f), OP(14, 0, 0.8f, 0, 0, 0, 0.05f, 0),
+                          CARRIER(13, 0, 0.6f), OP(11, 0, 1.0f, 0, 0, 0, 0.1f, 0.5f)}, 0, 0},
+     0, 40, 0, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
 };
 #define NPRESET (sizeof PRESET / sizeof PRESET[0])
 /* the order PRESET and SOUNDS go through them: kind by kind, each kind's like sounds together (the numbers stay
  * as saves know them; a sound added goes into its kind here). tests/make_sounds_test.py reads it */
 static const uint8_t ORDER[] = {
-    0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 48, 47, 11, 12, 3, 15, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 44, 49, 50,
-    25, 26, 27, 28, 34, 41, 51, 52, 53, 29, 56, 30, 31, 33, 54, 42, 55, 43, 46, 32, 40, 57, 36, 35, 37, 38, 39, 45,
-    58, 59};
+    0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 48, 47, 11, 12, 3, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 44, 49, 50,
+    25, 26, 27, 28, 34, 41, 51, 52, 53, 29, 56, 30, 31, 60, 33, 54, 42, 55, 43, 46, 32, 40, 57, 36, 35, 37, 38, 39,
+    61, 45, 58, 59, 62, 63};
 typedef char order_is_every_sound[sizeof ORDER == NPRESET ? 1 : -1];
 static uint32_t browse_at(uint32_t k) { return k < NPRESET ? ORDER[k] : k; }   /* the k-th sound browsed */
 static uint32_t browse_pos(uint32_t n)   /* where sound n is in it */
@@ -408,9 +422,13 @@ static uint32_t browse_pos(uint32_t n)   /* where sound n is in it */
             return k;
     return n;
 }
-/* the bank MAR9, MARA and MARB record: another factory sound moves the USER slots' numbers, so bump SET_MAGIC (and migrate)
- * first */
-typedef char npreset_is_mar9s[NPRESET == 60u ? 1 : -1];
+/* the bank MARC records (64 sounds; MAR8..MARB: 60): another factory sound moves the USER slots' numbers, so bump
+ * SET_MAGIC (and migrate: from_bank60) first */
+typedef char npreset_is_marcs[NPRESET == 64u ? 1 : -1];
+static uint8_t from_bank60(uint8_t p)    /* a sound number a 60-sound bank's record holds: its USER slots moved on */
+{
+    return (uint8_t)(p >= 60u ? p - 60u + NPRESET : p);
+}
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
 static uint32_t preset_wave(const preset_t *pr)
@@ -423,9 +441,11 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-/* "MARB": the settings record; another magic loads defaults. NPRESET is 60 under it (and MAR9, MARA): a factory sound added
- * (the USER slots' numbers move) must bump it, so a record's magic names its bank (MAR5 and MAR7 did not: app_init) */
-#define SET_MAGIC 0x4252414Du
+/* "MARC": the settings record; another magic loads defaults. NPRESET is 64 under it (60 under MAR8..MARB): a factory
+ * sound added (the USER slots' numbers move) must bump it, so a record's magic names its bank (MAR5 and MAR7 did
+ * not: app_init) */
+#define SET_MAGIC 0x4352414Du
+#define SET_MAGIC_B 0x4252414Du          /* "MARB": the 60-sound bank's (the same record) */
 #define SET_MAGIC_A 0x4152414Du          /* "MARA": before LOADS (settingsA_t) */
 #define SET_MAGIC_9 0x3952414Du          /* "MAR9": before CHORDS (settings9_t) */
 #define SET_MAGIC_8 0x3852414Du          /* "MAR8": before the filter's own envelope (settings8_t) */
@@ -1932,7 +1952,7 @@ void app_init(void)
             settingsA_t *oA = &ld.oA;    /* before LOADS: all as it was, a sound change the sound only */
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NPA ? oA->p[i] : PAR[i].def;
-            set.preset = oA->preset;
+            set.preset = from_bank60(oA->preset);
             set.octave = oA->octave;
             set.arp_on = oA->arp_on;
             set.hold = oA->hold;
@@ -1947,7 +1967,7 @@ void app_init(void)
             settings9_t *o9 = &ld.o9;    /* before CHORDS: all as it was, CHORDS off */
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NP9 ? o9->p[i] : PAR[i].def;
-            set.preset = o9->preset;
+            set.preset = from_bank60(o9->preset);
             set.octave = o9->octave;
             set.arp_on = o9->arp_on;
             set.hold = o9->hold;
@@ -1963,7 +1983,7 @@ void app_init(void)
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NP8 ? o8->p[i] : PAR[i].def;
             fenv_fill(set.p);
-            set.preset = o8->preset;
+            set.preset = from_bank60(o8->preset);
             set.octave = o8->octave;
             set.arp_on = o8->arp_on;
             set.hold = o8->hold;
@@ -2021,6 +2041,10 @@ void app_init(void)
                 set.op_decay[i] = o6->op_decay[i];
             }
             voice_load(&PRESET[set.preset]);
+            set.magic = SET_MAGIC;
+        } else if (got == (int)sizeof set && ld.s.magic == SET_MAGIC_B) {
+            set = ld.s;                  /* the 60-sound bank's: its USER slots four on */
+            set.preset = from_bank60(set.preset);
             set.magic = SET_MAGIC;
         } else if (got == (int)sizeof set)
             set = ld.s;
@@ -3355,6 +3379,17 @@ int app_expect(const char *what, int *got)
     else if (!strcmp(what, "arp_mark")) {    /* (always 0: counting starts again) */
         arp_mark = arp_count;
         arp_mark_at = arp_count;
+        *got = 0;
+    }
+    else if (!strcmp(what, "as_marb")) {     /* (always 0) the saved settings rewritten as the 60-sound bank's MARB
+                                              * record (its USER slots four lower): for the migration's test */
+        static settings_t t;
+        if (plat_store_load(OBJ_SETTINGS, &t, sizeof t) == (int)sizeof t) {
+            t.magic = SET_MAGIC_B;
+            if (t.preset >= NPRESET)
+                t.preset = (uint8_t)(t.preset - NPRESET + 60u);
+            plat_store_save(OBJ_SETTINGS, &t, sizeof t);
+        }
         *got = 0;
     }
     else if (!strcmp(what, "queued"))        /* the arp has a note waiting: a strum's next, a late or swung step */

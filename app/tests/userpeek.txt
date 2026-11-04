@@ -4,23 +4,23 @@ tap HOME
 wait 30
 expect page 16
 expect preset 0
-# KEYS up through the kinds: PADS' first sound, then USER (empty): that sound kept, SOUND does nothing
+# KEYS up through the kinds: PERC's first sound, then USER (empty): that sound kept, SOUND does nothing
 spin K1 10
 wait 30
-expect preset 32
+expect preset 62
 shot user_empty.png
 spin K2 3
 wait 30
-expect preset 32
+expect preset 62
 spin K1 1
 wait 30
-expect preset 32
-# back to PADS: its sounds again
+expect preset 62
+# back to PERC: its sounds again
 spin K1 -1
 wait 30
 spin K2 1
 wait 30
-expect preset >32
+expect preset 63
 tap HOME
 wait 30
 tap HOME
@@ -32,4 +32,4 @@ wait 30
 tap SAVE
 wait 30
 expect user3_used 1
-expect preset 62
+expect preset 66

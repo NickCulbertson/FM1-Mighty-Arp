@@ -48,7 +48,7 @@ from your chords' notes (the TONES settings). STRUM rolls each chord from low to
 
 ## Sounds and presets
 
-There are 60 sounds in six kinds: keys, bells, plucks, bass, leads and pads. Turn PRESET, or press HOME twice for
+There are 64 sounds in seven kinds: keys, bells, plucks, bass, leads, pads and percussion. Turn PRESET, or press HOME twice for
 the SOUNDS page.
 
 ![The SOUNDS page: KIND, SOUND, SAVE TO and PARAMS, the kind's sounds listed below](img/sounds.png "SOUNDS")

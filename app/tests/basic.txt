@@ -224,7 +224,7 @@ wait 400
 shot scope.png
 key 7 up
 wait 30
-spin PRESET 48
+spin PRESET 49
 wait 30
 key 7 down 100
 wait 600
@@ -234,7 +234,7 @@ key 7 up
 tap HOME
 wait 30
 expect preset 32
-spin PRESET -49
+spin PRESET -50
 wait 30
 expect preset 0
 tap EDIT
@@ -269,7 +269,7 @@ expect page 4
 tap HOME
 wait 30
 expect arp 0
-spin PRESET 43
+spin PRESET 44
 wait 30
 expect preset 33
 tap SEL
@@ -308,7 +308,7 @@ key 7 up
 key 11 up
 wait 30
 # a bass is MONO with no glide (FM BASS)
-spin PRESET -13
+spin PRESET -14
 wait 30
 expect preset 25
 expect voice_mode 1
