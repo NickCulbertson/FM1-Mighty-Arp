@@ -38,10 +38,9 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 ## 3. The repository
 
 - [ ] `app/fm1.toml`: `repo = "https://github.com/<you>/<repo>"`
-- [ ] `app/fm1.toml`: an `id_prefix` of its own (now `FM-1_11`, the template's TODO). **Nick:** ask Charles /
-      the FM-1 community which prefix is free; releases are the prefix + XXYYZZ (0.1: `000100`)
-- [x] `.github/workflows/release.yml`: the `# <- yours` lines: `pkg=mightyarp` (twice), the concurrency group and
-      the title `Mighty Arp`
+- [x] `app/fm1.toml`: `id_prefix = "FM-1_62791001"` (MBPX on a phone keypad, app 1, 001; Nick's choice).
+      Releases are the prefix + XXYYZZ (0.1: `FM-1_62791001000100`, 19 of the 20 characters a package holds). No registry exists: optionally tell Charles, or propose a
+      list of IDs in use to fm1-base
 - [ ] `app/words.tsv`: the `url:` line where the site will put its words (now a guess)
 - [ ] The `CODEX-REVIEW-PROMPT*.md` files: into `docs/reviews/`, or out of the repository
 - [ ] A `LICENSE` file at the root (MPL-2.0, as fm1-base), and the credits in README: fm1-base (Charles

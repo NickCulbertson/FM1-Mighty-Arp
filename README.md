@@ -53,8 +53,13 @@ vibrato; pitch bend is two semitones.
 On this Mac `build.sh` finds an arm64 FriBiDi in `~/.local/fribidi-arm64` (FRIBIDI_LIB) and Emscripten in `~/emsdk`
 (EMSDK).
 
+## Firmware ID
+
+Mighty Arp's package identity is `FM-1_62791001` (`id_prefix` in `app/fm1.toml`): dev builds report
+`FM-1_6279100100`, release 0.1 `FM-1_62791001000100`. It stays the same for every release, so updates install over
+each other and keep what players saved.
+
 ## Before a release
 
-An own `id_prefix` in `app/fm1.toml` (it still has the template's), the repository and the words `url:` in
-`app/words.tsv`, the `# <- yours` lines in `.github/workflows/release.yml` (`pkg=mightyarp`), and a manual
-(`app/docs/MANUAL.md` is still the template's).
+The repository's address: `repo` in `app/fm1.toml`, the Source link in `app/site/landing.md`, and the words `url:`
+in `app/words.tsv`. The rest is in RELEASE-0.1.md.
