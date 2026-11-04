@@ -16,6 +16,8 @@ PY="$(python3 -c 'import sys; print(sys.executable)')"
 DYLD_FALLBACK_LIBRARY_PATH="${FRIBIDI_LIB:-$HOME/.local/fribidi-arm64/lib}" "$PY" base/tools/make_site.py app "$PKG" "$V" app/build/site
 # the pages show the name with its space (fm1.toml's has none: it names the build's files)
 find app/build/site -name '*.html' -exec sed -i '' 's/MightyArp/Mighty Arp/g' {} +
+# with gh-pages checked out (GitHub Desktop, to push it), main's build folders are there too: never part of the site
+printf 'app/\nbase/\ntests/\ntools/\n__pycache__/\n.DS_Store\n' > app/build/site/.gitignore
 # onto gh-pages without checking it out: the site alone, after the branch's last site (a plain push, not a force)
 IDX="$(mktemp)"
 rm -f "$IDX"
