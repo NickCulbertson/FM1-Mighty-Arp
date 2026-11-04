@@ -682,7 +682,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     case alg * 2u + 1u: voice_loop(v, l, r, a, b, alg, 1, 0); break;
 static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
 {
-    /* ALGO 7 with two saws and two sines (POLY SYNTH, SYNTH BASS, VA BRASS): its own loop (Codex's). A segment that
+    /* ALGO 7 with two saws and two sines (POLY SYNTH, SYNTH BASS, 80S BRASS): its own loop (Codex's). A segment that
      * starts while a saw's table fades takes the general one */
     if (v->alg == 6u && v->wv[0] == 8u && v->wv[1] == 8u && !(v->wv[2] | v->wv[3]) && v->xf[0] == 0.0f
         && v->xf[1] == 0.0f) {

@@ -15,7 +15,7 @@ spin K2 30
 wait 30
 expect chord 1
 expect strum 30
-spin PRESET 5
+spin PRESET 4
 wait 30
 expect preset 5
 expect strum 30

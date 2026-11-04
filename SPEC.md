@@ -48,6 +48,9 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
 | RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
+PRESET and SOUNDS go through the 60 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS), like sounds
+together (`ORDER` in app.c; the sounds' numbers, which saves hold, never move). A bass loads MONO with no glide, a
+lead LEGATO.
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
 A USER preset keeps everything: the sound pages, ARP, SEQ, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
 CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a sound change does to the rest:

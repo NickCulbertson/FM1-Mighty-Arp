@@ -15,7 +15,7 @@ expect user1_used 0
 expect preset 0
 flash_fail 0
 # one it takes: the slot, and the sound playing is it; after a reboot too
-spin PRESET 5
+spin PRESET 4
 wait 30
 expect preset 5
 tap SAVE
@@ -122,7 +122,7 @@ expect hold 0
 spin PRESET -60
 wait 30
 expect preset 0
-spin PRESET 32
+spin PRESET 49
 wait 30
 expect preset 32
 expect fatt 70
