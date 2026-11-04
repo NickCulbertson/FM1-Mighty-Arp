@@ -25,8 +25,8 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
       0.1's formats (settings MARE, presets MAU5) are the first. A later release that adds or removes a sound or a
       knob bumps them and brings 0.1's forward
 - [ ] **Nick:** install the current build, check the USER presets already on the unit came forward (their
-      sounds right; with PARAMS on CHANGE they load with the arp and effects as new)
-- [ ] **Nick:** save a few presets with PARAMS on KEEP and on CHANGE; power off and on; they come back
+      sounds right; with GLO → PRESETS on CHANGE they load with the arp and effects as new)
+- [ ] **Nick:** save a few presets with GLO → PRESETS on KEEP and on CHANGE; power off and on; they come back
 - [ ] **Nick:** CPU at the worst realistic case: ten VA notes, long releases, the arp, shimmer up (no DROPS)
 - [ ] **Nick:** a long session: the arp, chords and strum at high tempos, MIDI in and out, external clock
 - [ ] **Nick:** levels across the 60 sounds by ear (none much louder or quieter than the rest)
@@ -50,7 +50,7 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 ## 4. Documentation
 
 - [x] `app/docs/MANUAL.md`: Mighty Arp's own manual (now the template's): what it is, the buttons, every page
-      and knob, the chance arp, CHORDS and STRUM, USER presets and PARAMS, RESET, MIDI and clock, installing and
+      and knob, the chance arp, CHORDS and STRUM, USER presets and PRESETS, RESET (PARAMS), MIDI and clock, installing and
       going back to stock. SPEC.md and README.md have most of it
 - [x] Manual screenshots (`app/docs/img/`, now the template's): from the host simulator's `shot`
 - [ ] README: a short "what it is" at the top for someone arriving from GitHub, and the install steps

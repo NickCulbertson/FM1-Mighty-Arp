@@ -226,3 +226,18 @@ clock 24 21
 wait 30
 expect arp_notes 2
 expect voices 1
+# PRESETS CHANGE mid-tie: the old pattern's long note lets go (and its MIDI off), not left over the new riff
+tap GLO
+wait 30
+spin K4 1
+wait 30
+expect loads 1
+midi FA 00 00
+clock 1 21
+wait 30
+expect arp_out 1
+spin PRESET 1
+wait 30
+expect seq_len 16
+expect arp_out 0
+midi FC 00 00

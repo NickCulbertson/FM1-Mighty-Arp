@@ -1057,6 +1057,20 @@ static int seq_take(uint32_t kind)
     return 1;
 }
 
+/* the arp's notes sounding let go (their gates would run on: a tie's for bars), their MIDI ended, and a tie's rest
+ * forgotten (the next step struck afresh): MIDI Stop, and a preset that brings its own settings (CHANGE) */
+static void arp_let_go(void)
+{
+    uint32_t k;
+    seq_left = 0;
+    for (k = 0; k < NHELD; k++)
+        if (out_note[k] >= 0) {
+            eng_note_release(out_note[k]);
+            midi_off((uint32_t)out_note[k]);
+            out_note[k] = -1;
+        }
+}
+
 static void arp_step(void)
 {
     static int32_t pool[NHELD * 8];      /* CHORDS ..TONES: the held notes' chords' tones, low to high */
@@ -1442,7 +1456,7 @@ static void ext_tick(void)               /* a MIDI clock in */
 
 static void midi_in(void)                /* audio interrupt: the packets that came in */
 {
-    uint32_t pkt, ch_want = midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0xFFu, k;
+    uint32_t pkt, ch_want = midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0xFFu;
     int port;
     while (plat_midi_in(&pkt, &port)) {
         uint32_t st = (pkt >> 8) & 0xFFu, d1 = (pkt >> 16) & 0x7Fu, d2 = pkt >> 24 & 0x7Fu, ty = st & 0xF0u;
@@ -1458,17 +1472,8 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
                     arp_s = -1;
                 }
                 swing_wait = hum_wait = strum_wait = 0;
-                if (st == 0xFCu) {       /* Stop: the arp's notes sounding let go (their gates would run on: a tie's
-                                          * for bars), their MIDI ended; the place kept for Continue, a tie's
-                                          * rest not (Continue strikes the next step afresh) */
-                    seq_left = 0;
-                    for (k = 0; k < NHELD; k++)
-                        if (out_note[k] >= 0) {
-                            eng_note_release(out_note[k]);
-                            midi_off((uint32_t)out_note[k]);
-                            out_note[k] = -1;
-                        }
-                }
+                if (st == 0xFCu)         /* Stop: the arp's notes let go; the place kept for Continue */
+                    arp_let_go();
             }
             continue;
         }
@@ -1755,8 +1760,11 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
 {
     const preset_t *pr;
     int all = set.p[P_LOADS] == 1;
-    if (all)                             /* the arp's settings replaced: what it had queued under the old goes */
+    if (all) {                           /* the arp's settings replaced: what it had queued under the old goes, and
+                                          * what the old still sounds (the effects' tails ring on) */
         arp_cancel();
+        arp_let_go();
+    }
     if (p >= NPRESET) {
         const user_t *u = &users.u[(p - NPRESET) % NUSER];
         uint32_t i;
@@ -3474,6 +3482,9 @@ int app_expect(const char *what, int *got)
         set.arp_on = PL_KEYS;
         *got = 0;
     }
+    else if (!strcmp(what, "arp_out"))       /* the arp's notes sounding (their MIDI still on) */
+        for (*got = 0, i = 0; i < NHELD; i++)
+            *got += out_note[i] >= 0;
     else if (!strcmp(what, "seq_cur"))       /* the cursor's step, 1.. */
         *got = (int)seq_cur() + 1;
     else if (!strcmp(what, "seq_at"))        /* the step the sequence is on, 1.. (0 none yet) */
