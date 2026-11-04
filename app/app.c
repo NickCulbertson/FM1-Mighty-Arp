@@ -46,8 +46,9 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 14u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE,
                                           * W14 NOISE */
-static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI",
+static const char *const WAVE_SHORT[] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI",
                                               "NOISE"};
+typedef char every_wave_short[sizeof WAVE_SHORT / sizeof WAVE_SHORT[0] == NWAVE ? 1 : -1];
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
        U_SECS, U_VOICES, U_GLIDE, U_CUT, U_CHORD, U_STRUM, U_KEY, U_SCALE, U_LOADS,
        U_SYNC, U_ONOFF, U_CH, U_CURVE, U_STEPS };
@@ -3034,9 +3035,10 @@ static void scope_view(int32_t h)
 }
 
 /* EDIT's WAVE, drawn: two turns of the modulators' wave (dsp/engine.c wave(), the TX81Z's eight), and its name */
-static const char *const WAVE_NAME[NWAVE] = {"SINE", "PEAKED SINE", "HALF SINE", "HALF PEAKED", "FAST HALF",
+static const char *const WAVE_NAME[] = {"SINE", "PEAKED SINE", "HALF SINE", "HALF PEAKED", "FAST HALF",
                                              "FAST PEAKED", "FAST BUMPS", "FAST SOFT BUMPS", "SAW", "SQUARE",
-                                             "PULSE 25%", "PULSE 12.5%", "TRIANGLE"};
+                                             "PULSE 25%", "PULSE 12.5%", "TRIANGLE", "NOISE"};
+typedef char every_wave_named[sizeof WAVE_NAME / sizeof WAVE_NAME[0] == NWAVE ? 1 : -1];   /* (a wave added: its name) */
 static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
 {
     float s, f = ph;
@@ -3044,6 +3046,13 @@ static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
         return 1.0f - 2.0f * ph;
     if (w >= 9u && w <= 11u)             /* W10..W12: the square and the pulses, high for all but their last part */
         return ph < (w == 9u ? 0.5f : w == 10u ? 0.75f : 0.875f) ? 0.8f : -0.8f;
+    if (w == 13u) {                      /* W14: noise, drawn the same each time (a hash of where: it doesn't crawl) */
+        uint32_t h = (uint32_t)(ph * 160.0f) * 2654435761u;
+        h ^= h >> 15;
+        h *= 2246822519u;
+        h ^= h >> 13;
+        return (float)(int32_t)(h & 0xFFFFu) / 32768.0f - 1.0f;
+    }
     if (w == 12u)                        /* W13: the triangle */
         return ph < 0.25f ? 4.0f * ph : ph < 0.75f ? 2.0f - 4.0f * ph : 4.0f * ph - 4.0f;
     if (w >= 4u) {                       /* W5..W8: twice as fast in the first half, silent in the second */
