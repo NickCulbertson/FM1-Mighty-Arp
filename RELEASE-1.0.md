@@ -31,8 +31,8 @@ GitHub: `.github/workflows/release.yml` then builds, tests, signs and publishes 
 
 ## 3. The repository
 
-- [x] `app/fm1.toml`: `repo = "https://github.com/NickCulbertson/fm1-mighty-arp"`; the landing page's Source link
-      and `app/words.tsv`'s `url:` (`nickculbertson.github.io/fm1-mighty-arp/words/`) to match. Another name for
+- [x] `app/fm1.toml`: `repo = "https://github.com/NickCulbertson/FM1-Mighty-Arp"`; the landing page's Source link
+      and `app/words.tsv`'s `url:` (`nickculbertson.github.io/FM1-Mighty-Arp/words/`) to match. Another name for
       the repository: change those three
 - [x] `app/fm1.toml`: `id_prefix = "FM-1_62791001"` (MBPX on a phone keypad, app 1, 001; Nick's choice). Releases
       are the prefix + XXYYZZ (1.0: `FM-1_62791001010000`, 19 of the 20 characters a package holds). No registry
@@ -52,11 +52,11 @@ GitHub: `.github/workflows/release.yml` then builds, tests, signs and publishes 
 
 ## 5. Release
 
-- [ ] **Nick:** create the GitHub repository `NickCulbertson/fm1-mighty-arp` (public), then:
-      `git remote add origin https://github.com/NickCulbertson/fm1-mighty-arp.git && git push -u origin main`
+- [ ] **Nick:** create the GitHub repository `NickCulbertson/FM1-Mighty-Arp` (public), then:
+      `git remote add origin https://github.com/NickCulbertson/FM1-Mighty-Arp.git && git push -u origin main`
 - [ ] **Nick:** a beta first, to check the workflow end to end:
       `git tag v1.0-beta1 && git push origin v1.0-beta1` (a dash: published as a pre-release, not latest)
 - [ ] **Nick:** install the beta's `.fwsc` from the GitHub release onto the FM-1 (not a local build)
 - [ ] **Nick:** then `git tag v1.0 && git push origin v1.0`
 - [ ] Optional, after 1.0: the site (`base/tools/publish_site.sh`): the browser emulator, an installer page, the
-      manual and the screen reader's words, on GitHub Pages (`nickculbertson.github.io/fm1-mighty-arp`)
+      manual and the screen reader's words, on GitHub Pages (`nickculbertson.github.io/FM1-Mighty-Arp`)

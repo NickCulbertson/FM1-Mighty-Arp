@@ -12,7 +12,7 @@ Version {{VERSION}}. Installing is at your own risk; the installer can put M-VAV
 - [Install](install/): from Chrome or Edge, with the FM-1 connected by USB.
 - [Manual](manual/): playing, the pages, presets, MIDI. One page.
 - [Download {{PKG}}](firmware/{{PKG}}): for the command-line installer, `python3 tools/fm1_install.py {{PKG}}`.
-- [Source](https://github.com/NickCulbertson/fm1-mighty-arp): MPL-2.0. Built on
+- [Source](https://github.com/NickCulbertson/FM1-Mighty-Arp): MPL-2.0. Built on
   [fm1-base](https://github.com/charlesvestal/fm1-base) by Charles Vestal and felucca-bsp, from Felucca by Leo
   Kuroshita, Hügelton Instruments.
 

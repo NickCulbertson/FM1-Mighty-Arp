@@ -12,9 +12,9 @@ arpeggiator. You choose the notes, the arp decides when they play. Hold a chord,
 - **16 USER presets**, each keeping its sound, arp, sequence and effects.
 - **MIDI** over USB and TRS, in and out, with clock in or out. Over USB it is also a sound card.
 
-**Install:** download `mightyarp-VERSION.fwsc` from [Releases](https://github.com/NickCulbertson/fm1-mighty-arp/releases),
+**Install:** download `mightyarp-VERSION.fwsc` from [Releases](https://github.com/NickCulbertson/FM1-Mighty-Arp/releases),
 connect the FM-1 by USB and run `python3 base/tools/fm1_install.py mightyarp-VERSION.fwsc` from a clone of this
-repository, or use the browser installer on [the site](https://nickculbertson.github.io/fm1-mighty-arp/) (Chrome or
+repository, or use the browser installer on [the site](https://nickculbertson.github.io/FM1-Mighty-Arp/) (Chrome or
 Edge) once it is published. The installer can put M-VAVE's own firmware back. Installing is at your own risk.
 
 **Manual:** [app/docs/MANUAL.md](app/docs/MANUAL.md), one page. [SPEC.md](SPEC.md) is the full design, and
