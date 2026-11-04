@@ -42,8 +42,10 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_RESET,                                      /* RESETS: PARAMS, KEEP or (a detent right) RESET */
        PX_FACTORY,                                    /* RESETS: FACTORY, KEEP, SURE?, then everything as new */
        PX_NONE = 0xFF };                              /* no knob there */
-#define NWAVE 13u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE */
-static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI"};
+#define NWAVE 14u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE,
+                                          * W14 NOISE */
+static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI",
+                                              "NOISE"};
 #define NP5 (NP - 19u)                   /* the parameters a save had before CHORUS's rate and depth */
 #define NP6 (NP - 17u)                   /* and before VOICES and GLIDE */
 #define NP7 (NP - 15u)                   /* and before the filter and PWM */
@@ -184,8 +186,9 @@ static const char *const HOLD_NAME[3] = {"NO HOLD", "HOLD", "LATCH"};
 #define OP(r, c, l, w, st, a, d, s) {(r), (c), (l), (w), (st), (a), (d), (s)}
 #define CARRIER(r, c, l) OP(r, c, l, 0, 0, 0.0f, 0.0f, 0.0f)
 /* the sounds' kinds: HOME again browses them so (SOUNDS); USER, the player's own (user[]) */
-enum { CAT_KEYS, CAT_BELLS, CAT_PLUCKS, CAT_BASS, CAT_LEADS, CAT_PADS, CAT_PERC, CAT_USER, NCAT };
-static const char *const CAT_NAME[NCAT] = {"KEYS", "BELLS", "PLUCKS", "BASS", "LEADS", "PADS", "PERC", "USER"};
+enum { CAT_KEYS, CAT_BELLS, CAT_PLUCKS, CAT_BASS, CAT_LEADS, CAT_PADS, CAT_PERC, CAT_WEIRD, CAT_USER, NCAT };
+static const char *const CAT_NAME[NCAT] = {"KEYS", "BELLS", "PLUCKS", "BASS", "LEADS", "PADS", "PERC", "WEIRD",
+                                           "USER"};
 typedef struct {
     const char *name;
     uint8_t cat;
@@ -194,224 +197,240 @@ typedef struct {
     int8_t a, d, su, r;                  /* the ENVELOPE page */
     int8_t lrate, lshape, vib, trem;     /* the LFO page */
     int8_t f_on, fcut, fres, fenv, fdec; /* the FILTER page (f_on 0: open, the FM sounds) */
+    int8_t lfocut;                       /* LFO 2's FILTER (most leave it out: 0) */
 } preset_t;
 static const preset_t PRESET[] = {
     /* electric pianos: two stacks (ALGO 5), the body and the tine, which STRIKE rides */
     {"TINE EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.25f, 0, 0, 0, 1.2f, 0.15f),
                         OP(1, 3, 0.35f, 0, 1, 0, 2.0f, 0.08f), OP(14, 0, 0.21f, 0, 0, 0, 0.07f, 0)}, 0, 0},
-     0, 74, 25, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 74, 25, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"BRIGHT EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.36f, 0, 0, 0, 0.9f, 0.2f),
                           OP(1, 3, 0.5f, 0, 1, 0, 1.5f, 0.08f), OP(14, 0, 0.3f, 0, 0, 0, 0.12f, 0)}, 0, 0},
-     0, 76, 22, 80, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 76, 22, 80, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"SOFT TINE", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.15f, 0, 0, 0, 1.6f, 0.15f),
                           OP(1, 2, 0.22f, 0, 1, 0, 2.5f, 0.1f), OP(14, 0, 0.12f, 0, 0, 0, 0.06f, 0)}, 0, 0},
-     1, 80, 25, 86, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     1, 80, 25, 86, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* a jazz organ: three drawbars (16', 8', 4') and the third harmonic's percussion, a strike carrier that falls
      * away (STRIKE: how much) */
     {"PERC ORGAN", CAT_KEYS, 7, 0, {{CARRIER(0.5f, 0, 0.28f), CARRIER(1, 0, 0.45f), CARRIER(2, 1, 0.22f),
                            OP(3, 0, 0.42f, 0, 1, 0, 0.3f, 0)}, 0, 0},
-     0, 50, 100, 35, 80, LFO_SINE, 8, 10, 0, 0, 0, 0, 0},
+     0, 50, 100, 35, 80, LFO_SINE, 8, 10, 0, 0, 0, 0, 0, 0},
     {"DYNO EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.32f, 0, 0, 0, 0.7f, 0.15f),
                         OP(1, 3, 0.55f, 0, 1, 0, 1.2f, 0.05f), OP(14, 0, 0.36f, 0, 0, 0, 0.1f, 0.02f)}, 0, 0},
-     0, 74, 20, 80, 72, LFO_TRI, 0, 40, 0, 0, 0, 0, 0},
+     0, 74, 20, 80, 72, LFO_TRI, 0, 40, 0, 0, 0, 0, 0, 0},
     {"BELL EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.2f, 0, 0, 0, 1.4f, 0.15f),
                         OP(2, 2, 0.4f, 0, 1, 0, 2.6f, 0.02f), OP(7, 0, 0.18f, 0, 0, 0, 0.5f, 0.05f)}, 0, 0},
-     0, 80, 20, 86, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 80, 20, 86, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"WURLY", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.32f, 1, 0, 0, 0.6f, 0.3f),
                       OP(1, 0, 0.3f, 0, 1, 0, 1.0f, 0.2f), OP(3, 0, 0.12f, 0, 0, 0, 0.25f, 0.05f)}, 0, 0},
-     0, 72, 35, 74, 74, LFO_TRI, 0, 35, 0, 0, 0, 0, 0},
+     0, 72, 35, 74, 74, LFO_TRI, 0, 35, 0, 0, 0, 0, 0, 0},
     {"LOFI EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.2f, 0, 0, 0, 1.2f, 0.15f),
                         OP(1, 5, 0.3f, 0, 1, 0, 2.0f, 0.08f), OP(14, 0, 0.12f, 0, 0, 0, 0.07f, 0)}, 0, 0},
-     2, 78, 25, 84, 30, LFO_DRIFT, 22, 0, 0, 0, 0, 0, 0},
+     2, 78, 25, 84, 30, LFO_DRIFT, 22, 0, 0, 0, 0, 0, 0, 0},
     {"DREAM EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.18f, 0, 0, 0, 2.5f, 0.2f),
                          OP(2, 5, 0.25f, 0, 1, 0, 3.5f, 0.15f), OP(14, 0, 0.08f, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     8, 86, 35, 92, 25, LFO_DRIFT, 14, 15, 0, 0, 0, 0, 0},
+     8, 86, 35, 92, 25, LFO_DRIFT, 14, 15, 0, 0, 0, 0, 0, 0},
     {"GLASS EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(3, 0, 0.12f, 0, 0, 0, 1.5f, 0.2f),
                          OP(1, 0, 0.45f, 0, 1, 0, 2.0f, 0.05f), OP(7, 0, 0.2f, 0, 0, 0, 0.4f, 0.05f)}, 0, 0},
-     0, 78, 22, 84, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 78, 22, 84, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"FM PIANO", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.3f, 0, 0, 0, 0.8f, 0.1f),
                          OP(2, 3, 0.3f, 0, 1, 0, 1.0f, 0.05f), OP(5, 0, 0.08f, 0, 0, 0, 0.2f, 0)}, 0, 0},
-     0, 78, 10, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 78, 10, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* keys */
     {"CLAV", CAT_KEYS, 4, 3, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.55f, 1, 0, 0, 0.25f, 0.25f),
                      OP(3, 0, 0.3f, 0, 1, 0, 0.3f, 0.1f), OP(1, 0, 0.4f, 0, 0, 0, 0.15f, 0.1f)}, 0, 0},
-     0, 60, 30, 42, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 60, 30, 42, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"FM ORGAN", CAT_KEYS, 7, 2, {{CARRIER(0.5f, 0, 0.35f), CARRIER(1, 0, 0.45f), CARRIER(2, 0, 0.3f), CARRIER(4, 0, 0.18f)},
                         0, 0},
-     1, 50, 100, 40, 82, LFO_SINE, 30, 15, 0, 0, 0, 0, 0},
+     1, 50, 100, 40, 82, LFO_SINE, 30, 15, 0, 0, 0, 0, 0, 0},
     {"VIBES", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.12f, 0, 0, 0, 0.4f, 0),
                       OP(4, 0, 0.14f, 0, 1, 0, 0.5f, 0), OP(1, 0, 0.05f, 0, 0, 0, 0.3f, 0)}, 0, 0},
-     0, 84, 0, 82, 76, LFO_SINE, 0, 45, 0, 0, 0, 0, 0},
+     0, 84, 0, 82, 76, LFO_SINE, 0, 45, 0, 0, 0, 0, 0, 0},
     /* bells and mallets */
     {"GLASS BELL", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(3.5f, 0, 0.38f, 0, 0, 0, 2.5f, 0.2f),
                            OP(1, 0, 0.5f, 0, 1, 0, 3.0f, 0), OP(1.41f, 0, 0.16f, 0, 0, 0, 1.5f, 0.1f)}, 0, 0},
-     0, 86, 0, 88, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
-    /* glassy and metallic, the 16-bit consoles' FM: an inharmonic bell over a detuned shimmer that rings on */
-    {"DOLPHIN", CAT_BELLS, 4, 4, {{CARRIER(1, 0, 1.0f), OP(3.5f, 0, 0.45f, 0, 0, 0, 1.5f, 0.3f),
-                        CARRIER(2, 7, 0.45f), OP(7, 0, 0.3f, 0, 0, 0, 0.8f, 0.15f)}, 0, 0},
-     0, 80, 30, 85, 30, LFO_DRIFT, 10, 0, 0, 0, 0, 0, 0},
+     0, 86, 0, 88, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
+    /* the WEIRD ones: noise and inharmonic FM for texture. SONAR: a metallic ping that rings and shimmers away */
+    {"SONAR", CAT_WEIRD, 4, 0, {{CARRIER(1, 0, 1.0f), OP(2.76f, 0, 0.35f, 0, 0, 0, 2.0f, 0.1f),
+                      OP(5.4f, 0, 0.3f, 0, 1, 0, 0.6f, 0), OP(1.41f, 0, 0.15f, 0, 0, 0, 1.0f, 0)}, 0, 0},
+     0, 88, 0, 92, 25, LFO_SINE, 8, 0, 0, 0, 0, 0, 0, 0},
     {"MARIMBA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.32f, 0, 0, 0, 0.03f, 0),
                         OP(1, 0, 0.6f, 0, 1, 0, 0.5f, 0), OP(1, 0, 0.08f, 0, 0, 0, 0.12f, 0)}, 0, 0},
-     0, 58, 0, 66, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 58, 0, 66, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"KALIMBA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(5, 0, 0.29f, 0, 0, 0, 0.05f, 0),
                         OP(1, 0, 0.5f, 0, 1, 0, 0.6f, 0), OP(1, 0, 0.065f, 0, 0, 0, 0.3f, 0)}, 0, 0},
-     0, 62, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 62, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"MUSIC BOX", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(7, 0, 0.24f, 0, 0, 0, 0.15f, 0.05f),
                           OP(3, 0, 0.3f, 0, 1, 0, 0.8f, 0), OP(1, 0, 0.03f, 0, 0, 0, 0.4f, 0)}, 0, 0},
-     0, 68, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 68, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"CELESTA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(6, 0, 0.27f, 0, 0, 0, 0.35f, 0.02f),
                         OP(4, 0, 0.42f, 0, 1, 0, 0.55f, 0), OP(3, 0, 0.09f, 0, 0, 0, 0.4f, 0)}, 0, 0},
-     0, 76, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 76, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"CRYSTAL", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(7, 0, 0.2f, 0, 0, 0, 0.08f, 0.02f),
                         OP(3, 0, 0.3f, 0, 1, 0, 1.2f, 0), OP(9, 0, 0.15f, 0, 0, 0, 0.3f, 0)}, 0, 0},
-     0, 76, 0, 90, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 76, 0, 90, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* plucks */
     {"HARP", CAT_PLUCKS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(2, 0, 0.24f, 0, 0, 0, 0.15f, 0.1f),
                      OP(1, 0, 0.5f, 0, 1, 0, 1.2f, 0), OP(1, 0, 0.04f, 0, 0, 0, 0.5f, 0)}, 0, 0},
-     0, 64, 0, 80, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 64, 0, 80, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"KOTO", CAT_PLUCKS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(3, 0, 0.45f, 0, 0, 0, 0.12f, 0.05f),
                      OP(1, 0, 0.35f, 0, 1, 0, 0.5f, 0), OP(5, 0, 0.2f, 0, 0, 0, 0.05f, 0)}, 0, 0},
-     0, 66, 0, 72, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 66, 0, 72, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"NYLON", CAT_PLUCKS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.25f, 0, 0, 0, 0.3f, 0.05f),
                       OP(3, 0, 0.15f, 0, 1, 0, 0.15f, 0), OP(1, 0, 0.1f, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     0, 70, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 70, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"PLUCK", CAT_PLUCKS, 0, 6, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.4f, 0, 0, 0, 0.25f, 0.05f),
                       OP(1, 0, 0.3f, 0, 0, 0, 0.2f, 0), OP(1, 0, 0.3f, 0, 0, 0, 0.2f, 0)}, 0, 0},
-     0, 60, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 60, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* basses: an octave down (ratio 1/2) */
     /* the 80s DX bass (Danger Zone's): a bright snap falling quickly to a round, barking sustain */
     {"FM BASS", CAT_BASS, 2, 6, {{CARRIER(0.5f, 0, 0.8f), OP(0.5f, 0, 0.55f, 0, 0, 0, 0.18f, 0.25f),
                         OP(1, 0, 0.25f, 0, 0, 0, 0.12f, 0), OP(0.5f, 0, 0.3f, 0, 0, 0, 0.08f, 0.1f)}, 1, 0},
-     0, 62, 70, 35, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 62, 70, 35, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"SLAP BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.65f, 0, 0, 0, 0.15f, 0.2f),
                           OP(1.5f, 0, 0.5f, 0, 1, 0, 0.12f, 0), OP(3.5f, 0, 0.45f, 0, 0, 0, 0.06f, 0)}, 1, 0},
-     0, 64, 45, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 64, 45, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* the 16-bit consoles' bass: a four-operator stack with full feedback, a growl that falls to a buzz */
     {"16BIT BASS", CAT_BASS, 0, 6, {{CARRIER(0.5f, 0, 0.85f), OP(1, 0, 0.5f, 0, 0, 0, 0.2f, 0.35f),
                            OP(1, 0, 0.35f, 0, 0, 0, 0.15f, 0.2f), OP(2, 0, 0.3f, 0, 0, 0, 0.1f, 0.1f)}, 1, 0},
-     0, 65, 60, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 65, 60, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"WOOD BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.2f, 0, 0, 0, 0.15f, 0.05f),
                           OP(1, 0, 0.2f, 0, 1, 0, 0.08f, 0), OP(2, 0, 0.15f, 0, 0, 0, 0.04f, 0)}, 1, 0},
-     0, 70, 0, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 70, 0, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* synths */
     {"FM BRASS", CAT_LEADS, 0, 4, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.3f, 0, 0, 0.06f, 0.4f, 0.6f),
                          OP(1, 0, 0.12f, 0, 0, 0.05f, 0.5f, 0.5f), OP(1, 0, 0.08f, 0, 0, 0, 0.4f, 0.5f)}, 0, 0},
-     12, 70, 80, 45, 76, LFO_SINE, 25, 0, 0, 0, 0, 0, 0},
+     12, 70, 80, 45, 76, LFO_SINE, 25, 0, 0, 0, 0, 0, 0, 0},
     {"SYNC LEAD", CAT_LEADS, 0, 6, {{CARRIER(1, 0, 1.0f), OP(2, 0, 0.35f, 0, 0, 0, 0.6f, 0.6f),
                           OP(1, 0, 0.2f, 0, 0, 0, 0.5f, 0.5f), OP(1, 0, 0.2f, 0, 0, 0, 0.5f, 0.5f)}, 2, 0.05f},
-     0, 60, 70, 40, 76, LFO_SINE, 30, 0, 0, 0, 0, 0, 0},
+     0, 60, 70, 40, 76, LFO_SINE, 30, 0, 0, 0, 0, 0, 0, 0},
     {"FM SAW", CAT_LEADS, 4, 5, {{CARRIER(1, -8, 0.7f), OP(1, 0, 0.32f, 0, 0, 0, 1.0f, 0.8f),
                        CARRIER(1, 8, 0.7f), OP(1, 0, 0.3f, 0, 0, 0, 1.0f, 0.8f)}, 0, 0},
-     0, 60, 85, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 60, 85, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* saws: W9 carriers (band-limited), a little FM on top */
 #define SAWC(r, c, l) OP(r, c, l, 8, 0, 0.0f, 0.0f, 0.0f)
     {"SAW PAD", CAT_PADS, 4, 0, {{SAWC(1, -7, 0.75f), OP(1, 0, 0.05f, 0, 0, 0.5f, 3.0f, 0.8f),
                         SAWC(1, 7, 0.75f), OP(2, 0, 0.03f, 0, 0, 0.8f, 3.0f, 0.6f)}, 0, 0},
-     70, 82, 85, 90, 30, LFO_DRIFT, 15, 0, 1, 60, 10, 15, 85},
+     70, 82, 85, 90, 30, LFO_DRIFT, 15, 0, 1, 60, 10, 15, 85, 0},
     {"SAW LEAD", CAT_LEADS, 4, 0, {{SAWC(1, -5, 0.85f), OP(1, 0, 0.12f, 0, 0, 0, 0.4f, 0.3f),
                          SAWC(1, 5, 0.65f), OP(2, 0, 0.08f, 0, 0, 0, 0.5f, 0.3f)}, 2, 0.04f},
-     0, 60, 80, 40, 76, LFO_SINE, 25, 0, 1, 65, 20, 20, 65},
+     0, 60, 80, 40, 76, LFO_SINE, 25, 0, 1, 65, 20, 20, 65, 0},
     {"SAW BASS", CAT_BASS, 4, 0, {{SAWC(0.5f, 0, 0.8f), OP(0.5f, 0, 0.15f, 0, 0, 0, 0.15f, 0.05f),
                          CARRIER(0.5f, 0, 0.4f), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 1, 0},
-     0, 62, 40, 30, 45, LFO_SINE, 0, 0, 1, 35, 30, 45, 55},
+     0, 62, 40, 30, 45, LFO_SINE, 0, 0, 1, 35, 30, 45, 55, 0},
     /* pads */
     {"GLASS PAD", CAT_PADS, 4, 0, {{CARRIER(1, 0, 0.7f), OP(1, 0, 0.19f, 0, 0, 0, 4.0f, 0.6f),
                           CARRIER(1, 5, 0.55f), OP(2, 0, 0.13f, 0, 0, 0, 3.0f, 0.5f)}, 0, 0},
-     72, 82, 80, 88, 30, LFO_DRIFT, 22, 0, 0, 0, 0, 0, 0},
+     72, 82, 80, 88, 30, LFO_DRIFT, 22, 0, 0, 0, 0, 0, 0, 0},
     {"STRINGS", CAT_PADS, 4, 3, {{CARRIER(1, -6, 0.7f), OP(1, 0, 0.18f, 0, 0, 0.3f, 1.0f, 0.9f),
                         CARRIER(1, 6, 0.7f), OP(1, 0, 0.15f, 0, 0, 0.3f, 1.0f, 0.9f)}, 0, 0},
-     70, 80, 90, 85, 76, LFO_SINE, 25, 0, 0, 0, 0, 0, 0},
+     70, 80, 90, 85, 76, LFO_SINE, 25, 0, 0, 0, 0, 0, 0, 0},
     {"CHOIR", CAT_PADS, 5, 0, {{CARRIER(1, 0, 0.8f), CARRIER(3, 0, 0.25f), CARRIER(5, 0, 0.1f),
                       OP(1, 0, 0.1f, 0, 0, 0.4f, 2.0f, 0.9f)}, 0, 0},
-     75, 80, 90, 86, 30, LFO_DRIFT, 25, 0, 0, 0, 0, 0, 0},
+     75, 80, 90, 86, 30, LFO_DRIFT, 25, 0, 0, 0, 0, 0, 0, 0},
     {"DRIFT PAD", CAT_PADS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(0.5f, 0, 0.1f, 0, 0, 1.0f, 4.0f, 1.0f),
                           CARRIER(2, 5, 0.5f), OP(3, 0, 0.08f, 0, 0, 0, 3.0f, 0.7f)}, 0, 0},
-     80, 85, 85, 92, 25, LFO_DRIFT, 40, 25, 0, 0, 0, 0, 0},
+     80, 85, 85, 92, 25, LFO_DRIFT, 40, 25, 0, 0, 0, 0, 0, 0},
     {"HALO", CAT_PADS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.1f, 0, 0, 0.5f, 3.0f, 0.8f),
                      CARRIER(2, 0, 0.5f), OP(7, 0, 0.05f, 0, 0, 1.0f, 3.0f, 0.5f)}, 0, 0},
-     78, 86, 70, 94, 20, LFO_DRIFT, 20, 20, 0, 0, 0, 0, 0},
+     78, 86, 70, 94, 20, LFO_DRIFT, 20, 20, 0, 0, 0, 0, 0, 0},
     /* the analog waves (W10-W13): square and pulses (two saws), triangle; band-limited like the saw */
 #define WAVC(r, c, l, w) OP(r, c, l, w, 0, 0.0f, 0.0f, 0.0f)
     {"SUPER SAW", CAT_PADS, 7, 0, {{SAWC(1, -18, 0.42f), SAWC(1, -6, 0.42f), SAWC(1, 6, 0.42f), SAWC(1, 18, 0.42f)},
                                   0, 0},
-     10, 70, 85, 80, 30, LFO_DRIFT, 8, 0, 1, 75, 10, 10, 75},
+     10, 70, 85, 80, 30, LFO_DRIFT, 8, 0, 1, 75, 10, 10, 75, 0},
     {"ANALOG BASS", CAT_BASS, 7, 0, {{SAWC(0.5f, 0, 0.7f), WAVC(1, 3, 0.35f, 9), CARRIER(1, 0, 0), CARRIER(1, 0, 0)},
                                     1, 0},
-     0, 60, 50, 25, 45, LFO_SINE, 0, 0, 1, 32, 35, 50, 52},
+     0, 60, 50, 25, 45, LFO_SINE, 0, 0, 1, 32, 35, 50, 52, 0},
     {"SQUARE LEAD", CAT_LEADS, 7, 0, {{WAVC(1, -4, 0.6f, 9), WAVC(1, 4, 0.5f, 9), CARRIER(1, 0, 0), CARRIER(1, 0, 0)},
                                      2, 0.03f},
-     0, 60, 80, 40, 76, LFO_SINE, 25, 0, 1, 60, 20, 25, 60},
+     0, 60, 80, 40, 76, LFO_SINE, 25, 0, 1, 60, 20, 25, 60, 0},
     {"CHIP ARP", CAT_LEADS, 7, 0, {{WAVC(1, 0, 0.9f, 11), WAVC(2, 0, 0.2f, 9), CARRIER(1, 0, 0), CARRIER(1, 0, 0)},
                                   0, 0},
-     0, 55, 30, 30, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 55, 30, 30, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"PULSE PLUCK", CAT_PLUCKS, 4, 0, {{WAVC(1, 0, 1.0f, 10), OP(2, 0, 0.15f, 0, 0, 0, 0.1f, 0),
                                        CARRIER(1, 0, 0), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     0, 66, 0, 75, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+     0, 66, 0, 75, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"TRI PAD", CAT_PADS, 7, 0, {{WAVC(1, -5, 0.7f, 12), WAVC(2, 5, 0.35f, 12), WAVC(0.5f, 0, 0.3f, 12),
                                  CARRIER(1, 0, 0)}, 0, 0},
-     70, 82, 85, 90, 25, LFO_DRIFT, 15, 0, 0, 0, 0, 0, 0},
+     70, 82, 85, 90, 25, LFO_DRIFT, 15, 0, 0, 0, 0, 0, 0, 0},
     {"TRI FLUTE", CAT_LEADS, 4, 0, {{WAVC(1, 0, 0.9f, 12), OP(1, 0, 0.03f, 0, 0, 0.08f, 1.0f, 0.6f),
                                     CARRIER(1, 0, 0), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     6, 70, 80, 40, 76, LFO_SINE, 30, 0, 0, 0, 0, 0, 0},
+     6, 70, 80, 40, 76, LFO_SINE, 30, 0, 0, 0, 0, 0, 0, 0},
     /* VA: the analog-synth classics. No filter: the bite and the sweep are FM, a modulator with its own envelope over
      * the saw, square and pulse carriers (a quick fall for a pluck's or a bass's attack, a slow rise for brass) */
 #define Z CARRIER(1, 0, 0)
+#define NOISEC(l) OP(1, 0, l, 13, 0, 0.0f, 0.0f, 0.0f)   /* a carrier of W14 NOISE */
     {"POLY SYNTH", CAT_KEYS, 6, 4, {{SAWC(1, -6, 0.45f), SAWC(1, 6, 0.45f), CARRIER(1, 0, 0.5f),
                                     OP(1, 0, 0.25f, 0, 0, 0, 0.3f, 0.1f)}, 0, 0},
-     0, 72, 40, 60, 45, LFO_SINE, 0, 0, 1, 45, 25, 45, 60},
+     0, 72, 40, 60, 45, LFO_SINE, 0, 0, 1, 45, 25, 45, 60, 0},
     {"80S KEYS", CAT_KEYS, 7, 0, {{WAVC(1, 0, 0.9f, 9), SAWC(2, 0, 0.45f), Z, Z}, 0, 0},
-     0, 70, 30, 62, 45, LFO_SINE, 0, 0, 1, 58, 15, 35, 58},
+     0, 70, 30, 62, 45, LFO_SINE, 0, 0, 1, 58, 15, 35, 58, 0},
     {"SAW PLUCK", CAT_PLUCKS, 4, 0, {{SAWC(1, 0, 0.95f), OP(1, 0, 0.25f, 0, 0, 0, 0.12f, 0),
                                      SAWC(1, 8, 0.55f), OP(2, 0, 0.15f, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     0, 66, 0, 72, 45, LFO_SINE, 0, 0, 1, 30, 30, 60, 55},
+     0, 66, 0, 72, 45, LFO_SINE, 0, 0, 1, 30, 30, 60, 55, 0},
     {"SQR PLUCK", CAT_PLUCKS, 7, 0, {{WAVC(1, 0, 1.0f, 9), WAVC(2, 4, 0.4f, 10), Z, Z}, 0, 0},
-     0, 64, 0, 70, 45, LFO_SINE, 0, 0, 1, 38, 35, 55, 52},
+     0, 64, 0, 70, 45, LFO_SINE, 0, 0, 1, 38, 35, 55, 52, 0},
     {"SQUARE BASS", CAT_BASS, 7, 0, {{WAVC(0.5f, 0, 0.6f, 9), CARRIER(0.5f, 0, 0.4f), Z, Z}, 1, 0},
-     0, 60, 60, 25, 45, LFO_SINE, 0, 0, 1, 35, 20, 40, 55},
+     0, 60, 60, 25, 45, LFO_SINE, 0, 0, 1, 35, 20, 40, 55, 0},
     {"PULSE BASS", CAT_BASS, 4, 0, {{WAVC(0.5f, 0, 1.0f, 10), OP(0.5f, 0, 0.2f, 0, 0, 0, 0.15f, 0.05f), Z,
                                     OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 1, 0},
-     0, 62, 45, 28, 45, LFO_SINE, 0, 0, 1, 30, 35, 50, 50},
+     0, 62, 45, 28, 45, LFO_SINE, 0, 0, 1, 30, 35, 50, 50, 0},
     {"SYNTH BASS", CAT_BASS, 6, 0, {{SAWC(0.5f, 0, 0.6f), SAWC(0.5f, 10, 0.4f), CARRIER(0.5f, 0, 0.35f),
                                     OP(1, 0, 0.2f, 0, 0, 0, 0.1f, 0)}, 1, 0},
-     0, 62, 55, 25, 45, LFO_SINE, 0, 0, 1, 28, 45, 55, 52},
+     0, 62, 55, 25, 45, LFO_SINE, 0, 0, 1, 28, 45, 55, 52, 0},
     /* the West Coast lead (G-funk's): two saws a little apart, a long legato glide between notes, vibrato */
     {"WEST COAST", CAT_LEADS, 7, 0, {{SAWC(1, -4, 0.5f), SAWC(1, 4, 0.5f), Z, Z}, 2, 0.09f},
-     4, 60, 90, 45, 62, LFO_SINE, 28, 0, 1, 70, 22, 15, 65},
+     4, 60, 90, 45, 62, LFO_SINE, 28, 0, 1, 70, 22, 15, 65, 0},
     {"PULSE LEAD", CAT_LEADS, 7, 0, {{WAVC(1, 0, 0.6f, 10), WAVC(1, 7, 0.35f, 11), Z, Z}, 2, 0.04f},
-     0, 60, 80, 40, 76, LFO_SINE, 30, 0, 1, 60, 25, 25, 62},
+     0, 60, 80, 40, 76, LFO_SINE, 30, 0, 1, 60, 25, 25, 62, 0},
     {"80S BRASS", CAT_LEADS, 6, 0, {{SAWC(1, -5, 0.4f), SAWC(1, 5, 0.4f), CARRIER(1, 0, 0.4f),
                                    OP(1, 0, 0.3f, 0, 0, 0.08f, 0.5f, 0.4f)}, 0, 0},
-     10, 70, 80, 45, 76, LFO_SINE, 15, 0, 1, 40, 15, 45, 70},
+     10, 70, 80, 45, 76, LFO_SINE, 15, 0, 1, 40, 15, 45, 70, 0},
     {"SAW STRINGS", CAT_PADS, 7, 0, {{SAWC(1, -12, 0.35f), SAWC(1, 0, 0.35f), SAWC(1, 12, 0.35f),
                                      WAVC(2, 0, 0.15f, 10)}, 0, 0},
-     72, 82, 90, 88, 70, LFO_SINE, 10, 0, 1, 65, 10, 10, 80},
+     72, 82, 90, 88, 70, LFO_SINE, 10, 0, 1, 65, 10, 10, 80, 0},
     {"SQUARE PAD", CAT_PADS, 7, 0, {{WAVC(1, -6, 0.45f, 9), WAVC(1, 6, 0.45f, 9), WAVC(2, 0, 0.25f, 12), Z}, 0, 0},
-     75, 82, 85, 92, 25, LFO_DRIFT, 12, 15, 1, 55, 20, 15, 85},
+     75, 82, 85, 92, 25, LFO_DRIFT, 12, 15, 1, 55, 20, 15, 85, 0},
     {"SWEEP PAD", CAT_PADS, 4, 0, {{SAWC(1, 0, 0.55f), OP(1, 0, 0.1f, 0, 0, 2.0f, 4.0f, 0.6f),
                                    SAWC(1, 7, 0.55f), OP(1, 0, 0.08f, 0, 0, 3.0f, 4.0f, 0.5f)}, 0, 0},
-     70, 85, 85, 92, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 92},
+     70, 85, 85, 92, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 92, 0},
     /* gnarly FM, the 16-bit consoles' way: feedback and inharmonic ratios */
     {"METAL LEAD", CAT_LEADS, 0, 6, {{CARRIER(1, 0, 0.9f), OP(2, 0, 0.4f, 0, 0, 0, 0.6f, 0.7f),
                            OP(3, 0, 0.25f, 0, 0, 0, 0.5f, 0.6f), OP(1, 0, 0.2f, 0, 0, 0, 0.4f, 0.5f)}, 2, 0.03f},
-     2, 60, 85, 50, 76, LFO_SINE, 20, 0, 0, 0, 0, 0, 0},
-    {"DEEP SEA", CAT_PADS, 5, 3, {{CARRIER(0.5f, 0, 0.45f), CARRIER(1, -6, 0.4f), CARRIER(1, 6, 0.4f),
+     2, 60, 85, 50, 76, LFO_SINE, 20, 0, 0, 0, 0, 0, 0, 0},
+    {"DEEP SEA", CAT_WEIRD, 5, 3, {{CARRIER(0.5f, 0, 0.45f), CARRIER(1, -6, 0.4f), CARRIER(1, 6, 0.4f),
                          OP(1.41f, 0, 0.2f, 0, 0, 1.0f, 4.0f, 0.7f)}, 0, 0},
-     70, 85, 85, 90, 20, LFO_DRIFT, 25, 15, 0, 0, 0, 0, 0},
+     70, 85, 85, 90, 20, LFO_DRIFT, 25, 15, 0, 0, 0, 0, 0, 0},
     /* percussion: the noise from full feedback on operator 4 (no noise wave), short and falling */
-    {"FM SNARE", CAT_PERC, 4, 7, {{CARRIER(1, 0, 0.6f), OP(1.41f, 0, 0.4f, 0, 0, 0, 0.05f, 0),
-                         CARRIER(5, 0, 0.7f), OP(7, 0, 0.9f, 0, 0, 0, 0.15f, 0.2f)}, 0, 0},
-     0, 52, 0, 45, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
-    {"NOISE HAT", CAT_PERC, 4, 7, {{CARRIER(9, 0, 0.6f), OP(14, 0, 0.8f, 0, 0, 0, 0.05f, 0),
-                          CARRIER(13, 0, 0.6f), OP(11, 0, 1.0f, 0, 0, 0, 0.1f, 0.5f)}, 0, 0},
-     0, 40, 0, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0},
+    /* a snare's two parts: the knock (operator 1, its own quick envelope, STRIKE its level) and the rattle, W14
+     * NOISE on the ENVELOPE's short decay */
+    {"FM SNARE", CAT_PERC, 4, 0, {{OP(1, 0, 0.75f, 0, 1, 0, 0.06f, 0), OP(1.41f, 0, 0.35f, 0, 0, 0, 0.03f, 0),
+                         NOISEC(0.75f), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
+     0, 58, 0, 46, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
+    {"NOISE HAT", CAT_PERC, 4, 0, {{NOISEC(0.7f), OP(1, 0, 0, 0, 0, 0, 0.1f, 0),
+                          CARRIER(9, 0, 0.25f), OP(14, 0, 0.6f, 0, 0, 0, 0.05f, 0)}, 0, 0},
+     0, 36, 0, 30, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
+    /* STATIC: a wash of noise swelling in, crackling (random tremolo, S&H) over a low hum */
+    {"STATIC", CAT_WEIRD, 6, 0, {{CARRIER(1, 0, 0.2f), CARRIER(0.5f, 0, 0.15f), NOISEC(0.35f),
+                       OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
+     60, 80, 80, 85, 70, LFO_SH, 0, 45, 1, 70, 10, 0, 60, 0},
+    /* WIND: noise through a resonant filter the slow LFO sweeps, gusting */
+    {"WIND", CAT_WEIRD, 6, 0, {{CARRIER(1, 0, 0.05f), CARRIER(0.5f, 0, 0.03f), NOISEC(0.8f),
+                     OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
+     75, 85, 90, 88, 30, LFO_DRIFT, 0, 20, 1, 45, 60, 0, 60, 60},
+    /* ALIEN: two inharmonic stacks, the pitch jumping at random (S&H vibrato) */
+    {"ALIEN", CAT_WEIRD, 4, 3, {{CARRIER(1, 0, 0.7f), OP(1.41f, 0, 0.4f, 0, 0, 0, 1.0f, 0.8f),
+                      CARRIER(2.76f, 12, 0.4f), OP(5.4f, 0, 0.2f, 0, 0, 0, 1.0f, 0.6f)}, 0, 0},
+     20, 80, 70, 70, 55, LFO_SH, 60, 0, 0, 0, 0, 0, 0, 0},
 };
 #define NPRESET (sizeof PRESET / sizeof PRESET[0])
 /* the order PRESET and SOUNDS go through them: kind by kind, each kind's like sounds together (the numbers stay
  * as saves know them; a sound added goes into its kind here). tests/make_sounds_test.py reads it */
 static const uint8_t ORDER[] = {
-    0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 48, 47, 11, 12, 3, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 44, 49, 50,
-    25, 26, 27, 28, 34, 41, 51, 52, 53, 29, 56, 30, 31, 60, 33, 54, 42, 55, 43, 46, 32, 40, 57, 36, 35, 37, 38, 39,
-    61, 45, 58, 59, 62, 63};
+    0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 48, 47, 11, 12, 3, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 44, 49, 50, 25,
+    26, 27, 28, 34, 41, 51, 52, 53, 29, 56, 30, 31, 60, 33, 54, 42, 55, 43, 46, 32, 40, 57, 36, 35, 37, 38, 39, 45,
+    58, 59, 62, 63, 15, 61, 64, 65, 66};
 typedef char order_is_every_sound[sizeof ORDER == NPRESET ? 1 : -1];
 static uint32_t browse_at(uint32_t k) { return k < NPRESET ? ORDER[k] : k; }   /* the k-th sound browsed */
 static uint32_t browse_pos(uint32_t n)   /* where sound n is in it */
@@ -422,12 +441,13 @@ static uint32_t browse_pos(uint32_t n)   /* where sound n is in it */
             return k;
     return n;
 }
-/* the bank MARC records (64 sounds; MAR8..MARB: 60): another factory sound moves the USER slots' numbers, so bump
- * SET_MAGIC (and migrate: from_bank60) first */
-typedef char npreset_is_marcs[NPRESET == 64u ? 1 : -1];
-static uint8_t from_bank60(uint8_t p)    /* a sound number a 60-sound bank's record holds: its USER slots moved on */
+/* the bank MARD records (67 sounds; MARC: 64; MAR8..MARB: 60): another factory sound moves the USER slots' numbers,
+ * so bump SET_MAGIC (and migrate: from_bank) first */
+typedef char npreset_is_mards[NPRESET == 67u ? 1 : -1];
+static uint8_t from_bank(uint8_t p, uint32_t n)   /* a sound number a record from an n-sound bank holds: its USER
+                                                  * slots moved on */
 {
-    return (uint8_t)(p >= 60u ? p - 60u + NPRESET : p);
+    return (uint8_t)(p >= n ? p - n + NPRESET : p);
 }
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
@@ -441,10 +461,11 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-/* "MARC": the settings record; another magic loads defaults. NPRESET is 64 under it (60 under MAR8..MARB): a factory
- * sound added (the USER slots' numbers move) must bump it, so a record's magic names its bank (MAR5 and MAR7 did
- * not: app_init) */
-#define SET_MAGIC 0x4352414Du
+/* "MARD": the settings record; another magic loads defaults. NPRESET is 67 under it (64 under MARC, 60 under
+ * MAR8..MARB): a factory sound added (the USER slots' numbers move) must bump it, so a record's magic names its bank
+ * (MAR5 and MAR7 did not: app_init) */
+#define SET_MAGIC 0x4452414Du
+#define SET_MAGIC_C 0x4352414Du          /* "MARC": the 64-sound bank's (the same record) */
 #define SET_MAGIC_B 0x4252414Du          /* "MARB": the 60-sound bank's (the same record) */
 #define SET_MAGIC_A 0x4152414Du          /* "MARA": before LOADS (settingsA_t) */
 #define SET_MAGIC_9 0x3952414Du          /* "MAR9": before CHORDS (settings9_t) */
@@ -1653,7 +1674,7 @@ static void filter_load(const preset_t *pr)   /* FILTER as the sound has it (ope
     set.p[P_FENV] = pr->f_on ? pr->fenv : 0;
     set.p[P_FDEC] = pr->f_on ? pr->fdec : PAR[P_FDEC].def;
     set.p[P_PWM] = 0;
-    set.p[P_LFOCUT] = 0;
+    set.p[P_LFOCUT] = pr->f_on ? pr->lfocut : 0;
     fenv_fill(set.p);
 }
 
@@ -1952,7 +1973,7 @@ void app_init(void)
             settingsA_t *oA = &ld.oA;    /* before LOADS: all as it was, a sound change the sound only */
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NPA ? oA->p[i] : PAR[i].def;
-            set.preset = from_bank60(oA->preset);
+            set.preset = from_bank(oA->preset, 60u);
             set.octave = oA->octave;
             set.arp_on = oA->arp_on;
             set.hold = oA->hold;
@@ -1967,7 +1988,7 @@ void app_init(void)
             settings9_t *o9 = &ld.o9;    /* before CHORDS: all as it was, CHORDS off */
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NP9 ? o9->p[i] : PAR[i].def;
-            set.preset = from_bank60(o9->preset);
+            set.preset = from_bank(o9->preset, 60u);
             set.octave = o9->octave;
             set.arp_on = o9->arp_on;
             set.hold = o9->hold;
@@ -1983,7 +2004,7 @@ void app_init(void)
             for (i = 0; i < NP; i++)
                 set.p[i] = i < NP8 ? o8->p[i] : PAR[i].def;
             fenv_fill(set.p);
-            set.preset = from_bank60(o8->preset);
+            set.preset = from_bank(o8->preset, 60u);
             set.octave = o8->octave;
             set.arp_on = o8->arp_on;
             set.hold = o8->hold;
@@ -2042,9 +2063,9 @@ void app_init(void)
             }
             voice_load(&PRESET[set.preset]);
             set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof set && ld.s.magic == SET_MAGIC_B) {
-            set = ld.s;                  /* the 60-sound bank's: its USER slots four on */
-            set.preset = from_bank60(set.preset);
+        } else if (got == (int)sizeof set && (ld.s.magic == SET_MAGIC_B || ld.s.magic == SET_MAGIC_C)) {
+            set = ld.s;                  /* a 60- or 64-sound bank's: its USER slots moved on */
+            set.preset = from_bank(set.preset, ld.s.magic == SET_MAGIC_B ? 60u : 64u);
             set.magic = SET_MAGIC;
         } else if (got == (int)sizeof set)
             set = ld.s;
@@ -3381,13 +3402,15 @@ int app_expect(const char *what, int *got)
         arp_mark_at = arp_count;
         *got = 0;
     }
-    else if (!strcmp(what, "as_marb")) {     /* (always 0) the saved settings rewritten as the 60-sound bank's MARB
-                                              * record (its USER slots four lower): for the migration's test */
+    else if (!strcmp(what, "as_marb") || !strcmp(what, "as_marc")) {   /* (always 0) the saved settings rewritten
+                                              * as the 60-sound bank's MARB record, or the 64's MARC (its USER slots
+                                              * lower): for the migration's test */
         static settings_t t;
+        uint32_t n = what[5] == 'b' ? 60u : 64u;
         if (plat_store_load(OBJ_SETTINGS, &t, sizeof t) == (int)sizeof t) {
-            t.magic = SET_MAGIC_B;
+            t.magic = n == 60u ? SET_MAGIC_B : SET_MAGIC_C;
             if (t.preset >= NPRESET)
-                t.preset = (uint8_t)(t.preset - NPRESET + 60u);
+                t.preset = (uint8_t)(t.preset - NPRESET + n);
             plat_store_save(OBJ_SETTINGS, &t, sizeof t);
         }
         *got = 0;

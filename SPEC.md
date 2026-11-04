@@ -37,7 +37,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | FILTER ENVELOPE (ENV a third time) | ATTACK | DECAY | SUSTAIN | RELEASE |
 | LFO | RATE | SHAPE (SINE, TRI, SQUARE, S&H, DRIFT) | VIBRATO | TREMOLO (stereo, Rhodes style) |
 | LFO 2 (LFO again) | PWM | FILTER (up to 3 octaves) | | |
-| EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | MOD WAVE (W1-W8, W9 SAW) |
+| EDIT | ALGO (1-8, drawn as a diagram) | RATIO (the modulators' x1/2 .. x7) | FEEDBACK (0-7) | MOD WAVE (W1-W8, W9 SAW .. W13 TRI, W14 NOISE) |
 | OP 1-4 (EDIT again) | RATIO | LEVEL | WAVE | DECAY |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
 | CHORDS (ARP again) | CHORD (OFF; TRIAD, 7TH, LUSH, OPEN: a diatonic chord a step; TRIAD, 7TH, OMNI TONES: the chords' tones the notes) | STRUM (2 .. 250 ms a note, the chord within its step) | KEY | SCALE |
@@ -48,7 +48,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
 | RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
-PRESET and SOUNDS go through the 64 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC), like sounds
+PRESET and SOUNDS go through the 67 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC, WEIRD), like sounds
 together (`ORDER` in app.c; the sounds' numbers, which saves hold, never move). A bass loads MONO with no glide, a
 lead LEGATO.
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).

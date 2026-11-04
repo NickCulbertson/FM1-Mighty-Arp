@@ -198,6 +198,7 @@ static const float DSIGN[4] = {-1.0f, 0.5f, 1.0f, -0.5f};   /* DETUNE: each oper
 /* ------------------------------------------------------------------ voices --- */
 typedef struct {
     int32_t note, gate;                  /* gate: samples before the arp releases it; -1 a key holds it */
+    uint32_t nz;                         /* W14 NOISE's generator, the voice's own (two cores render voices) */
     uint32_t age;
     uint8_t on, rel, shed, wv[4], att[4];   /* att[k]: operator k still rising; shed: fading out for the CPU */
     const int16_t *tab[4];               /* a table wave's table, for its pitch now (voice_pitch; 0 a sine's) */
@@ -247,7 +248,8 @@ static void voice_pitch(voice_t *v)
     for (k = 0; k < 4u; k++) {
         float hz = m * v->rat[k] * SR, lo = v->ic[k] > 0.0f ? 16000.0f : 8000.0f;
         v->inc[k] = m * v->rat[k];
-        if (v->wv[k] >= 8u) {            /* a table wave: its band for this pitch; a change mid-note fades across */
+        if (v->wv[k] >= 8u && v->wv[k] != 13u) {   /* a table wave: its band for this pitch; a change mid-note fades
+                                                     * across (W14 NOISE has none) */
             const int16_t *t = v->wv[k] == 12u ? tri_band(hz) : saw_band(hz);
             if (v->tab[k] && t != v->tab[k]) {
                 v->tab_was[k] = v->tab[k];
@@ -360,6 +362,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     rk = fall_coef(prm.rel);
     fresh = !v->on;                      /* a voice re-struck while it sounds runs on from where it is */
     if (fresh) {
+        v->nz = (vc_age + 1u) * 2654435761u | 1u;   /* (its own seed: the engine's rnd() untouched) */
         for (k = 0; k < 4u; k++)
             v->env[k] = 0.0f;
         v->fb1 = v->fb2 = 0.0f;
@@ -583,10 +586,13 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     float fl1 = v->fl1, fl2 = v->fl2, fr1 = v->fr1, fr2 = v->fr2, fwet = v->fwet, fwet_to = v->fwet_to;
     uint32_t flt = v->flt;
     int32_t gate = v->gate;
+    uint32_t nz = v->nz;
+#define NZ() (nz ^= nz << 13, nz ^= nz >> 17, nz ^= nz << 5, (float)(int32_t)nz * (1.0f / 2147483648.0f))   /* -1..1 */
 #define TW(x, w, t, u, xf) ((xf) > 0.0f ? tab_wave((x), (w), (t)) + (tab_wave((x), (w), (u)) - tab_wave((x), (w), (t))) \
                                                   * (xf) : tab_wave((x), (w), (t)))   /* (fading from u) */
-#define W(x, w, t, u, xf) (sine || !(w) ? sin_t(x) : (w) >= 8u ? TW(x, w, t, u, xf) : wave((x), (w)))   /* a plain
-                                                                         * sine, a table wave, or a TX81Z wave */
+#define W(x, w, t, u, xf) (sine || !(w) ? sin_t(x) : (w) >= 8u ? ((w) == 13u ? NZ() : TW(x, w, t, u, xf)) \
+                                                                   : wave((x), (w)))   /* a plain sine, a table wave,
+                                                                         * W14 NOISE (no phase: white), a TX81Z wave */
 #define MODS(k, j) (MOD[alg][k] >> (j) & 1u)
 #define IS_CAR(k) (CAR[alg] >> (k) & 1u)
     for (i = a; i < b; i++) {
@@ -675,6 +681,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     v->kk[0] = kk0, v->kk[1] = kk1, v->kk[2] = kk2, v->kk[3] = kk3;
     v->att[0] = (uint8_t)at0, v->att[1] = (uint8_t)at1, v->att[2] = (uint8_t)at2, v->att[3] = (uint8_t)at3;
     v->ph[0] = p0, v->ph[1] = p1, v->ph[2] = p2, v->ph[3] = p3;
+    v->nz = nz;
     v->fb1 = fb1, v->fb2 = fb2;
     v->xf[0] = xf0, v->xf[1] = xf1, v->xf[2] = xf2, v->xf[3] = xf3;
     v->fa1 = fa1, v->fa2 = fa2, v->fa3 = fa3;

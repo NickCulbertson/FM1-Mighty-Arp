@@ -224,7 +224,7 @@ wait 400
 shot scope.png
 key 7 up
 wait 30
-spin PRESET 49
+spin PRESET 48
 wait 30
 key 7 down 100
 wait 600
@@ -234,7 +234,7 @@ key 7 up
 tap HOME
 wait 30
 expect preset 32
-spin PRESET -50
+spin PRESET -49
 wait 30
 expect preset 0
 tap EDIT
@@ -269,7 +269,7 @@ expect page 4
 tap HOME
 wait 30
 expect arp 0
-spin PRESET 44
+spin PRESET 43
 wait 30
 expect preset 33
 tap SEL
