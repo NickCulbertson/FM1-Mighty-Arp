@@ -1,0 +1,18 @@
+  ok arp == 0
+  ok voices == 8
+  ok cpu2 == 1
+  ok overload == 0
+  ok overload == 0
+  ok overload == 0
+  ok sheds == 3
+  ok voices == 5
+  ok cap == 5
+  ok overload == 0
+  ok overload == 0
+  ok overload == 0
+  ok overload == 0
+  ok voices == 4
+  ok cap == 4 (>3)
+  ok peak -27.6 dBFS (min -40)
+  ok cap == 7 (>6)
+host: 9216 ms simulated, 564 blits, render 0.5% of real time (host CPU)

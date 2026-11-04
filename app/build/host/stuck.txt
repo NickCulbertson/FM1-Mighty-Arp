@@ -1,0 +1,38 @@
+wait 600
+tap REC
+wait 30
+expect hold 0
+# arp on, hold off: a key let go stops the arp
+turn ALGO 40
+key 7 down 90
+wait 800
+expect arp_mark 0
+key 7 up
+wait 50
+expect held 0
+expect arp_mark 0
+wait 2000
+expect arp_notes 0
+# keys mode: a key let go releases; E.PIANO's release is 3.3 s, so after 8 s nothing sounds
+tap PLAY
+wait 30
+key 7 down 90
+wait 300
+expect voices 1
+key 7 up
+wait 8000
+expect voices 0
+expect held 0
+# quick repeated taps of the same key
+key 7 down 90
+wait 20
+key 7 up
+wait 20
+key 7 down 90
+wait 20
+key 7 up
+key 9 down 90
+wait 20
+key 9 up
+wait 9000
+expect voices 0

@@ -1,0 +1,195 @@
+  ok play_keys == 0
+  ok npreset == 64
+  ok preset == 0
+  ok peak -24.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 2
+  ok peak -25.2 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 3
+  ok peak -23.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 4
+  ok peak -26.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 5
+  ok peak -25.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 6
+  ok peak -25.6 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 7
+  ok peak -23.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 8
+  ok peak -25.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 45
+  ok peak -29.3 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 44
+  ok peak -25.4 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 9
+  ok peak -25.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 10
+  ok peak -24.1 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 1
+  ok peak -26.3 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 11
+  ok peak -26.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 12
+  ok peak -22.2 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 14
+  ok peak -23.7 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 15
+  ok peak -24.1 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 16
+  ok peak -22.7 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 17
+  ok peak -24.1 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 18
+  ok peak -27.2 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 19
+  ok peak -24.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 20
+  ok peak -25.4 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 21
+  ok peak -27.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 41
+  ok peak -27.7 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 46
+  ok peak -27.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 47
+  ok peak -29.4 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 22
+  ok peak -27.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 23
+  ok peak -23.5 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 24
+  ok peak -27.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 25
+  ok peak -24.4 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 31
+  ok peak -28.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 38
+  ok peak -28.5 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 48
+  ok peak -34.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 49
+  ok peak -27.7 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 50
+  ok peak -25.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 26
+  ok peak -23.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 53
+  ok peak -29.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 27
+  ok peak -25.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 28
+  ok peak -23.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 57
+  ok peak -24.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 30
+  ok peak -26.3 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 51
+  ok peak -27.7 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 39
+  ok peak -32.2 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 52
+  ok peak -27.7 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 40
+  ok peak -25.9 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 43
+  ok peak -26.1 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 29
+  ok peak -24.2 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 37
+  ok peak -24.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 54
+  ok peak -29.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 33
+  ok peak -22.3 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 32
+  ok peak -23.6 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 34
+  ok peak -23.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 35
+  ok peak -25.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 36
+  ok peak -24.6 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 42
+  ok peak -24.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 55
+  ok peak -30.3 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 56
+  ok peak -25.8 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 59
+  ok peak -24.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 60
+  ok peak -28.1 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 13
+  ok peak -23.0 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 58
+  ok peak -24.4 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 61
+  ok peak -34.2 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 62
+  ok peak -32.3 dBFS (min -36)
+  ok dsp_resets == 0
+  ok preset == 63
+  ok peak -24.4 dBFS (min -36)
+  ok dsp_resets == 0
+host: 116150 ms simulated, 7496 blits, render 0.3% of real time (host CPU)

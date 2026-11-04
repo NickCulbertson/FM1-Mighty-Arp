@@ -1,0 +1,12 @@
+  ok hold == 0
+  ok arp_mark == 0
+  ok held == 0
+  ok arp_mark == 0
+  ok arp_notes == 0
+  ok play_keys == 0
+  ok voices == 1
+  ok voices == 0
+  ok held == 0
+  ok voices == 0
+  ok arp_notes == 0
+host: 24080 ms simulated, 1420 blits, render 0.3% of real time (host CPU)

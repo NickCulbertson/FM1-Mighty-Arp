@@ -1,0 +1,12 @@
+wait 600
+tap REC
+wait 30
+key 0 down 90
+key 4 down 90
+key 7 down 90
+wait 50
+key 0 up
+key 4 up
+key 7 up
+wait 200
+leds

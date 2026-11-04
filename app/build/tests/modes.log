@@ -1,0 +1,37 @@
+  ok chance == 100
+  ok hold == 1
+  ok octaves == 1
+  ok mode == 4
+  ok arp_mark == 0
+  ok note1 == 67
+  ok note2 == 60
+  ok note3 == 67
+  ok mode == 11
+  ok arp_mark == 0
+  ok arp_notes == 6 (>5)
+  ok mode == 0
+  ok mode == 12
+  ok arp_mark == 0
+  ok arp_notes == 3 (>2)
+  ok dly_time == 1
+  ok dly_time == 8
+  ok tempo == 40
+  ok dsp_resets == 0
+  ok rate == 4
+  ok mode == 0
+  ok tempo == 90
+  ok arp_mark == 0
+  ok arp_notes == 4 (>2)
+  ok arp_notes == 4 (<6)
+  ok mode == 8
+  ok rate == 5
+  ok arp_mark == 0
+  ok note1 == 60
+  ok note2 == 64
+  ok note3 == 60
+  ok note4 == 67
+  ok note5 == 60
+  ok note6 == 71
+  ok note7 == 60
+  ok note8 == 67
+host: 28935 ms simulated, 2144 blits, render 0.4% of real time (host CPU)

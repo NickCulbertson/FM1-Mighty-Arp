@@ -1,0 +1,9 @@
+  ok page == 16
+  ok preset == 0
+  ok preset == 13
+  ok preset == 13
+  ok preset == 13
+  ok preset == 58
+  ok user3_used == 1
+  ok preset == 66
+host: 1257 ms simulated, 56 blits, render 0.3% of real time (host CPU)

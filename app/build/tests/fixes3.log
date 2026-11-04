@@ -1,0 +1,64 @@
+  ok chance == 100
+  ok arp == 1
+  ok page == 20
+  ok chord == 1
+  ok page == 5
+  ok gate == 100
+  ok arp_notes == 9 (>2)
+  ok held == 0
+  ok voices == 0
+  ok page == 20
+  ok strum == 100
+  ok arp_mark == 0
+  ok arp_notes == 13 (>9)
+  ok page == 21
+  ok queued == 1
+  ok queued == 0
+  ok chord == 0
+  ok page == 5
+  ok page == 20
+  ok strum == 100
+  ok swing == 100
+  ok arp_mark == 0
+  ok arp_notes == 52 (>50)
+  ok dsp_resets == 0
+  ok page == 21
+  ok chance == 100
+  ok page == 5
+  ok octaves == 1
+  ok mode == 1
+  ok gate == 100
+  ok page == 20
+  ok chord == 1
+  ok strum == 100
+  ok arp_mark == 0
+  ok held == 1
+  ok note1 == 74 (>70)
+  ok note2 == 77 (>70)
+  ok note3 == 81 (>70)
+  ok note4 == 74 (>70)
+  ok page == 2
+  ok release == 0
+  ok page == 5
+  ok rate == 1
+  ok voices == 2 (>0)
+  ok voices == 0
+  ok held == 0
+  ok dsp_resets == 0
+  ok arp_notes == 18 (>0)
+  ok held == 0
+  ok voices == 3 (>0)
+  ok voices == 3 (>0)
+  ok voices == 0
+  ok page == 5
+  ok mode == 11
+  ok page == 20
+  ok chord == 0
+  ok voices == 2 (>1)
+  ok voices == 1
+  ok voices == 1 (>0)
+  ok held == 1
+  ok voices == 1 (>0)
+  ok held == 0
+  ok voices == 0
+host: 35017 ms simulated, 2560 blits, render 0.4% of real time (host CPU)
