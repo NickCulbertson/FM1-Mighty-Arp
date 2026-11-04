@@ -48,14 +48,17 @@ expect preset 64
 expect chord 0
 expect strum 0
 # LOADS on ALL: U01 brings back its CHORDS; a factory sound the arp and effects as new
+tap GLO
+wait 30
+expect page 9
+spin K4 1
+wait 30
+expect loads 1
 tap HOME
 wait 30
 tap HOME
 wait 30
 expect page 16
-spin K4 1
-wait 30
-expect loads 1
 spin PRESET -1
 wait 30
 spin PRESET 1

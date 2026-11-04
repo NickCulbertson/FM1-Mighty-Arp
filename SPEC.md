@@ -20,7 +20,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | SEQ | SEQ page: the step sequencer's steps; again, GROOVE: the arp's extra chances |
 | FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
-| SAVE | saves everything (one slot); SAVE on SOUNDS: a USER preset (everything but GLOBAL and PARAMS) |
+| SAVE | saves everything (one slot); SAVE on SOUNDS: a USER preset (everything but GLOBAL) |
 | PLAY | ARP -> SEQ -> KEYS (the arp, the step sequencer, the keys alone) |
 | REC | hold: OFF -> HOLD -> LATCH -> OFF |
 | OCT- / OCT+ | octave |
@@ -46,7 +46,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
-| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | PRESETS (KEEP, CHANGE: below) |
 | RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, GROOVE, CHORDS, CHANCE and the effects as new; the sound, TEMPO and the sequence kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
 PRESET and SOUNDS go through the 64 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC, WEIRD), like sounds
@@ -54,7 +54,7 @@ together (`ORDER` in app.c; the sounds' numbers, which saves hold, never move). 
 lead LEGATO.
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
 A USER preset keeps everything: the sound pages, ARP, the sequence, GROOVE, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
-CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a sound change does to the rest:
+CLOCK, MIDI CH, VEL CURVE, or PRESETS). PRESETS (GLOBAL's fourth knob) says what a sound change does to the rest:
 
 - KEEP (the default): it sets the sound pages only. ARP, the sequence, GROOVE, CHORDS and the effects stay as they are, so changing sound
   mid-piece keeps its rhythm and its space.
@@ -130,5 +130,5 @@ GATE, GROOVE (SWING, HUMANIZE, OCT JUMP, VEL RAND), CHORDS (not the TONES kinds)
 At GATE 100 % a step followed by the same note is tied into it (one note, one chance roll; never from the last step
 round to the first), and a different note follows with a small overlap so LEGATO glides. On the SEQ page the keys write
 at the cursor (heard once, not played), REC writes a rest; MIDI notes still transpose. The steps are in the settings
-and in USER presets (PARAMS CHANGE brings a preset's back); on CHANGE a factory sound puts back the default riff, as
+and in USER presets (PRESETS CHANGE brings a preset's back); on CHANGE a factory sound puts back the default riff, as
 FACTORY does; RESET leaves them.

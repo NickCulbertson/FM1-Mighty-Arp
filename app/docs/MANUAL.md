@@ -41,7 +41,7 @@ Each button opens a page for the four knobs. Press it again for its second page.
 | ARP | RATE, OCTAVES, MODE, GATE | CHORDS: CHORD, STRUM, KEY, SCALE |
 | SEQ | The sequencer: STEP, NOTE, VELOCITY, LENGTH | GROOVE: HUMANIZE, OCT JUMP, VEL RAND, SWING |
 | FX | DELAY | REVERB, then CHORUS |
-| GLO | CLOCK, MIDI CH, VEL CURVE | RESETS: PARAMS, FACTORY |
+| GLO | CLOCK, MIDI CH, VEL CURVE, PRESETS (KEEP or CHANGE) | RESETS: PARAMS, FACTORY |
 
 **CHORDS** turns each arp note into a chord in your key and scale (TRIAD, 7TH, LUSH, OPEN), or makes the arp pick
 from your chords' notes (the TONES settings). STRUM rolls each chord from low to high.
@@ -64,12 +64,12 @@ There are 64 sounds in eight kinds: keys, bells, plucks, bass, leads, pads, perc
 strange FM textures). Turn PRESET, or press HOME twice for
 the SOUNDS page.
 
-![The SOUNDS page: KIND, SOUND, SAVE TO and PARAMS, the kind's sounds listed below](img/sounds.png "SOUNDS")
+![The SOUNDS page: KIND, SOUND and SAVE TO, the kind's sounds listed below](img/sounds.png "SOUNDS")
 
 **Save your own:** on SOUNDS, pick a slot with SAVE TO and press SAVE. A USER preset keeps everything: the sound,
 arp, sequence, chords, effects and tempo. It gets a name like FROG MULLET.
 
-**PARAMS** (knob 4 on SOUNDS) decides what changing preset does. On **KEEP**, only the sound changes and your arp and
+**PRESETS** (knob 4 on GLO) decides what changing preset does. On **KEEP**, only the sound changes and your arp and
 effects carry on. On **CHANGE**, a USER preset brings back everything it saved, and a factory sound starts from the
 default arp, effects and sequence.
 

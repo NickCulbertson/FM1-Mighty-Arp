@@ -34,7 +34,7 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_FATT, P_FSUS, P_FREL, P_KEYTRK,              /* FILTER ENVELOPE (ENV a third time; its DECAY is P_FDEC),
                                                        * FILTER's KEY TRACK */
        P_CHORD, P_STRUM, P_KEY, P_SCALE,              /* CHORDS (ARP again) */
-       P_LOADS,                                       /* SOUNDS's fourth: what a sound change sets (the player's) */
+       P_LOADS,                                       /* GLOBAL's PRESETS: what a sound change sets (the player's) */
        P_SEQLEN,                                      /* SEQ's fourth: the sequence's LENGTH (it goes with the steps) */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
@@ -94,7 +94,7 @@ static const param_t PAR[NP] = {
     {"RELEASE", "frel", 0, 100, 60, U_TIME},     {"KEY TRACK", "keytrack", 0, 100, 50, U_PCT},
     {"CHORD", "chord", 0, NCHORD - 1, 0, U_CHORD}, {"STRUM", "strum", 0, 100, 0, U_STRUM},
     {"KEY", "key", 0, 11, 0, U_KEY},             {"SCALE", "scale", 0, NSCALE - 1, 0, U_SCALE},
-    {"PARAMS", "loads", 0, 1, 0, U_LOADS},
+    {"PRESETS", "loads", 0, 1, 0, U_LOADS},
     {"LENGTH", "seq_len", 1, 32, 16, U_STEPS},
 };
 
@@ -116,14 +116,14 @@ static const page_t PAGE[NPAGE] = {
     {"SEQ", B_SEQ, {PX_STEP, PX_NOTE, PX_SVEL, P_SEQLEN}},   /* the steps; the keys write them */
     {"DELAY", B_FX, {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
-    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_NONE}},
+    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, P_LOADS}},
     {"CHORUS", B_FX, {P_CHORUS, P_CRATE, P_CDEPTH, PX_NONE}},
     {"OP 1", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 2", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 3", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 4", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"VOICE", B_SEL, {P_VOICES, P_GLIDE, PX_NONE, PX_NONE}},
-    {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, P_LOADS}},
+    {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, PX_NONE}},
     {"FILTER", B_ENV, {P_CUTOFF, P_RES, P_FENV, P_KEYTRK}},
     {"LFO 2", B_LFO, {P_PWM, P_LFOCUT, PX_NONE, PX_NONE}},
     {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
@@ -2288,7 +2288,7 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         int_text(v, t);
         text_cat(t, " STEPS");
         break;
-    case U_LOADS:                        /* PARAMS on a sound change: KEEP the arp and effects, or CHANGE them */
+    case U_LOADS:                        /* PRESETS, on a sound change: KEEP the arp and effects, or CHANGE them */
         text_cat(t, v ? "CHANGE" : "KEEP");
         break;
     case U_CH:
