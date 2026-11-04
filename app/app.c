@@ -2992,6 +2992,13 @@ static void notes_view(int32_t h, uint32_t secs_cs, int big)
     }
 }
 
+/* the scope instead of the arp's notes: with PLAY on KEYS, on HOME and the pages that would show the notes */
+static int scope_shown(void)
+{
+    return set.arp_on == PL_KEYS && ui.page != PG_SOUNDS && ui.page != PG_SEQ && ui.page != PG_EDIT
+           && !IS_OP_PAGE(ui.page);
+}
+
 /* HOME with the arp off: an oscilloscope of the sound. It waits for a rising zero crossing, so a held note stands
  * still, and scales itself to the sound (quickly up, slowly down: a fading note still fills it) */
 #define SCOPE_SPAN 440u                  /* samples across the 220 pixels: 10 ms */
@@ -3304,6 +3311,8 @@ static void draw(void)
             seq_view(70);
         else if (ui.page == PG_EDIT || IS_OP_PAGE(ui.page))
             algo_view(70, IS_OP_PAGE(ui.page) ? (int32_t)op_now() : -1);
+        else if (scope_shown())
+            scope_view(70);                  /* KEYS: the sound itself, as HOME shows it */
         else
             notes_view(70, 400u, 0);
         if (ui.page == PG_GLOBAL) {          /* the load: so a dropout can be told from a reset */
@@ -3363,7 +3372,7 @@ void app_frame(void)
         ui.msg_until = 0;
         ui.redraw = 1;
     }
-    if (viz_w != last_viz || ((viz_w || ui.page == PG_GLOBAL || (ui.page == PG_HOME && !set.arp_on))
+    if (viz_w != last_viz || ((viz_w || ui.page == PG_GLOBAL || scope_shown())
                                && now - last_frame >= 50u))   /* the notes move (GLOBAL's load, HOME's scope) */
         ui.redraw = 1;
     if (ui.page == PG_SEQ && seq_at != last_seq) {   /* the step playing moved (a tie's or a rest's too) */
