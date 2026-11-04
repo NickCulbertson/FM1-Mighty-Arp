@@ -303,7 +303,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
 {
     const eng_sound_t *s = snd;
     voice_t *v = 0;
-    uint32_t i, k, oldest = 0xFFFFFFFFu, car, c, fresh, rph;
+    uint32_t i, k, oldest = 0xFFFFFFFFu, car, c, fresh, rph, was_flt;
     float f, velf, amp, bright, kscale, dscale, pos, rk;
     if (!s)
         return;
@@ -397,6 +397,9 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         v->pk[k] = pk;
         if (rph && a < 0.001f)           /* a wave begun mid-cycle: 1 ms in, never a click */
             a = 0.001f;
+        if (!fresh && a < 0.003f)        /* a voice struck again while it sounds (MONO, a note repeated): from
+                                          * where its envelope is, 3 ms up, not a jump mid-wave (a click) */
+            a = 0.003f;
         v->ai[k] = a < 0.0005f ? 1e9f : pk / (a * SR);
         v->sus[k] = su;
         v->dk[k] = fall_coef(d);
@@ -421,11 +424,15 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
         }
     }
     v->alg = (uint8_t)(prm.alg & 7u);
-    for (k = 0; k < 4u; k++) {           /* a new note's tables start fresh (no fade from the last note's) */
-        v->tab[k] = 0;
-        v->xf[k] = 0.0f;
-    }
+    if (fresh)                           /* a new voice's tables start fresh; one struck again while it sounds
+                                          * keeps its own, and the new pitch's fades in from it (voice_pitch), not a
+                                          * table swapped mid-wave (a click) */
+        for (k = 0; k < 4u; k++) {
+            v->tab[k] = 0;
+            v->xf[k] = 0.0f;
+        }
     v->fbk = prm.fb ? fm_exp2f((float)prm.fb - 9.0f) : 0.0f;   /* 7: a quarter turn from the last two */
+    was_flt = v->flt;
     v->flt = prm.filter;
     v->fwet = v->fwet_to = prm.filter ? 1.0f : 0.0f;
     /* the filter: from closed again, the envelope from its start (at its peak
@@ -434,7 +441,9 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     filter_follow(v);
     v->fatt = prm.fatt > 0.0005f;
     v->fe = v->fatt ? 0.0f : 1.0f;
-    v->fl1 = v->fl2 = v->fr1 = v->fr2 = 0.0f;
+    if (fresh || !was_flt)               /* the filter's state: kept for a voice struck again while it sounds
+                                          * (zeroed mid-wave, a click: MONO dragged across the keys) */
+        v->fl1 = v->fl2 = v->fr1 = v->fr2 = 0.0f;
     if (v->flt)
         filter_coefs(v, 0u);
     v->on = 1;
