@@ -31,7 +31,7 @@ the grid is on the SEQ button.
 ## Saves
 
 - Steps and LENGTH are in the settings and in each USER preset. Formats bumped: settings MARF, presets MAU6
-  (no saves exist from before 0.1). The bank is 16 × 200 bytes, under the 3840-byte object limit.
+  (no saves exist from before 1.0). The bank is 16 × 200 bytes, under the 3840-byte object limit.
 - **PRESETS CHANGE:** a USER preset brings back its steps, and a factory sound the default riff (changed at Nick's
   ask: a familiar starting point after a custom preset). **KEEP:** the steps stay.
 - **RESET (PARAMS):** the steps are left alone. They're what you wrote, not a setting.
@@ -56,5 +56,5 @@ Review the commit that adds this plan: `git diff HEAD~1` (app/app.c is most of i
   changing, LATCH and HOLD.
 - `KEV_TAP`, the written step heard once, from the render (not held, no MIDI out).
 - Saves: settings `MARF` and presets `MAU6`; the bank at 3204 of the 3840 bytes; old records load as new (no saves
-  before 0.1); USER presets' steps cleaned on load; PRESETS CHANGE and KEEP; RESET and FACTORY.
+  before 1.0); USER presets' steps cleaned on load; PRESETS CHANGE and KEEP; RESET and FACTORY.
 - Things left out on purpose: OCTAVES and the CHORDS TONES kinds in SEQ, live recording, per-step probability.

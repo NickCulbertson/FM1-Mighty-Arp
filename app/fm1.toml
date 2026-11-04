@@ -9,7 +9,7 @@ ble = false                    # Bluetooth MIDI: off for now (true adds it, with
 cpu2 = true                    # the second core renders part of the voices
 cpu2_fallback = true           # a unit whose second core misreads: one core until power-off, not a restart
 # the site (tools/make_site.py, tools/publish_site.sh)
-tagline = "An FM synth with a chance arpeggiator, for generative playing"
-repo = ""                      # TODO: this firmware's repository
+tagline = "An FM synth with a chance arpeggiator and a step sequencer, for generative playing"
+repo = "https://github.com/NickCulbertson/fm1-mighty-arp"
 licence = "MPL-2.0"
-credits = "Built on fm1-base by Charles Vestal"                   # a sentence for the installer's footer: what your firmware is built from
+credits = "Built on fm1-base by Charles Vestal and felucca-bsp"   # a sentence for the installer's footer: what your firmware is built from

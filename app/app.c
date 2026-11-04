@@ -441,7 +441,7 @@ static uint32_t browse_pos(uint32_t n)   /* where sound n is browsed */
     return 0;
 }
 /* a saved record names sounds by number: a sound added or taken out, or a knob, changes what the numbers mean, so
- * bump SET_MAGIC and USER_MAGIC (an older record then loads as new: there are no saves before 0.1 to bring forward) */
+ * bump SET_MAGIC and USER_MAGIC (an older record then loads as new: there are no saves before 1.0 to bring forward) */
 typedef char npreset_is_marf[NPRESET == 64u ? 1 : -1];
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */

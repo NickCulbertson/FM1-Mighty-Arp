@@ -58,11 +58,12 @@ writes a rest. STEP moves the cursor, NOTE and VELOCITY change its step, and LEN
 CHANCE, SWING, CHORDS and STRUM work on the steps as they do on the arp. At **GATE 100%**, a step followed by the
 same note joins it into one long note.
 
+**On KEYS**, the lower half of most pages shows an oscilloscope of the sound, so you can watch a knob change it.
+
 ## Sounds and presets
 
 There are 64 sounds in eight kinds: keys, bells, plucks, bass, leads, pads, percussion and weird (noise and
-strange FM textures). Turn PRESET, or press HOME twice for
-the SOUNDS page.
+strange FM textures). Turn PRESET, or press HOME twice for the SOUNDS page.
 
 ![The SOUNDS page: KIND, SOUND and SAVE TO, the kind's sounds listed below](img/sounds.png "SOUNDS")
 
@@ -74,15 +75,16 @@ effects carry on. On **CHANGE**, a USER preset brings back everything it saved, 
 default arp, effects and sequence.
 
 **Reset:** press GLO twice for RESETS. Turn PARAMS one click right to RESET: the arp, chords and effects go back to
-their defaults; the sound, tempo and your steps stay. FACTORY, turned right to SURE? and then SAVE pressed, puts everything back as
-new and deletes every USER preset.
+their defaults; the sound, tempo and your steps stay. FACTORY, turned right to SURE? and then SAVE pressed, puts
+everything back as new and deletes every USER preset.
 
 **SAVE on any other page** keeps how things are now for the next power-on.
 
 ## MIDI and audio
 
-Notes come in over USB and the TRS jack (MIDI CH: all channels, or one). The arp's notes go out over USB. CLOCK:
-INT runs on its own tempo, OUT sends MIDI clock, EXT follows incoming clock. Over USB the FM-1 is also a sound
+Notes come in over USB and the TRS jack (MIDI CH: all channels, or one). The arp's and the sequencer's notes go out over
+USB. CLOCK: INT runs on its own tempo, OUT sends MIDI clock, EXT follows incoming clock (Start, Stop and Continue
+too). Over USB the FM-1 is also a sound
 card, named "Mighty Arp FM-1".
 
 ## Trouble
