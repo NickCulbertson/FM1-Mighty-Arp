@@ -1741,9 +1741,9 @@ static void patch_defaults(void)         /* the arp, GROOVE, CHORDS, CHANCE and 
             set.p[i] = PAR[i].def;
 }
 
-/* the sequence as new: a riff in C minor from C4 (holding C4 plays it as written), accents on the beats; 16 steps */
-static const uint8_t SEQ_DEF[16] = {60, SEQ_REST, 67, SEQ_REST, 70, SEQ_REST, 67, 72,
-                                    60, SEQ_REST, 67, SEQ_REST, 75, 74, 72, 70};
+/* the sequence as new: C D E G B C D E up from C4, twice (Nick's; holding C4 plays it as written), accents on the
+ * beats; 16 steps */
+static const uint8_t SEQ_DEF[16] = {60, 62, 64, 67, 71, 72, 74, 76, 60, 62, 64, 67, 71, 72, 74, 76};
 static void seq_defaults(void)
 {
     uint32_t i;

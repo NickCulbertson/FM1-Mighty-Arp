@@ -3,10 +3,12 @@ wait 600
 turn ALGO 40
 wait 30
 expect chance 100
-# the sequence as new: C4, a rest, G4 ..., 16 steps
+# the sequence as new: C4 D4 E4 G4 B4 C5 D5 E5, twice
 expect step1 60
-expect step2 255
-expect step3 67
+expect step2 62
+expect step3 64
+expect step8 76
+expect step16 76
 expect seq_len 16
 # SEQ: the keys write at the cursor and move it on (they don't play); REC a rest (HOLD as it was)
 tap SEQ
@@ -187,7 +189,7 @@ wait 30
 expect step2 72
 spin PRESET -1
 wait 30
-expect step2 255
+expect step2 62
 expect seq_len 16
 spin PRESET 1
 wait 30
