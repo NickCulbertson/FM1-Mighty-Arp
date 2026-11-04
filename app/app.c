@@ -1736,6 +1736,19 @@ static void patch_defaults(void)         /* the arp, GROOVE, CHORDS, CHANCE and 
             set.p[i] = PAR[i].def;
 }
 
+/* the sequence as new: a riff in C minor from C4 (holding C4 plays it as written), accents on the beats; 16 steps */
+static const uint8_t SEQ_DEF[16] = {60, SEQ_REST, 67, SEQ_REST, 70, SEQ_REST, 67, 72,
+                                    60, SEQ_REST, 67, SEQ_REST, 75, 74, 72, 70};
+static void seq_defaults(void)
+{
+    uint32_t i;
+    for (i = 0; i < SEQ_N; i++) {
+        set.seq_note[i] = i < 16u ? SEQ_DEF[i] : SEQ_REST;
+        set.seq_vel[i] = (uint8_t)(i % 4u ? 90u : 115u);
+    }
+    set.p[P_SEQLEN] = PAR[P_SEQLEN].def;
+}
+
 static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP and VOICE pages, and SOUND's two
                                           * at the middle; a user preset: its sound, or with LOADS on ALL everything
                                           * it kept (a factory sound then the arp and effects as new) */
@@ -1784,8 +1797,11 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
     set.p[P_TONE] = 50;
     set.p[P_STRIKE] = 50;
     voice_load(pr);                      /* last: the filter's envelope follows this sound's amp envelope */
-    if (all)
+    if (all) {                           /* CHANGE: a factory sound brings the defaults, the sequence too (RESET
+                                          * alone leaves the steps) */
         patch_defaults();
+        seq_defaults();
+    }
 }
 
 /* the sound now, kept as user sound slot, and that then the one playing; 0 = written. The slot changes only once
@@ -1853,17 +1869,11 @@ static uint32_t sound_step(uint32_t n, int32_t d, uint32_t cat)
     return browse_at(k);
 }
 
-/* the sequence as new: a riff in C minor from C4 (holding C4 plays it as written), accents on the beats */
-static const uint8_t SEQ_DEF[16] = {60, SEQ_REST, 67, SEQ_REST, 70, SEQ_REST, 67, 72,
-                                    60, SEQ_REST, 67, SEQ_REST, 75, 74, 72, 70};
 static void settings_defaults(void)
 {
     uint32_t i;
     set.magic = SET_MAGIC;
-    for (i = 0; i < SEQ_N; i++) {
-        set.seq_note[i] = i < 16u ? SEQ_DEF[i] : SEQ_REST;
-        set.seq_vel[i] = (uint8_t)(i % 4u ? 90u : 115u);
-    }
+    seq_defaults();
     for (i = 0; i < NP; i++)
         set.p[i] = PAR[i].def;
     preset_load(0);

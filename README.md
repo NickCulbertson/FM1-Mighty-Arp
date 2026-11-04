@@ -21,7 +21,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | Page | K1 | K2 | K3 | K4 |
 | --- | --- | --- | --- | --- |
 | HOME (above: the arp's notes; with the arp off, an oscilloscope) | Arp chance | Rate | Space (reverb mix + length) | Drift (vibrato) |
-| HOME again: sounds (SAVE: into the slot) | Kind (keys, bells, plucks, bass, leads, pads, user) | Sound | Save to (U01-U16) | Params (keep: a sound change sets only the sound; change: a USER preset brings back its arp, chords, effects and tempo too, a factory sound the arp and effects as new) |
+| HOME again: sounds (SAVE: into the slot) | Kind (keys, bells, plucks, bass, leads, pads, user) | Sound | Save to (U01-U16) | Params (keep: a sound change sets only the sound; change: a USER preset brings back its arp, chords, effects and tempo too, a factory sound the arp, effects and sequence as new) |
 | SEL: sound | Tone (FM depth) | Strike (the attack, the tine) | Detune | Velocity |
 | SEL again: voice | Voices (poly, mono, legato) | Glide (mono and legato) | | |
 | ENV | Attack | Decay | Sustain | Release |

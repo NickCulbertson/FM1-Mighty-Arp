@@ -71,7 +71,7 @@ arp, sequence, chords, effects and tempo. It gets a name like FROG MULLET.
 
 **PARAMS** (knob 4 on SOUNDS) decides what changing preset does. On **KEEP**, only the sound changes and your arp and
 effects carry on. On **CHANGE**, a USER preset brings back everything it saved, and a factory sound starts from the
-default arp and effects.
+default arp, effects and sequence.
 
 **Reset:** press GLO twice for RESETS. Turn PARAMS one click right to RESET: the arp, chords and effects go back to
 their defaults; the sound, tempo and your steps stay. FACTORY, turned right to SURE? and then SAVE pressed, puts everything back as

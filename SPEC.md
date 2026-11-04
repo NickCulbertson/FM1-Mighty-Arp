@@ -58,8 +58,8 @@ CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a
 
 - KEEP (the default): it sets the sound pages only. ARP, the sequence, GROOVE, CHORDS and the effects stay as they are, so changing sound
   mid-piece keeps its rhythm and its space.
-- CHANGE: a USER preset brings back everything it kept; a factory sound starts from the arp and effects as new (TEMPO
-  kept).
+- CHANGE: a USER preset brings back everything it kept; a factory sound starts from the arp, effects and sequence as
+  new (TEMPO kept).
 
 ## Engine
 
@@ -130,5 +130,5 @@ GATE, GROOVE (SWING, HUMANIZE, OCT JUMP, VEL RAND), CHORDS (not the TONES kinds)
 At GATE 100 % a step followed by the same note is tied into it (one note, one chance roll; never from the last step
 round to the first), and a different note follows with a small overlap so LEGATO glides. On the SEQ page the keys write
 at the cursor (heard once, not played), REC writes a rest; MIDI notes still transpose. The steps are in the settings
-and in USER presets (PARAMS CHANGE brings a preset's back); RESET and factory sounds leave them, FACTORY puts back the
-default riff.
+and in USER presets (PARAMS CHANGE brings a preset's back); on CHANGE a factory sound puts back the default riff, as
+FACTORY does; RESET leaves them.

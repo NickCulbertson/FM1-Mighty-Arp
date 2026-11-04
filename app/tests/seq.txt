@@ -158,7 +158,8 @@ wait 30
 expect seq_len 4
 expect step2 60
 expect arp 2
-# a USER preset keeps its steps: with PARAMS on CHANGE they come back, on KEEP the ones there stay
+# a USER preset keeps its steps: with PARAMS on CHANGE they come back (a factory sound: the default riff), on KEEP
+# the ones there stay
 tap HOME
 wait 30
 tap HOME
@@ -183,7 +184,8 @@ wait 30
 expect step2 72
 spin PRESET -1
 wait 30
-expect step2 72
+expect step2 255
+expect seq_len 16
 spin PRESET 1
 wait 30
 expect preset 64

@@ -32,8 +32,9 @@ the grid is on the SEQ button.
 
 - Steps and LENGTH are in the settings and in each USER preset. Formats bumped: settings MARF, presets MAU6
   (no saves exist from before 0.1). The bank is 16 × 200 bytes, under the 3840-byte object limit.
-- **PARAMS CHANGE:** a USER preset brings back its steps. **KEEP:** the steps stay.
-- **RESET (PARAMS) and factory sounds:** the steps are left alone. They're what you wrote, not a setting.
+- **PARAMS CHANGE:** a USER preset brings back its steps, and a factory sound the default riff (changed at Nick's
+  ask: a familiar starting point after a custom preset). **KEEP:** the steps stay.
+- **RESET (PARAMS):** the steps are left alone. They're what you wrote, not a setting.
 - **FACTORY:** the default sequence again.
 
 ## Tests (host)
