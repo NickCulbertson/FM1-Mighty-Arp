@@ -22,16 +22,21 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
 - [ ] GPT's suggested beta test on the FM-1: ten VA notes, long releases, shimmer up, a swung strum, MIDI in and out
 - [ ] Open from before: MONO's fade-then-restart (decide: fix for 0.1, or later)
 - [x] Migration fixtures: not needed. There are no saves from before 0.1, so the old-format migrations are gone;
-      0.1's formats (settings MARE, presets MAU5) are the first. A later release that adds or removes a sound or a
+      0.1's formats (settings MARF, presets MAU6, since the sequencer) are the first. A later release that adds or removes a sound or a
       knob bumps them and brings 0.1's forward
-- [ ] **Nick:** install the current build, check the USER presets already on the unit came forward (their
-      sounds right; with GLO → PRESETS on CHANGE they load with the arp and effects as new)
-- [ ] **Nick:** save a few presets with GLO → PRESETS on KEEP and on CHANGE; power off and on; they come back
+- [ ] **Nick:** install the current build. The USER presets saved by earlier builds (MAU5) are expected to be gone,
+      and the settings to start as new: MAU6 opens an older bank as empty
+- [ ] **Nick:** save a few USER presets (one with its own sequence) with GLO → PRESETS on KEEP and on CHANGE; power
+      off and on; they come back, and on CHANGE each brings its steps (a factory sound the default riff)
 - [ ] **Nick:** CPU at the worst realistic case: ten VA notes, long releases, the arp, shimmer up (no DROPS)
 - [ ] **Nick:** a long session: the arp, chords and strum at high tempos, MIDI in and out, external clock
-- [ ] **Nick:** levels across the 60 sounds by ear (none much louder or quieter than the rest)
+- [ ] **Nick:** levels across the 64 sounds by ear (none much louder or quieter than the rest)
 - [ ] The browser emulator: SOUNDS didn't open from a click on HOME in Claude's session (the tests pass it);
       check it with a real click, fix if it's real
+- [x] The sequencer (PLAY: ARP -> SEQ -> KEYS; SEQ-PLAN.md): GPT's reviews of 424c465 .. 781d851, every finding
+      fixed with a check in seq2; none left
+- [ ] **Nick:** the sequencer on the FM-1: write a pattern, ties at GATE 100 %, transpose by key, external clock
+      Stop and Continue
 
 ## 3. The repository
 
