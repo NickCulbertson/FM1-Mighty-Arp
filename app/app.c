@@ -1007,10 +1007,14 @@ static void strummed(void)               /* the strum's next note (STRUM turned 
 static volatile int32_t seq_at = -1;     /* the step it is on (the screen) */
 static uint32_t seq_run;                 /* the steps the note struck lasts (a tie's run) */
 static uint8_t seq_legato;               /* and a note follows the run */
-static int32_t seq_tr;                   /* the transpose, semitones (the last held note's, kept) */
+static int32_t seq_tr;                   /* the transpose, semitones (the last key's, kept) */
+static int32_t seq_key = -1;             /* the note pressed last in SEQ (-1 none since SEQ began): the transpose,
+                                          * from the next step struck (a tap between steps counts too) */
+static uint32_t seq_left;                /* the steps the note struck still goes through (its tie, as decided when it
+                                          * was struck: GATE turned later changes nothing) */
 static int seq_take(uint32_t kind)
 {
-    uint32_t len = (uint32_t)set.p[P_SEQLEN], s = (uint32_t)++arp_s, pos = s % len, i, h, last = 0;
+    uint32_t len = (uint32_t)set.p[P_SEQLEN], s = (uint32_t)++arp_s, pos = s % len, i;
     int32_t root, note;
     uint32_t n = set.seq_note[pos];
     seq_at = (int32_t)pos;
@@ -1018,21 +1022,22 @@ static int seq_take(uint32_t kind)
         ;
     if (i == len || n == SEQ_REST)
         return 0;
-    if (set.p[P_GATE] >= 100 && pos > 0 && set.seq_note[pos - 1u] == n)
-        return 0;                        /* the note before goes on through this step */
-    for (h = 1; h < nheld; h++)
-        if (held_seq[h] > held_seq[last])
-            last = h;
-    root = nheld ? held[last] : -1;      /* (the note's owner, for the panics: none, a key's) */
-    if (nheld)
-        seq_tr = root - (int32_t)set.seq_note[i];
+    if (seq_left && pos > 0 && set.seq_note[pos - 1u] == n) {
+        seq_left--;                      /* the note before goes on through this step */
+        return 0;
+    }
+    seq_left = 0;
+    if (seq_key >= 0)
+        seq_tr = seq_key - (int32_t)set.seq_note[i];
+    root = seq_key >= 0 && held_has(seq_key) ? seq_key : -1;   /* (the note's owner, for the panics: none) */
     note = (int32_t)n + seq_tr;
     while (note > 127)
         note -= 12;
     while (note < 0)
         note += 12;
-    for (seq_run = 1; pos + seq_run < len && set.seq_note[pos + seq_run] == n; seq_run++)
+    for (seq_run = 1; set.p[P_GATE] >= 100 && pos + seq_run < len && set.seq_note[pos + seq_run] == n; seq_run++)
         ;
+    seq_left = seq_run - 1u;
     seq_legato = set.seq_note[pos + seq_run < len ? pos + seq_run : 0u] != SEQ_REST;
     st_note[0] = note;
     st_vel[0] = set.seq_vel[pos];
@@ -1214,6 +1219,8 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     if (hold_now == H_HOLD && ndown == 0)   /* HOLD: a new chord after every key was let go replaces the last */
         held_clear();
     was = nheld;
+    if (arp_on_now == PL_SEQ)            /* SEQ: the key transposes it, from the next step struck */
+        seq_key = note;
     if (!is_down(note))
         ndown++;
     if (by == DN_MIDI) {                 /* the note's sound now this channel's (a channel already holding it shares
@@ -1299,7 +1306,7 @@ static void midi_let_go(uint32_t chans, int sound_off)   /* chans: the channels 
         uint32_t from = hum_wait > 0 ? 0u : st_i, k = from;   /* (a late step: all its notes still to come) */
         if (hum_wait > 0 || strum_wait > 0) {
             for (i = from; i < st_n; i++)
-                if (held_has(st_root[i])) {
+                if (st_root[i] < 0 || held_has(st_root[i])) {   /* (SEQ's with no key: no channel's) */
                     st_note[k] = st_note[i];
                     st_vel[k] = st_vel[i];
                     st_root[k] = st_root[i];
@@ -1386,6 +1393,8 @@ static void modes_follow(void)
             for (i = 0; i < nheld; i++)
                 midi_off((uint32_t)held[i]);
             seq_tr = 0;                  /* SEQ: as written, from step 1, until a key transposes it */
+            seq_key = -1;
+            seq_left = 0;
             if (nheld || arp_on_now == PL_SEQ)
                 arp_restart();
         }
@@ -1432,7 +1441,7 @@ static void ext_tick(void)               /* a MIDI clock in */
 
 static void midi_in(void)                /* audio interrupt: the packets that came in */
 {
-    uint32_t pkt, ch_want = midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0xFFu;
+    uint32_t pkt, ch_want = midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0xFFu, k;
     int port;
     while (plat_midi_in(&pkt, &port)) {
         uint32_t st = (pkt >> 8) & 0xFFu, d1 = (pkt >> 16) & 0x7Fu, d2 = pkt >> 24 & 0x7Fu, ty = st & 0xF0u;
@@ -1448,6 +1457,14 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
                     arp_s = -1;
                 }
                 swing_wait = hum_wait = strum_wait = 0;
+                if (st == 0xFCu)         /* Stop: the arp's notes sounding let go (their gates would run on: a tie's
+                                          * for bars), their MIDI ended; the place kept for Continue */
+                    for (k = 0; k < NHELD; k++)
+                        if (out_note[k] >= 0) {
+                            eng_note_release(out_note[k]);
+                            midi_off((uint32_t)out_note[k]);
+                            out_note[k] = -1;
+                        }
             }
             continue;
         }
@@ -1485,8 +1502,11 @@ static void events_in(void)
         case KEV_OFF:
             note_up((int32_t)note, DN_KEY, 0);
             break;
-        case KEV_TAP:                     /* a step just written: heard briefly, not held */
-            eng_note_on((int32_t)note, e >> 16 & 0xFFu, (int32_t)(0.25f * SR));
+        case KEV_TAP:                     /* a step just written: heard briefly, not held. Not over a voice already
+                                           * playing it (a held note's, the arp's: it would end with the short gate),
+                                           * nor MONO's or LEGATO's one voice while it sounds */
+            if (!eng_sounding((int32_t)note) && (set.p[P_VOICES] == V_POLY || !eng_active()))
+                eng_note_on((int32_t)note, e >> 16 & 0xFFu, (int32_t)(0.25f * SR));
             break;
         case KEV_ALLOFF:                  /* the octave changed: the keys' notes would not find their offs (MIDI's
                                            * stay) */
