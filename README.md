@@ -5,7 +5,7 @@ arpeggiator. You choose the notes, the arp decides when they play. Hold a chord,
 32-step sequencer, 64 sounds, chords with strum, swing and humanize, a chorus, a ping-pong delay and a reverb with
 shimmer, 16 presets of your own, and MIDI and clock in and out.
 
-![Mighty Arp's screen: HOME](app/docs/img/home.png) ![The sounds](app/docs/img/sounds.png) ![The sequencer](app/docs/img/seq.png)
+![Mighty Arp's screen: HOME](app/docs/img/home.png) ![The sequencer](app/docs/img/seq.png) ![The oscilloscope, on KEYS](app/docs/img/scope.png)
 
 - **Try it in your browser** (no FM-1 needed): <https://nickculbertson.github.io/FM1-Mighty-Arp/emu/>
 - **Install it** (Chrome or Edge, with the FM-1 plugged in): <https://nickculbertson.github.io/FM1-Mighty-Arp/install/>
