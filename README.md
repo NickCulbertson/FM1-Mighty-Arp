@@ -14,7 +14,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | REC | Hold: NO HOLD (a key let go stops), HOLD (a new chord after you let go replaces the last), LATCH (each key on or off by itself) |
 | PRESETS | The sound (64 in eight kinds, then your USER ones); it sets the SOUND, ENV, LFO, EDIT, OP and VOICE pages |
 | SELECT / ALGORITHM | Tempo (BPM) / arp chance, on every page |
-| HOME, SEL, ENV, LFO, EDIT, ARP, SEQ, FX, GLO | The page K1-K4 edit (below); SEL again: VOICE; FX again: DELAY, REVERB, CHORUS; EDIT again: OP 1-4 |
+| HOME, SEL, ENV, LFO, EDIT, ARP, SEQ, FX, GLO | The page K1-K4 edit (below); SEL again: VOICE; FX again: DELAY, REVERB, CHORUS; EDIT again: OP 1-4; SEQ again: GROOVE |
 | OCT- / OCT+ | Octave |
 | SAVE | Save everything; on the sounds page, a USER preset (everything but GLO's settings and Params) |
 
@@ -33,7 +33,8 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | EDIT again: OP 1-4 | Ratio (x0.5 .. x16) | Level | Wave | Decay (its own envelope; not shown for a carrier the ENV page shapes) |
 | ARP again: chords | Chord (off, triad, 7th, lush, open; triad, 7th, omni tones) | Strum (2-250 ms a note) | Key | Scale (major, minor, dorian, mixolydian, harmonic minor) |
 | ARP | Rate (1/1 .. 1/32, dotted and triplet) | Octaves | Mode (random, up, down, up-down, as played, converge, diverge, thumb up, thumb up-down, pinky up, pinky up-down, chord, walk) | Gate |
-| SEQ | Humanize (steps up to 40 ms late) | Octave-jump chance | Velocity random | Swing |
+| SEQ | Step (the keys write there; REC a rest) | Note | Velocity | Length (1-32) |
+| GROOVE (SEQ again) | Humanize (steps up to 40 ms late) | Octave-jump chance | Velocity random | Swing |
 | FX: delay | Mix | Time (1/16 .. 1/2, dotted and triplet) | Feedback | Width |
 | FX again: reverb | Mix | Length (0.5-15 s) | Dark | Shimmer |
 | FX again: chorus | Mix | Rate | Depth | |

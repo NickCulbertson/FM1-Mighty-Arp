@@ -1,0 +1,216 @@
+# SEQ: the step sequencer, MODE SEQ (tests/run_tests.sh)
+wait 600
+turn ALGO 40
+wait 30
+expect chance 100
+# the sequence as new: C4, a rest, G4 ..., 16 steps
+expect step1 60
+expect step2 255
+expect step3 67
+expect seq_len 16
+# MODE: SEQ (the last)
+tap ARP
+wait 30
+spin K3 20
+wait 30
+expect mode 13
+# SEQ: the keys write at the cursor and move it on (they don't play); REC a rest (HOLD as it was)
+tap SEQ
+wait 30
+expect page 6
+shot seq.png
+expect seq_cur 1
+key 7 down 100
+wait 30
+key 7 up
+wait 30
+expect step1 60
+expect seq_cur 2
+key 11 down 100
+wait 30
+key 11 up
+wait 30
+expect step2 64
+tap REC
+wait 30
+expect step3 255
+expect hold 0
+expect seq_cur 4
+key 14 down 100
+wait 30
+key 14 up
+wait 30
+expect step4 67
+expect held 0
+expect arp_notes 0
+# LENGTH 4: the cursor past it back on step 1
+spin K4 -12
+wait 30
+expect seq_len 4
+expect seq_cur 1
+# NOTE: the cursor's note by the knob; right from a rest the note before it (E4), then up; REC a rest again
+spin K1 2
+wait 30
+expect seq_cur 3
+spin K2 1
+wait 30
+expect step3 64
+spin K2 2
+wait 30
+expect step3 66
+tap REC
+wait 30
+expect step3 255
+expect seq_cur 4
+spin K1 -3
+wait 30
+expect seq_cur 1
+# played: C4 held plays it as written, round its 4 steps (the rest silent)
+tap HOME
+wait 30
+expect arp_mark 0
+key 7 down 90
+wait 1800
+key 7 up
+wait 30
+expect note1 60
+expect note2 64
+expect note3 67
+expect note4 60
+# transposed: D4 held, everything 2 up
+wait 500
+expect arp_mark 0
+key 9 down 90
+wait 1000
+key 9 up
+wait 30
+expect note1 62
+expect note2 66
+# CHANCE 0: every step rests
+turn ALGO -60
+wait 30
+expect chance 0
+wait 500
+expect arp_mark 0
+key 7 down 90
+wait 1000
+key 7 up
+wait 30
+expect arp_notes 0
+turn ALGO 60
+wait 30
+expect chance 100
+# a tie: C4 C4 rest G4 at GATE 100 % is one C4 for two steps, then G4 (at 50 %: C4 twice)
+tap SEQ
+wait 30
+spin K1 1
+wait 30
+key 7 down 100
+wait 30
+key 7 up
+wait 30
+expect step2 60
+expect seq_cur 3
+tap HOME
+wait 30
+wait 500
+expect arp_mark 0
+key 7 down 90
+wait 1200
+key 7 up
+wait 30
+expect note1 60
+expect note2 60
+tap ARP
+wait 30
+spin K4 60
+wait 30
+expect gate 100
+wait 500
+expect arp_mark 0
+key 7 down 90
+wait 1200
+key 7 up
+wait 30
+expect note1 60
+expect note2 67
+spin K4 -50
+wait 30
+expect gate 50
+# RESET (PARAMS) leaves the steps and LENGTH
+tap GLO
+wait 30
+tap GLO
+wait 30
+spin K1 1
+wait 30
+expect seq_len 4
+expect step2 60
+expect mode 0
+tap ARP
+wait 30
+spin K3 20
+wait 30
+expect mode 13
+# a USER preset keeps its steps: with PARAMS on CHANGE they come back, on KEEP the ones there stay
+tap HOME
+wait 30
+tap HOME
+wait 30
+expect page 16
+spin K4 1
+wait 30
+expect loads 1
+tap SAVE
+wait 30
+expect user1_used 1
+expect preset 64
+tap SEQ
+wait 30
+spin K1 -31
+spin K1 -31
+spin K1 1
+wait 30
+key 19 down 100
+wait 30
+key 19 up
+wait 30
+expect step2 72
+spin PRESET -1
+wait 30
+expect step2 72
+spin PRESET 1
+wait 30
+expect preset 64
+expect step2 60
+expect seq_len 4
+tap HOME
+wait 30
+tap HOME
+wait 30
+spin K4 -1
+wait 30
+expect loads 0
+tap SEQ
+wait 30
+spin K1 -31
+spin K1 1
+wait 30
+key 19 down 100
+wait 30
+key 19 up
+wait 30
+expect step2 72
+spin PRESET -1
+wait 30
+spin PRESET 1
+wait 30
+expect step2 72
+# kept through a power-off (SAVE: the settings)
+tap SAVE
+wait 30
+reboot
+wait 600
+expect step2 72
+expect seq_len 4
+expect mode 13

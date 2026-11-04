@@ -137,6 +137,8 @@ wait 30
 expect strum 100
 tap SEQ
 wait 30
+tap SEQ
+wait 30
 spin K4 100
 wait 30
 expect swing 100

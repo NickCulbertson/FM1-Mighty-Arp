@@ -74,6 +74,9 @@ expect chance 100
 tap SEQ
 wait 30
 expect page 6
+tap SEQ
+wait 30
+expect page 22
 spin K1 100
 wait 30
 expect humanize 100

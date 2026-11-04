@@ -35,12 +35,14 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
                                                        * FILTER's KEY TRACK */
        P_CHORD, P_STRUM, P_KEY, P_SCALE,              /* CHORDS (ARP again) */
        P_LOADS,                                       /* SOUNDS's fourth: what a sound change sets (the player's) */
+       P_SEQLEN,                                      /* SEQ's fourth: the sequence's LENGTH (it goes with the steps) */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
        PX_CAT, PX_SND, PX_SLOT,                       /* SOUNDS: the kind, the sound, the USER slot SAVE writes */
        PX_RESET,                                      /* RESETS: PARAMS, KEEP or (a detent right) RESET */
        PX_FACTORY,                                    /* RESETS: FACTORY, KEEP, SURE?, then everything as new */
+       PX_STEP, PX_NOTE, PX_SVEL,                     /* SEQ: the step the cursor is on, its note, its velocity */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 14u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE,
                                           * W14 NOISE */
@@ -48,7 +50,7 @@ static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", ""
                                               "NOISE"};
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
        U_SECS, U_VOICES, U_GLIDE, U_CUT, U_CHORD, U_STRUM, U_KEY, U_SCALE, U_LOADS,
-       U_SYNC, U_ONOFF, U_CH, U_CURVE };
+       U_SYNC, U_ONOFF, U_CH, U_CURVE, U_STEPS };
 /* CHORDS: what the arp makes of a note (a diatonic chord on it, or its chord's tones as the notes to play from), in
  * a key and a scale */
 enum { CH_OFF, CH_TRIAD, CH_7TH, CH_LUSH, CH_OPEN, CH_TRIAD_T, CH_7TH_T, CH_OMNI_T, NCHORD };
@@ -56,7 +58,7 @@ enum { CH_OFF, CH_TRIAD, CH_7TH, CH_LUSH, CH_OPEN, CH_TRIAD_T, CH_7TH_T, CH_OMNI
 #define NSCALE 5u
 /* the arp's modes */
 enum { M_RANDOM, M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_THUMB_UD, M_PINKY, M_PINKY_UD,
-       M_CHORD, M_WALK, NMODE };
+       M_CHORD, M_WALK, M_SEQ, NMODE };   /* SEQ: the sequence's steps, not the held notes */
 typedef struct {
     const char *name, *id;               /* id: the host tests' name for it */
     int16_t lo, hi, def;
@@ -92,11 +94,12 @@ static const param_t PAR[NP] = {
     {"CHORD", "chord", 0, NCHORD - 1, 0, U_CHORD}, {"STRUM", "strum", 0, 100, 0, U_STRUM},
     {"KEY", "key", 0, 11, 0, U_KEY},             {"SCALE", "scale", 0, NSCALE - 1, 0, U_SCALE},
     {"PARAMS", "loads", 0, 1, 0, U_LOADS},
+    {"LENGTH", "seq_len", 1, 32, 16, U_STEPS},
 };
 
 /* the pages: each button's four knobs */
 enum { PG_HOME, PG_SOUND, PG_ENV, PG_LFO, PG_EDIT, PG_ARP, PG_SEQ, PG_DELAY, PG_REVERB, PG_GLOBAL, PG_CHORUS,
-       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, PG_CHORDS, PG_RESETS, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
+       PG_OP1, PG_OP2, PG_OP3, PG_OP4, PG_VOICE, PG_SOUNDS, PG_FILTER, PG_LFO2, PG_FENV, PG_CHORDS, PG_RESETS, PG_GROOVE, NPAGE };   /* EDIT again: OP 1..4; FX: DELAY, REVERB, CHORUS; SEL
                                                              * again: VOICE */
 typedef struct {
     const char *name;
@@ -109,7 +112,7 @@ static const page_t PAGE[NPAGE] = {
     {"LFO", B_LFO, {P_LRATE, P_LSHAPE, P_VIB, P_TREM}},
     {"EDIT", B_EDIT, {P_ALGO, P_RATIO, P_FDBK, P_WAVE}},
     {"ARP", B_ARP, {P_RATE, P_OCTAVES, P_MODE, P_GATE}},
-    {"SEQ", B_SEQ, {P_HUMAN, P_OJUMP, P_VRAND, P_SWING}},
+    {"SEQ", B_SEQ, {PX_STEP, PX_NOTE, PX_SVEL, P_SEQLEN}},   /* the steps; the keys write them */
     {"DELAY", B_FX, {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
     {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_NONE}},
@@ -125,6 +128,7 @@ static const page_t PAGE[NPAGE] = {
     {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
     {"CHORDS", B_ARP, {P_CHORD, P_STRUM, P_KEY, P_SCALE}},
     {"RESETS", B_GLO, {PX_RESET, PX_FACTORY, PX_NONE, PX_NONE}},   /* GLO again */
+    {"GROOVE", B_SEQ, {P_HUMAN, P_OJUMP, P_VRAND, P_SWING}},       /* SEQ again */
 };
 static const char *const CHORD_NAME[NCHORD] = {"OFF", "TRIAD", "7TH", "LUSH", "OPEN", "TRIAD TONES", "7TH TONES",
                                                "OMNI TONES"};
@@ -165,7 +169,7 @@ static const uint8_t DIV_TICKS[11] = {96, 48, 36, 24, 18, 12, 9, 8, 6, 4, 3};
 static const char *const DDIV_NAME[9] = {"1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2"};
 static const float DDIV_BEATS[9] = {0.25f, 0.375f, 1.0f / 3.0f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f, 1.5f, 2.0f};
 static const char *const MODE_NAME[NMODE] = {"RANDOM", "UP", "DOWN", "UP-DN", "AS PLAYED", "CONVERGE", "DIVERGE",
-                                             "THUMB UP", "THUMB U/D", "PINKY UP", "PINKY U/D", "CHORD", "WALK"};
+                                             "THUMB UP", "THUMB U/D", "PINKY UP", "PINKY U/D", "CHORD", "WALK", "SEQ"};
 static const char *const SHAPE_NAME[LFO_NSHAPE] = {"SINE", "TRI", "SQUARE", "S&H", "DRIFT"};
 static const char *const RATIO_NAME[8] = {"X1/2", "X1", "X2", "X3", "X4", "X5", "X6", "X7"};
 static const float RATIO_MUL[8] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f};
@@ -434,7 +438,7 @@ static uint32_t browse_pos(uint32_t n)   /* where sound n is browsed */
 }
 /* a saved record names sounds by number: a sound added or taken out, or a knob, changes what the numbers mean, so
  * bump SET_MAGIC and USER_MAGIC (an older record then loads as new: there are no saves before 0.1 to bring forward) */
-typedef char npreset_is_mare[NPRESET == 64u ? 1 : -1];
+typedef char npreset_is_marf[NPRESET == 64u ? 1 : -1];
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
 static uint32_t preset_wave(const preset_t *pr)
@@ -447,8 +451,10 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-/* "MARE": the settings record (another magic, or size: the settings as new) */
-#define SET_MAGIC 0x4552414Du
+/* "MARF": the settings record (another magic, or size: the settings as new) */
+#define SET_MAGIC 0x4652414Du
+#define SEQ_N 32u                        /* the sequence's steps, at most (LENGTH plays the first of them) */
+#define SEQ_REST 0xFFu
 typedef struct {
     uint32_t magic;
     int16_t p[NP];
@@ -458,6 +464,7 @@ typedef struct {
     /* the sound's four operators as OP 1-4 left them (the sound sets them): the ratio (OP_RATIO's index), the level
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
+    uint8_t seq_note[SEQ_N], seq_vel[SEQ_N];   /* the sequence: each step's note (SEQ_REST: a rest), velocity 1..127 */
 } settings_t;
 static settings_t set;
 static uint8_t set_dirty;                /* changed since the last save: SAVE is lit */
@@ -473,8 +480,8 @@ static const uint8_t SOUND_P[] = {P_TONE, P_STRIKE, P_DETUNE, P_VELO, P_ATTACK, 
                                   P_FREL, P_KEYTRK};
 #define NSOUNDP (sizeof SOUND_P)
 #define NUSER 16u
-#define USER_MAGIC 0x3555414Du           /* "MAU5": every knob (user_t); another magic, or size: an empty bank */
-typedef char np_is_mau5s[NP == 57u ? 1 : -1];   /* a knob added: bump USER_MAGIC (and SET_MAGIC) */
+#define USER_MAGIC 0x3655414Du           /* "MAU6": every knob (user_t); another magic, or size: an empty bank */
+typedef char np_is_mau6s[NP == 58u ? 1 : -1];   /* a knob added: bump USER_MAGIC (and SET_MAGIC) */
 typedef struct {
     uint8_t used, base;
     uint8_t whole;                       /* it kept everything; one from an older bank its sound only */
@@ -482,11 +489,13 @@ typedef struct {
                                           * sound's it began from (an older save's) */
     int16_t p[NP];                       /* every knob, by its number (the player's own kept, never loaded) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
+    uint8_t seq_note[SEQ_N], seq_vel[SEQ_N];   /* its sequence */
 } user_t;
 static struct {
     uint32_t magic;
     user_t u[NUSER];
 } users;
+typedef char users_fit_the_store[sizeof users <= PLAT_STORE_MAX ? 1 : -1];
 
 
 static uint32_t drift_rng = 0x9E3779B9u;
@@ -509,7 +518,7 @@ static float rev_secs(int32_t v) { return 0.5f * fm_exp2f((float)v * 0.0490689f)
 
 /* ---------------------------------------------------------- notes and arp --- */
 /* the keys' events, main loop -> render (one writer, one reader) */
-enum { KEV_ON, KEV_OFF, KEV_ALLOFF };
+enum { KEV_ON, KEV_OFF, KEV_ALLOFF, KEV_TAP };   /* TAP: a step written on SEQ, heard once */
 #define EVQ_N 64u
 static volatile uint32_t evq[EVQ_N];
 static volatile uint32_t evq_w, evq_r;
@@ -987,6 +996,54 @@ static void strummed(void)               /* the strum's next note (STRUM turned 
     }
 }
 
+/* SEQ: the step the sequence is on (arp_s, round LENGTH), transposed by the held note pressed last against the
+ * sequence's first note, into st_note (a chord with CHORDS; their TONES kinds have no pool here). 0: nothing to
+ * strike: a rest, or a step a tie joins to the one before (GATE 100 %, the same note: the run is one note, one
+ * chance roll). A tie never runs from the last step round to the first */
+static volatile int32_t seq_at = -1;     /* the step it is on (the screen) */
+static uint32_t seq_run;                 /* the steps the note struck lasts (a tie's run) */
+static uint8_t seq_legato;               /* and a note follows the run */
+static int seq_take(uint32_t kind)
+{
+    uint32_t len = (uint32_t)set.p[P_SEQLEN], s = (uint32_t)++arp_s, pos = s % len, i, h, last = 0;
+    int32_t root, note;
+    uint32_t n = set.seq_note[pos];
+    seq_at = (int32_t)pos;
+    for (i = 0; i < len && set.seq_note[i] == SEQ_REST; i++)
+        ;
+    if (i == len || n == SEQ_REST)
+        return 0;
+    if (set.p[P_GATE] >= 100 && pos > 0 && set.seq_note[pos - 1u] == n)
+        return 0;                        /* the note before goes on through this step */
+    for (h = 1; h < nheld; h++)
+        if (held_seq[h] > held_seq[last])
+            last = h;
+    root = held[last];
+    note = (int32_t)n + root - (int32_t)set.seq_note[i];
+    while (note > 127)
+        note -= 12;
+    while (note < 0)
+        note += 12;
+    for (seq_run = 1; pos + seq_run < len && set.seq_note[pos + seq_run] == n; seq_run++)
+        ;
+    seq_legato = set.seq_note[pos + seq_run < len ? pos + seq_run : 0u] != SEQ_REST;
+    st_note[0] = note;
+    st_vel[0] = set.seq_vel[pos];
+    st_root[0] = root;
+    st_n = 1;
+    if (kind != CH_OFF && !CH_TONES(kind)) {
+        int32_t t[8];
+        uint32_t c = chord_of(note, kind, t);
+        for (i = 0; i < c; i++) {
+            st_note[i] = t[i];
+            st_vel[i] = st_vel[0];
+            st_root[i] = root;
+        }
+        st_n = c;
+    }
+    return 1;
+}
+
 static void arp_step(void)
 {
     static int32_t pool[NHELD * 8];      /* CHORDS ..TONES: the held notes' chords' tones, low to high */
@@ -1000,56 +1057,62 @@ static void arp_step(void)
     if (!n)
         return;
     strum_wait = 0;
-    if (CH_TONES(kind)) {                /* the chords' tones the notes to play from */
-        uint32_t m = 0, h, c;
-        int32_t t[8];
-        for (h = 0; h < nheld; h++) {
-            c = chord_of(held[h], kind, t);
-            for (i = 0; i < c; i++) {
-                uint32_t at;
-                for (at = 0; at < m && pool[at] < t[i]; at++)
-                    ;
-                if (at < m && pool[at] == t[i])
-                    continue;
-                for (k = m; k > at; k--) {
-                    pool[k] = pool[k - 1];
-                    pool_vel[k] = pool_vel[k - 1];
-                    pool_root[k] = pool_root[k - 1];
-                }
-                pool[at] = t[i];
-                pool_vel[at] = held_vel[h];
-                pool_root[at] = held[h];
-                m++;
-            }
-        }
-        hn = pool;
-        hv = pool_vel;
-        n = m;
-    }
-    s = (uint32_t)++arp_s;               /* the pattern moves every step, played or not */
-    if (set.p[P_MODE] == M_CHORD) {      /* CHORD: every held note at once, an octave higher each step */
-        for (i = 0; i < n && i < NHELD; i++) {
-            st_note[i] = hn[i] + 12 * (int32_t)(s % oct);
-            st_vel[i] = hv[i];
-            st_root[i] = hn == pool ? pool_root[i] : hn[i];
-        }
-        st_n = i;
+    if (set.p[P_MODE] == M_SEQ) {        /* SEQ: the sequence's step (none: a rest, or a tie's)
+                                         */
+        if (!seq_take(kind))
+            return;
     } else {
-        k = pattern_place(s, n * oct);
-        idx = set.p[P_MODE] == M_PLAYED && hn == held ? played_index(k % n, n) : k % n;
-        st_note[0] = hn[idx] + 12 * (int32_t)(k / n);
-        st_vel[0] = hv[idx];
-        st_root[0] = hn == pool ? pool_root[idx] : hn[idx];
-        st_n = 1;
-        if (kind != CH_OFF && !CH_TONES(kind)) {   /* the note a chord's root */
+        if (CH_TONES(kind)) {                /* the chords' tones the notes to play from */
+            uint32_t m = 0, h, c;
             int32_t t[8];
-            uint32_t c = chord_of(st_note[0], kind, t);   /* (an octave above 127: chord_fit brings it down) */
-            for (i = 0; i < c; i++) {
-                st_note[i] = t[i];
-                st_vel[i] = st_vel[0];
-                st_root[i] = st_root[0];
+            for (h = 0; h < nheld; h++) {
+                c = chord_of(held[h], kind, t);
+                for (i = 0; i < c; i++) {
+                    uint32_t at;
+                    for (at = 0; at < m && pool[at] < t[i]; at++)
+                        ;
+                    if (at < m && pool[at] == t[i])
+                        continue;
+                    for (k = m; k > at; k--) {
+                        pool[k] = pool[k - 1];
+                        pool_vel[k] = pool_vel[k - 1];
+                        pool_root[k] = pool_root[k - 1];
+                    }
+                    pool[at] = t[i];
+                    pool_vel[at] = held_vel[h];
+                    pool_root[at] = held[h];
+                    m++;
+                }
             }
-            st_n = c;
+            hn = pool;
+            hv = pool_vel;
+            n = m;
+        }
+        s = (uint32_t)++arp_s;               /* the pattern moves every step, played or not */
+        if (set.p[P_MODE] == M_CHORD) {      /* CHORD: every held note at once, an octave higher each step */
+            for (i = 0; i < n && i < NHELD; i++) {
+                st_note[i] = hn[i] + 12 * (int32_t)(s % oct);
+                st_vel[i] = hv[i];
+                st_root[i] = hn == pool ? pool_root[i] : hn[i];
+            }
+            st_n = i;
+        } else {
+            k = pattern_place(s, n * oct);
+            idx = set.p[P_MODE] == M_PLAYED && hn == held ? played_index(k % n, n) : k % n;
+            st_note[0] = hn[idx] + 12 * (int32_t)(k / n);
+            st_vel[0] = hv[idx];
+            st_root[0] = hn == pool ? pool_root[idx] : hn[idx];
+            st_n = 1;
+            if (kind != CH_OFF && !CH_TONES(kind)) {   /* the note a chord's root */
+                int32_t t[8];
+                uint32_t c = chord_of(st_note[0], kind, t);   /* (an octave above 127: chord_fit brings it down) */
+                for (i = 0; i < c; i++) {
+                    st_note[i] = t[i];
+                    st_vel[i] = st_vel[0];
+                    st_root[i] = st_root[0];
+                }
+                st_n = c;
+            }
         }
     }
     for (i = 0; i < st_n; i++)
@@ -1076,6 +1139,14 @@ static void arp_step(void)
     for (i = 0; i < st_n; i++)
         st_vel[i] = (uint8_t)clamp((int32_t)st_vel[i] + (vr ? (int32_t)rnd_n((uint32_t)(2 * vr + 1)) - vr : 0), 1, 127);
     gate = (int32_t)(step * (float)set.p[P_GATE] / 100.0f);
+    if (set.p[P_MODE] == M_SEQ && set.p[P_GATE] >= 100) {   /* SEQ's ties: the run one note; a note after it reached
+                                                            * with an overlap (LEGATO glides), past a swing or a late
+                                                            * step */
+        gate = (int32_t)(step * (float)seq_run);
+        if (seq_legato)
+            gate += (int32_t)(0.003f * SR + step * (float)set.p[P_SWING] * 0.005f
+                              + fm_minf((float)set.p[P_HUMAN] * 17.64f, step * 0.5f));
+    }
     hum_gate = gate < 64 ? 64 : gate;
     if (set.p[P_HUMAN]) {                /* HUMANIZE: the step a little late, at random: up to 40 ms (half a step) */
         uint32_t most = (uint32_t)fm_minf((float)set.p[P_HUMAN] * 17.64f, step * 0.5f);
@@ -1406,6 +1477,9 @@ static void events_in(void)
         case KEV_OFF:
             note_up((int32_t)note, DN_KEY, 0);
             break;
+        case KEV_TAP:                     /* a step just written: heard briefly, not held */
+            eng_note_on((int32_t)note, e >> 16 & 0xFFu, (int32_t)(0.25f * SR));
+            break;
         case KEV_ALLOFF:                  /* the octave changed: the keys' notes would not find their offs (MIDI's
                                            * stay) */
             for (note = 0; note < 128u; note++)
@@ -1618,12 +1692,14 @@ static int patch_par(uint32_t p)         /* one a USER preset loads: not the pla
 {
     return p != P_CLOCK && p != P_MIDICH && p != P_VCURVE && p != P_LOADS;
 }
-static void patch_defaults(void)         /* the arp, SEQ, CHORDS, CHANCE and the effects as new (not the sound, TEMPO) */
+static void patch_defaults(void)         /* the arp, GROOVE, CHORDS, CHANCE and the effects as new (not the sound, TEMPO,
+                                          * the sequence) */
 {
     uint32_t i;
     arp_cancel();                        /* a queued strum or late step: the old settings', never played under the new */
     for (i = 0; i < NP; i++)
-        if (patch_par(i) && !sound_par(i) && i != P_TEMPO)
+        if (patch_par(i) && !sound_par(i) && i != P_TEMPO && i != P_SEQLEN)   /* (the steps are what was written,
+                                                                               * not a setting: RESET leaves them) */
             set.p[i] = PAR[i].def;
 }
 
@@ -1650,6 +1726,11 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
             set.op_wave[i] = u->op_wave[i];
             set.op_decay[i] = u->op_decay[i];
         }
+        if (all && u->whole)             /* its sequence too */
+            for (i = 0; i < SEQ_N; i++) {
+                set.seq_note[i] = u->seq_note[i];
+                set.seq_vel[i] = u->seq_vel[i];
+            }
         return;
     }
     pr = &PRESET[p];
@@ -1710,6 +1791,10 @@ static int user_store(uint32_t slot)
         u->op_wave[i] = set.op_wave[i];
         u->op_decay[i] = set.op_decay[i];
     }
+    for (i = 0; i < SEQ_N; i++) {
+        u->seq_note[i] = set.seq_note[i];
+        u->seq_vel[i] = set.seq_vel[i];
+    }
     users.magic = USER_MAGIC;
     if (plat_store_save(OBJ_USER, &users, sizeof users) != 0) {
         *u = was;
@@ -1735,10 +1820,17 @@ static uint32_t sound_step(uint32_t n, int32_t d, uint32_t cat)
     return browse_at(k);
 }
 
+/* the sequence as new: a riff in C minor from C4 (holding C4 plays it as written), accents on the beats */
+static const uint8_t SEQ_DEF[16] = {60, SEQ_REST, 67, SEQ_REST, 70, SEQ_REST, 67, 72,
+                                    60, SEQ_REST, 67, SEQ_REST, 75, 74, 72, 70};
 static void settings_defaults(void)
 {
     uint32_t i;
     set.magic = SET_MAGIC;
+    for (i = 0; i < SEQ_N; i++) {
+        set.seq_note[i] = i < 16u ? SEQ_DEF[i] : SEQ_REST;
+        set.seq_vel[i] = (uint8_t)(i % 4u ? 90u : 115u);
+    }
     for (i = 0; i < NP; i++)
         set.p[i] = PAR[i].def;
     preset_load(0);
@@ -1759,6 +1851,9 @@ static int settings_ok(void)
     for (i = 0; i < 4u; i++)
         if (set.op_ratio[i] >= N_OPRATIO || set.op_level[i] > 100u || set.op_wave[i] >= NWAVE || set.op_decay[i] > 100u)
             return 0;
+    for (i = 0; i < SEQ_N; i++)
+        if ((set.seq_note[i] > 127u && set.seq_note[i] != SEQ_REST) || !set.seq_vel[i] || set.seq_vel[i] > 127u)
+            return 0;
     return 1;
 }
 
@@ -1777,7 +1872,7 @@ void app_init(void)
         static uint8_t raw[sizeof users];
         int got = plat_store_load(OBJ_USER, raw, sizeof raw);
         uint32_t magic = got >= 4 ? (uint32_t)raw[0] | (uint32_t)raw[1] << 8 | (uint32_t)raw[2] << 16 | (uint32_t)raw[3] << 24
-                                  : 0u, k;
+                                  : 0u, k, j;
         if (magic == USER_MAGIC && got == (int)sizeof users) {
             uint8_t *d = (uint8_t *)&users;
             for (k = 0; k < sizeof users; k++)
@@ -1785,6 +1880,11 @@ void app_init(void)
             for (k = 0; k < NUSER; k++) {
                 users.u[k].used = (uint8_t)(users.u[k].used == 1u && users.u[k].base < NPRESET);
                 users.u[k].whole = (uint8_t)(users.u[k].whole == 1u);
+                for (j = 0; j < SEQ_N; j++) {
+                    if (users.u[k].seq_note[j] > 127u)
+                        users.u[k].seq_note[j] = SEQ_REST;
+                    users.u[k].seq_vel[j] = (uint8_t)clamp(users.u[k].seq_vel[j], 1, 127);
+                }
             }
         }
         users.magic = USER_MAGIC;
@@ -1827,6 +1927,7 @@ static struct {
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
     uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (SAVE: done) */
     uint8_t rescan;                      /* the keys as up after this scan: one still pressed sounds again (FACTORY) */
+    uint8_t seq_cur;                     /* SEQ: the step the cursor is on (the keys write there), 0..LENGTH-1 */
     uint8_t redraw;
 } ui;
 
@@ -1836,6 +1937,34 @@ static uint32_t shown_cat(void)
     return ui.user_peek && sound_cat(set.preset) != CAT_USER ? CAT_USER : sound_cat(set.preset);
 }
 static int user_peeking(void) { return shown_cat() != sound_cat(set.preset); }
+static uint32_t seq_cur(void) { return ui.seq_cur < (uint32_t)set.p[P_SEQLEN] ? ui.seq_cur : 0u; }   /* (LENGTH
+                                                                                                    * shortened) */
+static void int_text(int32_t v, char *b);
+static void note_text(uint32_t n, char *t)   /* "C#4" (C4 is 60), or REST */
+{
+    char o[4];
+    t[0] = 0;
+    if (n > 127u) {
+        text_cat(t, "REST");
+        return;
+    }
+    text_cat(t, KEY_NAME[n % 12u]);
+    int_text((int32_t)(n / 12u) - 1, o);
+    text_cat(t, o);
+}
+/* SEQ: a step written (a note and its velocity, or a rest at SEQ_REST), the note heard, and the cursor on */
+static void seq_write(uint32_t note, uint32_t vel)
+{
+    uint32_t c = seq_cur();
+    set.seq_note[c] = (uint8_t)note;
+    if (note != SEQ_REST) {
+        set.seq_vel[c] = (uint8_t)clamp((int32_t)vel, 1, 127);
+        ev_push(KEV_TAP, note, set.seq_vel[c]);
+    }
+    ui.seq_cur = (uint8_t)((c + 1u) % (uint32_t)set.p[P_SEQLEN]);
+    set_dirty = 1;
+    ui.redraw = 1;
+}
 
 static void text_cat(char *d, const char *s)
 {
@@ -1889,6 +2018,12 @@ static const char *par_name(uint32_t p)
         return "PARAMS";
     if (p == PX_FACTORY)
         return "FACTORY";
+    if (p == PX_STEP)
+        return "STEP";
+    if (p == PX_NOTE)
+        return "NOTE";
+    if (p == PX_SVEL)
+        return "VELOCITY";
     if (p >= PX_OPR && p <= PX_OPD)
         return OPN[p - PX_OPR];
     return p == P_VIB && ui.page == PG_HOME ? "DRIFT" : PAR[p].name;
@@ -1953,6 +2088,22 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     }
     if (p == PX_FACTORY) {
         text_cat(t, ui.factory_arm ? "SURE?" : "KEEP");
+        return;
+    }
+    if (p == PX_STEP) {                      /* SEQ's: "5/16" */
+        char l[4];
+        int_text((int32_t)seq_cur() + 1, t);
+        text_cat(t, "/");
+        int_text(set.p[P_SEQLEN], l);
+        text_cat(t, l);
+        return;
+    }
+    if (p == PX_NOTE) {
+        note_text(set.seq_note[seq_cur()], t);
+        return;
+    }
+    if (p == PX_SVEL) {
+        int_text(set.seq_vel[seq_cur()], t);
         return;
     }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4's */
@@ -2090,6 +2241,10 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     case U_ONOFF:
         text_cat(t, v ? "ON" : "OFF");
         break;
+    case U_STEPS:
+        int_text(v, t);
+        text_cat(t, " STEPS");
+        break;
     case U_LOADS:                        /* PARAMS on a sound change: KEEP the arp and effects, or CHANGE them */
         text_cat(t, v ? "CHANGE" : "KEEP");
         break;
@@ -2146,6 +2301,12 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
         return (int32_t)ui.reset_arm * w / (int32_t)RESET_TURNS;
     case PX_FACTORY:
         return (int32_t)ui.factory_arm * w / 2;
+    case PX_STEP:
+        return set.p[P_SEQLEN] > 1 ? (int32_t)seq_cur() * w / (set.p[P_SEQLEN] - 1) : 0;
+    case PX_NOTE:
+        return set.seq_note[seq_cur()] == SEQ_REST ? 0 : ((int32_t)set.seq_note[seq_cur()] + 1) * w / 128;
+    case PX_SVEL:
+        return (int32_t)set.seq_vel[seq_cur()] * w / 127;
     case PX_OPR:
         return (int32_t)set.op_ratio[k] * w / (int32_t)(N_OPRATIO - 1u);
     case PX_OPL:
@@ -2395,6 +2556,40 @@ static void param_turn(uint32_t p, int32_t d)
         ui.redraw = 1;
         return;
     }
+    if (p == PX_STEP) {                      /* SEQ: the cursor, along the steps */
+        ui.seq_cur = (uint8_t)clamp((int32_t)seq_cur() + d, 0, set.p[P_SEQLEN] - 1);
+        ui.redraw = 1;
+        return;
+    }
+    if (p == PX_NOTE || p == PX_SVEL) {      /* the cursor's note (REST below the lowest; from a rest, right: the note
+                                              * before it, or C4), its velocity; heard as it changes */
+        uint32_t c = seq_cur(), n = set.seq_note[c];
+        if (p == PX_NOTE) {
+            int32_t v;
+            if (n == SEQ_REST && d > 0) {
+                int32_t k;
+                for (k = (int32_t)c - 1; k >= 0 && set.seq_note[k] == SEQ_REST; k--)
+                    ;
+                v = k >= 0 ? set.seq_note[k] : 60;
+                d--;
+            } else
+                v = n == SEQ_REST ? -1 : (int32_t)n;
+            v = clamp(v + d, -1, 127);
+            set.seq_note[c] = (uint8_t)(v < 0 ? SEQ_REST : (uint32_t)v);
+        } else
+            set.seq_vel[c] = (uint8_t)clamp((int32_t)set.seq_vel[c] + d, 1, 127);
+        if (set.seq_note[c] == n && p == PX_NOTE)
+            return;
+        if (set.seq_note[c] != SEQ_REST)
+            ev_push(KEV_TAP, set.seq_note[c], set.seq_vel[c]);
+        set_dirty = 1;
+        ui.redraw = 1;
+        if (ann_on()) {
+            param_text(p, t);
+            app_say(par_name(p), t);
+        }
+        return;
+    }
     if (p >= PX_OPR && p <= PX_OPD) {        /* OP 1-4: the operator's own */
         uint32_t k = op_now();
         uint8_t *f = p == PX_OPR ? &set.op_ratio[k] : p == PX_OPL ? &set.op_level[k] : p == PX_OPW ? &set.op_wave[k]
@@ -2480,8 +2675,12 @@ static void input(void)
     keys = touch_keys();
     for (k = 0; k < NKEYS; k++) {            /* key 0 is F3 (MIDI 53) */
         uint32_t bit = 1u << k, note = (uint32_t)(53 + (int32_t)k + 12 * set.octave);
-        if ((keys & bit) && !(ui.keys & bit))
-            ev_push(KEV_ON, note, clamp((int32_t)touch_vel(k), 1, 127));
+        if ((keys & bit) && !(ui.keys & bit)) {
+            if (ui.page == PG_SEQ && note < 128u)   /* SEQ: the key writes the step (MIDI still plays) */
+                seq_write(note, (uint32_t)clamp((int32_t)touch_vel(k), 1, 127));
+            else
+                ev_push(KEV_ON, note, clamp((int32_t)touch_vel(k), 1, 127));
+        }
         else if (!(keys & bit) && (ui.keys & bit))
             ev_push(KEV_OFF, note, 0);
     }
@@ -2507,6 +2706,14 @@ static void input(void)
         }
         if (k == B_ARP) {                    /* ARP: the arp, again CHORDS, and back */
             page_go(ui.page == PG_ARP ? PG_CHORDS : PG_ARP);
+            continue;
+        }
+        if (k == B_SEQ) {                    /* SEQ: the steps, again GROOVE, and back */
+            page_go(ui.page == PG_SEQ ? PG_GROOVE : PG_SEQ);
+            continue;
+        }
+        if (k == B_REC && ui.page == PG_SEQ) {   /* on SEQ: a rest, and on */
+            seq_write(SEQ_REST, 0);
             continue;
         }
         if (k == B_LFO) {                    /* LFO: LFO, again LFO 2, and back */
@@ -2819,6 +3026,46 @@ static float wave_shape(float ph, uint32_t w)   /* ph 0..1 */
     }
 }
 
+/* SEQ: the steps, a column each across, pitch up (the sequence's own range, an octave at least): notes pink, a tie
+ * (GATE 100 %, the same note next) joined to the next, rests a dim dot; the beats marked below. The cursor's step
+ * yellow, with a mark under it; the step playing lit behind */
+static void seq_view(int32_t h)
+{
+    uint32_t len = (uint32_t)set.p[P_SEQLEN], i, cur = seq_cur();
+    int32_t cw = 220 / (int32_t)len, x0 = 10 + (220 - cw * (int32_t)len) / 2, lo = 127, hi = 0, span, at = seq_at;
+    int tie = set.p[P_GATE] >= 100, live = set.arp_on && set.p[P_MODE] == M_SEQ && held_mask[0] | held_mask[1]
+                                                                                    | held_mask[2] | held_mask[3];
+    for (i = 0; i < len; i++)
+        if (set.seq_note[i] != SEQ_REST) {
+            lo = set.seq_note[i] < lo ? set.seq_note[i] : lo;
+            hi = set.seq_note[i] > hi ? set.seq_note[i] : hi;
+        }
+    if (lo > hi)
+        lo = hi = 60;
+    if (hi - lo < 12) {                      /* an octave at least, the notes in the middle of it */
+        lo -= (12 - (hi - lo)) / 2;
+        hi = lo + 12;
+    }
+    span = hi - lo;
+    for (i = 0; i < len; i++) {
+        int32_t x = x0 + (int32_t)i * cw, w = cw > 3 ? cw - 2 : cw - 1;
+        uint32_t n = set.seq_note[i];
+        if (live && (int32_t)i == at)
+            cv_rect(x, 3, cw - 1, h - 12, C_LINE);
+        if (!(i % 4u))
+            cv_rect(x, h - 5, cw > 3 ? cw - 2 : 1, 1, C_DIM);
+        if (i == cur)
+            cv_rect(x, h - 3, cw > 3 ? cw - 2 : 1, 2, C_NOW);
+        if (n == SEQ_REST) {
+            cv_rect(x + (w - 1) / 2, h - 10, 2, 2, C_DIM);
+            continue;
+        }
+        if (tie && i + 1u < len && set.seq_note[i + 1u] == n)
+            w = cw;                          /* joined to the next */
+        cv_rect(x, h - 10 - ((int32_t)n - lo) * (h - 18) / span - 2, w, 4, i == cur ? C_NOW : C_HI);
+    }
+}
+
 /* SOUNDS: the kind's sounds, the one playing in pink, a few either side of it (USER: its 16 slots, the empty ones
  * dim) */
 static void sounds_view(int32_t h)
@@ -2990,7 +3237,8 @@ static void draw(void)
                 [PG_SOUNDS] = "SAVE: INTO THE SLOT", [PG_ENV] = "ENV AGAIN: FILTER",
                 [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1",
                 [PG_ARP] = "ARP AGAIN: CHORDS", [PG_CHORDS] = "ARP AGAIN: ARP",
-                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "FACTORY: SURE?, THEN SAVE"};
+                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "FACTORY: SURE?, THEN SAVE",
+                [PG_SEQ] = "KEYS WRITE  REC: REST", [PG_GROOVE] = "SEQ AGAIN: STEPS"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);
@@ -3022,6 +3270,8 @@ static void draw(void)
         cv_rect(10, 0, 220, 1, C_LINE);
         if (ui.page == PG_SOUNDS)
             sounds_view(70);
+        else if (ui.page == PG_SEQ)
+            seq_view(70);
         else if (ui.page == PG_EDIT || IS_OP_PAGE(ui.page))
             algo_view(70, IS_OP_PAGE(ui.page) ? (int32_t)op_now() : -1);
         else
@@ -3074,6 +3324,7 @@ void app_ui_init(void)
 void app_frame(void)
 {
     static uint32_t last_viz, last_frame;
+    static int32_t last_seq = -1;
     uint32_t now = plat_ms();
     input();
     speak();
@@ -3085,6 +3336,10 @@ void app_frame(void)
     if (viz_w != last_viz || ((viz_w || ui.page == PG_GLOBAL || (ui.page == PG_HOME && !set.arp_on))
                                && now - last_frame >= 50u))   /* the notes move (GLOBAL's load, HOME's scope) */
         ui.redraw = 1;
+    if (ui.page == PG_SEQ && seq_at != last_seq) {   /* the step playing moved (a tie's or a rest's too) */
+        last_seq = seq_at;
+        ui.redraw = 1;
+    }
     if (ui.redraw) {
         ui.redraw = 0;
         last_viz = viz_w;
@@ -3150,6 +3405,12 @@ int app_expect(const char *what, int *got)
         *got = users.u[(uint32_t)(atoi(what + 4) - 1) % NUSER].used;
     else if (!strncmp(what, "user", 4) && !strcmp(what + strlen(what) - 5, "_name"))   /* userN_name: its name */
         *got = users.u[(uint32_t)(atoi(what + 4) - 1) % NUSER].name;
+    else if (!strncmp(what, "step", 4) && what[4] >= '1' && what[4] <= '9')   /* stepN: its note (255 a rest) */
+        *got = set.seq_note[(uint32_t)(atoi(what + 4) - 1) % SEQ_N];
+    else if (!strcmp(what, "seq_cur"))       /* the cursor's step, 1.. */
+        *got = (int)seq_cur() + 1;
+    else if (!strcmp(what, "seq_at"))        /* the step the sequence is on, 1.. (0 none yet) */
+        *got = (int)seq_at + 1;
     else if (!strcmp(what, "shed_note"))     /* the note the last shed let go */
         *got = (int)eng_shed_note();
     else if (!strcmp(what, "sheds"))         /* the render ran late and a voice went */

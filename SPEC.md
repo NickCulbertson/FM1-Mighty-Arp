@@ -17,7 +17,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | LFO | LFO page |
 | EDIT | EDIT page: the FM engine underneath; EDIT again: OP 1, OP 2, OP 3, OP 4 (and round) |
 | ARP | ARP page |
-| SEQ | SEQ page: the arp's extra chances |
+| SEQ | SEQ page: the step sequencer's steps; again, GROOVE: the arp's extra chances |
 | FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
 | SAVE | saves everything (one slot); SAVE on SOUNDS: a USER preset (everything but GLOBAL and PARAMS) |
@@ -41,21 +41,22 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | OP 1-4 (EDIT again) | RATIO | LEVEL | WAVE | DECAY |
 | ARP | RATE (1/1 .. 1/32, dotted and triplet) | OCTAVES | MODE (RANDOM, UP, DOWN, UP-DN, AS PLAYED, CONVERGE, DIVERGE, THUMB UP, THUMB U/D, PINKY UP, PINKY U/D, CHORD, WALK) | GATE |
 | CHORDS (ARP again) | CHORD (OFF; TRIAD, 7TH, LUSH, OPEN: a diatonic chord a step; TRIAD, 7TH, OMNI TONES: the chords' tones the notes) | STRUM (2 .. 250 ms a note, the chord within its step) | KEY | SCALE |
-| SEQ | HUMANIZE (up to 40 ms late) | OCT JUMP (chance) | VEL RAND | SWING |
+| SEQ | STEP (the cursor; the keys write there, REC a rest) | NOTE (REST, C-1 .. G9) | VELOCITY | LENGTH (1-32 steps) |
+| GROOVE (SEQ again) | HUMANIZE (up to 40 ms late) | OCT JUMP (chance) | VEL RAND | SWING |
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
 | GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
-| RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
+| RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, GROOVE, CHORDS, CHANCE and the effects as new; the sound, TEMPO and the sequence kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
 PRESET and SOUNDS go through the 64 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC, WEIRD), like sounds
 together (`ORDER` in app.c; the sounds' numbers, which saves hold, never move). A bass loads MONO with no glide, a
 lead LEGATO.
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
-A USER preset keeps everything: the sound pages, ARP, SEQ, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
+A USER preset keeps everything: the sound pages, ARP, the sequence, GROOVE, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
 CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a sound change does to the rest:
 
-- KEEP (the default): it sets the sound pages only. ARP, SEQ, CHORDS and the effects stay as they are, so changing sound
+- KEEP (the default): it sets the sound pages only. ARP, the sequence, GROOVE, CHORDS and the effects stay as they are, so changing sound
   mid-piece keeps its rhythm and its space.
 - CHANGE: a USER preset brings back everything it kept; a factory sound starts from the arp and effects as new (TEMPO
   kept).
@@ -118,3 +119,15 @@ device build (size, RAM, pool). Installing on the FM-1 waits for Nick.
 ## Not now
 
 User preset slots (one save, as now), reverb freeze, Bluetooth MIDI, samples.
+
+## The step sequencer (MODE: SEQ)
+
+The arp's last MODE plays the sequence's steps instead of walking the held notes: up to 32 steps (LENGTH), each a note
+with its velocity or a rest. It runs while notes are held, as the arp does (HOLD and LATCH keep them), and starts from
+step 1 with a new chord. The held note pressed last transposes it, against the sequence's first note. RATE, CHANCE,
+GATE, GROOVE (SWING, HUMANIZE, OCT JUMP, VEL RAND), CHORDS (not the TONES kinds) and STRUM all apply; OCTAVES doesn't.
+At GATE 100 % a step followed by the same note is tied into it (one note, one chance roll; never from the last step
+round to the first), and a different note follows with a small overlap so LEGATO glides. On the SEQ page the keys write
+at the cursor (heard once, not played), REC writes a rest; MIDI notes still transpose. The steps are in the settings
+and in USER presets (PARAMS CHANGE brings a preset's back); RESET and factory sounds leave them, FACTORY puts back the
+default riff.

@@ -39,12 +39,23 @@ Each button opens a page for the four knobs. Press it again for its second page.
 | LFO | LFO: RATE, SHAPE, VIBRATO, TREMOLO | LFO 2: PWM, FILTER |
 | EDIT | ALGO, RATIO, FEEDBACK, MOD WAVE | OP 1–4: each operator |
 | ARP | RATE, OCTAVES, MODE, GATE | CHORDS: CHORD, STRUM, KEY, SCALE |
-| SEQ | HUMANIZE, OCT JUMP, VEL RAND, SWING | |
+| SEQ | The sequencer: STEP, NOTE, VELOCITY, LENGTH | GROOVE: HUMANIZE, OCT JUMP, VEL RAND, SWING |
 | FX | DELAY | REVERB, then CHORUS |
 | GLO | CLOCK, MIDI CH, VEL CURVE | RESETS: PARAMS, FACTORY |
 
 **CHORDS** turns each arp note into a chord in your key and scale (TRIAD, 7TH, LUSH, OPEN), or makes the arp pick
 from your chords' notes (the TONES settings). STRUM rolls each chord from low to high.
+
+## The sequencer
+
+Set the arp's MODE to **SEQ** (the last one) and it plays your own steps instead of the notes you hold. Hold a key to
+play it: the sequence's first note plays it as written, and any other key transposes it.
+
+On the **SEQ** page the keys write instead of playing. Each key writes its note at the cursor and moves on, and REC
+writes a rest. STEP moves the cursor, NOTE and VELOCITY change its step, and LENGTH sets 1 to 32 steps.
+
+CHANCE, SWING, CHORDS and STRUM work on the steps as they do on the arp. At **GATE 100%**, a step followed by the
+same note joins it into one long note.
 
 ## Sounds and presets
 
@@ -55,14 +66,14 @@ the SOUNDS page.
 ![The SOUNDS page: KIND, SOUND, SAVE TO and PARAMS, the kind's sounds listed below](img/sounds.png "SOUNDS")
 
 **Save your own:** on SOUNDS, pick a slot with SAVE TO and press SAVE. A USER preset keeps everything: the sound,
-arp, chords, effects and tempo. It gets a name like FROG MULLET.
+arp, sequence, chords, effects and tempo. It gets a name like FROG MULLET.
 
 **PARAMS** (knob 4 on SOUNDS) decides what changing preset does. On **KEEP**, only the sound changes and your arp and
 effects carry on. On **CHANGE**, a USER preset brings back everything it saved, and a factory sound starts from the
 default arp and effects.
 
 **Reset:** press GLO twice for RESETS. Turn PARAMS one click right to RESET: the arp, chords and effects go back to
-their defaults; the sound and tempo stay. FACTORY, turned right to SURE? and then SAVE pressed, puts everything back as
+their defaults; the sound, tempo and your steps stay. FACTORY, turned right to SURE? and then SAVE pressed, puts everything back as
 new and deletes every USER preset.
 
 **SAVE on any other page** keeps how things are now for the next power-on.

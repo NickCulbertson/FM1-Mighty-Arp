@@ -34,5 +34,6 @@ run filter $H app/tests/filter.txt $B/host
 run chords $H app/tests/chords.txt $B/host
 run presets $H app/tests/presets.txt $B/host
 run userpeek $H app/tests/userpeek.txt $B/host
+run seq $H app/tests/seq.txt $B/host
 run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL
