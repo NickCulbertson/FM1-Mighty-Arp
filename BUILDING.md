@@ -113,4 +113,4 @@ gh attestation verify "build/verify/mightyarp-${tag#v}.fwsc" --repo "$repo" \
 ```
 
 A local release build (`./build.sh --release X.Y`, package `app/build/mightyarp-X.Y.fwsc`) is still how to try one
-on the FM-1 before tagging. [RELEASE-1.0.md](RELEASE-1.0.md) is 1.0's checklist.
+on the FM-1 before tagging.
