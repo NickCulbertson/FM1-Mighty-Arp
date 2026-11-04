@@ -77,6 +77,7 @@ void eng_cpu2(int (*run)(void (*)(uint32_t), uint32_t), int (*wait)(void));
 int eng_out(float *l, float *r, int32_t *lr, uint32_t n, float gain);
 uint32_t eng_active(void);               /* voices sounding */
 int32_t eng_sounding(int32_t note);      /* a voice plays it (not releasing) */
+int32_t eng_room(void);                  /* a new note takes a free voice or a releasing one (none steals a held one) */
 void eng_shed(void);                     /* the render ran late: a voice out, and one fewer for new notes */
 uint32_t eng_cap(int up);                /* the voices new notes may take; up: one more back */
 int32_t eng_shed_note(void);             /* the note the last shed let go (-1 none) */

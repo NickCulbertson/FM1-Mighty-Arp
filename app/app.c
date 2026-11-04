@@ -1458,14 +1458,17 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
                     arp_s = -1;
                 }
                 swing_wait = hum_wait = strum_wait = 0;
-                if (st == 0xFCu)         /* Stop: the arp's notes sounding let go (their gates would run on: a tie's
-                                          * for bars), their MIDI ended; the place kept for Continue */
+                if (st == 0xFCu) {       /* Stop: the arp's notes sounding let go (their gates would run on: a tie's
+                                          * for bars), their MIDI ended; the place kept for Continue, a tie's
+                                          * rest not (Continue strikes the next step afresh) */
+                    seq_left = 0;
                     for (k = 0; k < NHELD; k++)
                         if (out_note[k] >= 0) {
                             eng_note_release(out_note[k]);
                             midi_off((uint32_t)out_note[k]);
                             out_note[k] = -1;
                         }
+                }
             }
             continue;
         }
@@ -1505,8 +1508,9 @@ static void events_in(void)
             break;
         case KEV_TAP:                     /* a step just written: heard briefly, not held. Not over a voice already
                                            * playing it (a held note's, the arp's: it would end with the short gate),
-                                           * nor MONO's or LEGATO's one voice while it sounds */
-            if (!eng_sounding((int32_t)note) && (set.p[P_VOICES] == V_POLY || !eng_active()))
+                                           * nor MONO's or LEGATO's one voice while it sounds, nor when every voice is
+                                           * held (it would steal one) */
+            if (!eng_sounding((int32_t)note) && (set.p[P_VOICES] == V_POLY ? eng_room() : !eng_active()))
                 eng_note_on((int32_t)note, e >> 16 & 0xFFu, (int32_t)(0.25f * SR));
             break;
         case KEV_ALLOFF:                  /* the octave changed: the keys' notes would not find their offs (MIDI's

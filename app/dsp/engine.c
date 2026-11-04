@@ -497,6 +497,17 @@ uint32_t eng_active(void)
     return n;
 }
 
+int32_t eng_room(void)
+{
+    uint32_t i;
+    if (eng_active() < vc_cap)
+        return 1;
+    for (i = 0; i < ENG_NVOICE; i++)
+        if (vc[i].on && vc[i].rel)
+            return 1;
+    return 0;
+}
+
 int32_t eng_sounding(int32_t note)
 {
     uint32_t i;
