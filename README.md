@@ -10,9 +10,6 @@ shimmer, 16 presets of your own, and MIDI and clock in and out.
 - **Read the manual**: [app/docs/MANUAL.md](app/docs/MANUAL.md), one page
 - **Download the firmware file**: [releases](https://github.com/NickCulbertson/FM1-Mighty-Arp/releases)
 
-Installing it is at your own risk, though it's hard to get stuck: fm1-base's installer can put M-VAVE's own firmware
-back, and an FM-1 that fails to start twice comes up in a safe mode the installer can reach.
-
 ## Quick start
 
 1. **Hold a chord** on the keys and the arp plays it. Turn **ALGORITHM** for CHANCE (how many steps play) and
@@ -44,6 +41,9 @@ python3 base/tools/fm1_install.py app/build/mightyarp.fwsc   # install it over U
 
 `app/build/host/mightyarp_host SCRIPT OUTDIR` runs the whole app on a computer from a script (`app/tests/*.txt`),
 with screenshots coming out. `./build.sh --web` builds the same code for the browser (the emulator).
+
+Installing it is at your own risk, though it's hard to get stuck: fm1-base's installer can put M-VAVE's own firmware
+back, and an FM-1 that fails to start twice comes up in a safe mode the installer can reach.
 
 ## Credits
 
