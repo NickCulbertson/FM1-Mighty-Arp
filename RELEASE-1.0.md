@@ -47,7 +47,8 @@ GitHub: `.github/workflows/release.yml` then builds, tests, signs and publishes 
 - [x] `app/docs/MANUAL.md`: what it is, installing and going back to stock, every page and knob, the chance arp,
       CHORDS and STRUM, the sequencer, USER presets and PRESETS, RESETS, MIDI and clock
 - [x] Manual screenshots (`app/docs/img/`): from the host simulator's `shot`
-- [x] README: what it is for someone arriving from GitHub, installing, building, releasing, the licence and credits
+- [x] README, BUILDING.md and LICENSING.md in the shape of Charles's firmwares (AMB-1, LOOM-8, CTL-1): what it is,
+      the links, In short, Building and testing, Credits; the toolchain, tests and releases; where the code comes from
 - [x] `app/README.md`: the app's files (was the template's)
 
 ## 5. Release
