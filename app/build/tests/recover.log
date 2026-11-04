@@ -1,5 +1,0 @@
-  ok arp == 0
-  ok poison == 0
-  ok dsp_resets == 1 (>0)
-  ok peak -27.1 dBFS (min -30)
-host: 1828 ms simulated, 96 blits, render 0.3% of real time (host CPU)

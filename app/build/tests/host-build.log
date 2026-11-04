@@ -1,9 +1,0 @@
-font T: BarlowSemiCondensed-SemiBold.ttf 10px h 12, digit adv 5, 3600 B
-font XS: BarlowSemiCondensed-SemiBold.ttf 12px h 15, digit adv 6, 7005 B
-font S: BarlowSemiCondensed-Medium.ttf 15px h 16, digit adv 7, 8576 B
-font B: BarlowSemiCondensed-Bold.ttf 15px h 16, digit adv 8, 8752 B
-font M: BarlowSemiCondensed-SemiBold.ttf 23px h 24, digit adv 12, 11832 B
-font L: BarlowSemiCondensed-Bold.ttf 31px h 32, digit adv 16, 19776 B
-font set barlow: 60782 B (approx)
-words: 3 own + 51 common -> /Users/nickculbertson/Documents/GitProjects/FM1Apps/FM1-Mighty-Arp/app/web/words/7945a8cadd.json (1065 B)
-host     /Users/nickculbertson/Documents/GitProjects/FM1Apps/FM1-Mighty-Arp/app/build/host/mightyarp_host
