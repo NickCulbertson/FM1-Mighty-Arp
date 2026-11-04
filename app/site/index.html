@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mighty Arp · A chance arpeggiator synth for the FM-1</title>
+<meta name="description" content="Custom firmware for the M-VAVE FM-1: a 4-op FM and subtractive hybrid synth built around a chance arpeggiator, with a 32-step sequencer, 64 sounds, chords, effects and presets.">
+<meta name="theme-color" content="#000000">
+<style>
+/* Mighty Arp's own colours, as its screen: a black ground, cyan labels, hot pink values, electric purple, and
+   yellow for what is happening now (the site is made from this file by tools/make_pages.sh) */
+:root { --bg: #000; --card: #100a1c; --line: #32204f; --cyan: #6ee1ff; --pink: #ff2e97; --purple: #b260ff;
+        --yellow: #ffe200; --ink: #f1ecff; --muted: #a99bc9; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); margin: 0; padding-inline: 16px; padding-block: 48px 64px;
+       font: 400 17px/1.6 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+main { max-width: 42rem; margin: 0 auto; }
+h1 { font-size: 3rem; font-weight: 700; line-height: 1; letter-spacing: .04em; margin: 0 0 .3rem; text-transform: uppercase; }
+h1 .m { color: var(--cyan); }
+h1 .a { color: var(--pink); }
+.sub { text-transform: uppercase; letter-spacing: .08em; font-size: .9rem; color: var(--cyan); margin: 0 0 1.2rem;
+       padding-bottom: .8rem; border-bottom: 1px solid var(--line); }
+h2 { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--cyan);
+     margin: 2.4rem 0 .6rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+.lede { font-size: 1.15rem; margin: 0 0 1.6rem; max-width: 36rem; }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 1.8rem; }
+.shots img { width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
+.ways { display: grid; gap: 10px; margin: 0 0 1rem; }
+.ways a { display: block; text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+          border-radius: 8px; padding: 12px 16px; }
+.ways a:first-child { background: var(--pink); border-color: var(--pink); color: #000; }
+.ways a:first-child span { color: #2b0016; }
+.ways a:hover, .ways a:focus-visible { border-color: var(--yellow); }
+.ways a:first-child:hover, .ways a:first-child:focus-visible { background: var(--yellow); border-color: var(--yellow); }
+.ways a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.ways strong { font-weight: 700; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .05em; display: block; }
+.ways span { color: var(--muted); font-size: .95rem; }
+.ways em.v { font-style: normal; text-transform: none; letter-spacing: 0; }
+ul.feat { padding-left: 1.2rem; margin: 0 0 1rem; }
+ul.feat li { margin: 0 0 .4rem; }
+ul.feat li::marker { color: var(--pink); }
+ul.feat b { color: var(--cyan); font-weight: 700; }
+p.small { color: var(--muted); font-size: .9rem; }
+a { color: var(--ink); text-decoration-color: var(--pink); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+code { font-size: .9em; color: var(--yellow); }
+</style>
+</head>
+<body>
+<main>
+<h1><span class="m">Mighty</span> <span class="a">Arp</span></h1>
+<p class="sub">A chance arpeggiator synth for the M-VAVE FM-1</p>
+<p class="lede">Custom firmware for the FM-1: a 4-op FM and subtractive hybrid synth built around a chance
+arpeggiator. You choose the notes, the arp decides when they play. Hold a chord, set CHANCE, and let it create
+melodies.</p>
+<div class="shots">
+  <img src="img/home.png" width="240" height="240" alt="Mighty Arp's HOME page: the arp's recent notes, then CHANCE, RATE, SPACE and DRIFT">
+  <img src="img/seq.png" width="240" height="240" alt="The SEQ page: STEP, NOTE, VELOCITY and LENGTH, with the sequence's grid below">
+  <img src="img/edit.png" width="240" height="240" alt="The EDIT page: the FM algorithm drawn, its operators and the modulators' wave">
+</div>
+<nav class="ways" aria-label="Get Mighty Arp">
+  <a href="emu/"><strong>Try it in the browser</strong><span>The same code the FM-1 runs, with sound. Mouse, touch or keyboard; no FM-1 needed.</span></a>
+  <a href="install/"><strong>Install <em class="v">v{{VERSION}}</em></strong><span>From Chrome or Edge, with the FM-1 connected by USB. Nothing to install on the computer.</span></a>
+  <a href="manual/"><strong>Manual</strong><span>Playing, the pages, the sequencer, presets, MIDI.</span></a>
+  <a href="firmware/{{PKG}}"><strong>Download <em class="v">{{PKG}}</em></strong><span>For the command-line installer: <code>python3 base/tools/fm1_install.py {{PKG}}</code></span></a>
+  <a href="https://github.com/NickCulbertson/FM1-Mighty-Arp"><strong>Source</strong><span>GitHub, MPL-2.0. Built on fm1-base and felucca-bsp, from Felucca by Hügelton Instruments.</span></a>
+</nav>
+
+<h2>What it does</h2>
+<ul class="feat">
+  <li><b>A chance arpeggiator.</b> CHANCE decides how many steps play: at 100% a classic arp, lower and it thins out into a melody. Thirteen modes, swing, humanize, octave jumps and velocity spread.</li>
+  <li><b>Chords.</b> Each note a chord in your key and scale (triads, sevenths, lush and open voicings), strummed if you like.</li>
+  <li><b>A 32-step sequencer.</b> Write steps from the keys, transpose them live with a key, ties at full gate, and the same chance.</li>
+  <li><b>64 sounds.</b> Keys, bells, plucks, basses, leads, pads, percussion and weird noise textures, from four FM operators with analog-style waves, a filter and its envelope.</li>
+  <li><b>Space.</b> A chorus, a ping-pong delay and a reverb with shimmer.</li>
+  <li><b>Your own presets.</b> Sixteen slots, each keeping the sound, the arp, the sequence and the effects.</li>
+  <li><b>MIDI.</b> In and out over USB and the TRS jack, with clock in or out. Over USB it is also a sound card.</li>
+</ul>
+<p class="small">Installing is at your own risk; the installer can put M-VAVE's own firmware back ("Back to the stock
+firmware"), as can M-VAVE's updater, M-UPGRADE, from <a href="https://www.m-vave.com/download">m-vave.com/download</a>.
+Mighty Arp is by Nick Culbertson. M-VAVE and FM-1 are trademarks of their owners. Mighty Arp is not affiliated with
+M-VAVE.</p>
+</main>
+</body>
+</html>

@@ -1,3 +1,5 @@
+<!-- The site's real front page is app/site/index.html (tools/make_pages.sh puts it over this one); make_site.py
+     needs this file, and its words are the fallback. -->
 # Mighty Arp
 
 Mighty Arp is custom firmware for the M-VAVE FM-1. It's a 4-op FM and subtractive hybrid synth built around a chance
@@ -11,7 +13,7 @@ Version {{VERSION}}. Installing is at your own risk; the installer can put M-VAV
 
 - [Try it in the browser](emu/): the same code the FM-1 runs, with sound. No FM-1 needed.
 - [Install](install/): from Chrome or Edge, with the FM-1 connected by USB.
-- [Manual](manual/): playing, the pages, presets, MIDI. One page.
+- [Manual](manual/): playing, the pages, presets, MIDI.
 - [Download {{PKG}}](firmware/{{PKG}}): for the command-line installer in
   [fm1-base](https://github.com/charlesvestal/fm1-base), `python3 tools/fm1_install.py {{PKG}}`.
 - [Source](https://github.com/NickCulbertson/FM1-Mighty-Arp): MPL-2.0. Built on
@@ -19,5 +21,3 @@ Version {{VERSION}}. Installing is at your own risk; the installer can put M-VAV
   Kuroshita, Hügelton Instruments.
 
 M-VAVE and FM-1 are trademarks of their owners. Mighty Arp is not affiliated with M-VAVE.
-
-This project was developed with assistance from Claude Code.
