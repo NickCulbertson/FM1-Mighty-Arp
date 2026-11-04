@@ -13,16 +13,17 @@ shimmer, 16 presets of your own, and MIDI and clock in and out.
 Installing it is at your own risk, though it's hard to get stuck: fm1-base's installer can put M-VAVE's own firmware
 back, and an FM-1 that fails to start twice comes up in a safe mode the installer can reach.
 
-## In short
+## Quick start
 
-| | |
-|---|---|
-| Keys | Notes into the arp (or the sequencer's transpose) on KEYS, played straight |
-| PLAY · REC | ARP, SEQ (the sequencer, running on its own) or KEYS · NO HOLD, HOLD or LATCH |
-| HOME · SEL · ENV · LFO · EDIT · ARP · SEQ · FX · GLO | The pages: KNOB 1–4 set their values; press a button again for its second page |
-| SELECT · ALGORITHM · PRESETS | Tempo · the arp's chance · the sound (64 in eight kinds, then yours) |
-| OCT− / OCT+ | Octave |
-| SAVE | Saves; on the sounds page, into a USER preset |
+1. **Hold a chord** on the keys and the arp plays it. Turn **ALGORITHM** for CHANCE (how many steps play) and
+   **SELECT** for the tempo.
+2. **Turn PRESETS** for another sound: 64 of them, in eight kinds.
+3. **Press REC** for HOLD, so the arp keeps going after you let go.
+4. **Press PLAY** for SEQ: the sequencer runs by itself, and a key transposes it. On the **SEQ** page the keys
+   write its steps.
+5. **Shape it:** press a page button (ENV, LFO, ARP, FX ...) and turn **KNOB 1–4**. Press it again for its second
+   page.
+6. **SAVE** keeps how things are for the next power-on. On the sounds page (HOME twice), it saves a USER preset.
 
 Every note the arp and the sequencer play also goes out over USB MIDI, and MIDI notes in play them like the keys.
 Mighty Arp also tells the [FM-1 Screen Reader](https://charlesvestal.github.io/fm1-reader/) what its screen shows.
