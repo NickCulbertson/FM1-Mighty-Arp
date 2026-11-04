@@ -48,7 +48,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
 | RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, SEQ, CHORDS, CHANCE and the effects as new; the sound and TEMPO kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
-PRESET and SOUNDS go through the 67 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC, WEIRD), like sounds
+PRESET and SOUNDS go through the 64 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC, WEIRD), like sounds
 together (`ORDER` in app.c; the sounds' numbers, which saves hold, never move). A bass loads MONO with no glide, a
 lead LEGATO.
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
@@ -58,7 +58,7 @@ CLOCK, MIDI CH, VEL CURVE, or PARAMS). PARAMS (SOUNDS's fourth knob) says what a
 - KEEP (the default): it sets the sound pages only. ARP, SEQ, CHORDS and the effects stay as they are, so changing sound
   mid-piece keeps its rhythm and its space.
 - CHANGE: a USER preset brings back everything it kept; a factory sound starts from the arp and effects as new (TEMPO
-  kept). A USER preset from before 3 Nov 2026 (MAU3) kept its sound only, and loads with the arp and effects as new.
+  kept).
 
 ## Engine
 

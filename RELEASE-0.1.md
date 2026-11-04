@@ -21,11 +21,9 @@ tests, signs and publishes it (fm1-base's template, the shared `zvenson/fm1-buil
       tones (they end at their gate). Rare; fix only if it shows up in real use
 - [ ] GPT's suggested beta test on the FM-1: ten VA notes, long releases, shimmer up, a swung strum, MIDI in and out
 - [ ] Open from before: MONO's fade-then-restart (decide: fix for 0.1, or later)
-- [ ] Open from before: migration fixtures from real old firmware (decide: worth it before 0.1, now that there
-      are users' saves to protect, or not)
-
-## 2. Play-testing on the FM-1
-
+- [x] Migration fixtures: not needed. There are no saves from before 0.1, so the old-format migrations are gone;
+      0.1's formats (settings MARE, presets MAU5) are the first. A later release that adds or removes a sound or a
+      knob bumps them and brings 0.1's forward
 - [ ] **Nick:** install the current build, check the USER presets already on the unit came forward (their
       sounds right; with PARAMS on CHANGE they load with the arp and effects as new)
 - [ ] **Nick:** save a few presets with PARAMS on KEEP and on CHANGE; power off and on; they come back

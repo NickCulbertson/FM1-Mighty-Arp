@@ -7,20 +7,20 @@ expect preset 0
 # KEYS up through the kinds: WEIRD's first sound, then USER (empty): that sound kept, SOUND does nothing
 spin K1 10
 wait 30
-expect preset 15
+expect preset 13
 shot user_empty.png
 spin K2 3
 wait 30
-expect preset 15
+expect preset 13
 spin K1 1
 wait 30
-expect preset 15
+expect preset 13
 # back to WEIRD (the kind before): its sounds again (SONAR, then DEEP SEA)
 spin K1 -1
 wait 30
 spin K2 1
 wait 30
-expect preset 61
+expect preset 58
 tap HOME
 wait 30
 tap HOME
@@ -32,4 +32,4 @@ wait 30
 tap SAVE
 wait 30
 expect user3_used 1
-expect preset 69
+expect preset 66

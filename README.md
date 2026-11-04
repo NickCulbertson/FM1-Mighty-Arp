@@ -12,7 +12,7 @@ for generative playing: you choose the notes, the arp chooses when. Built on
 | Keys | Notes into the arp (or played straight, with the arp off) |
 | PLAY | Arp on / off |
 | REC | Hold: NO HOLD (a key let go stops), HOLD (a new chord after you let go replaces the last), LATCH (each key on or off by itself) |
-| PRESETS | The sound (67 in eight kinds, then your USER ones); it sets the SOUND, ENV, LFO, EDIT, OP and VOICE pages |
+| PRESETS | The sound (64 in eight kinds, then your USER ones); it sets the SOUND, ENV, LFO, EDIT, OP and VOICE pages |
 | SELECT / ALGORITHM | Tempo (BPM) / arp chance, on every page |
 | HOME, SEL, ENV, LFO, EDIT, ARP, SEQ, FX, GLO | The page K1-K4 edit (below); SEL again: VOICE; FX again: DELAY, REVERB, CHORUS; EDIT again: OP 1-4 |
 | OCT- / OCT+ | Octave |

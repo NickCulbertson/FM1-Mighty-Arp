@@ -15,18 +15,18 @@ expect user1_used 0
 expect preset 0
 flash_fail 0
 # one it takes: the slot, and the sound playing is it; after a reboot too
-spin PRESET 4
+spin PRESET 2
 wait 30
-expect preset 5
+expect preset 3
 tap SAVE
 wait 30
 expect user1_used 1
-expect preset 67
+expect preset 64
 shot sounds_saved.png
 reboot
 wait 600
 expect user1_used 1
-expect preset 67
+expect preset 64
 # All Sound Off on channel 1 leaves a key's note and channel 2's
 tap PLAY
 wait 30
@@ -51,9 +51,9 @@ midi 81 3E 00
 wait 30
 expect held 0
 # VOICES to MONO with a chord held: one voice from then on
-spin PRESET -68
+spin PRESET -65
 wait 30
-expect preset 67
+expect preset 64
 spin PRESET 1
 wait 30
 expect preset 0
@@ -90,13 +90,13 @@ wait 30
 expect preset 0
 spin K1 20
 wait 30
-expect preset 67
+expect preset 64
 spin K1 3
 wait 30
-expect preset 67
+expect preset 64
 spin K2 5
 wait 30
-expect preset 67
+expect preset 64
 # (fourth review) the same note held on channels 1 and 2 in HOLD, both let go: All Sound Off on 1 keeps 2's
 tap REC
 wait 30
@@ -119,12 +119,12 @@ tap REC
 wait 30
 expect hold 0
 # a sound's filter attack is its own, whichever sound came before (TINE EP, then SAW PAD: 70)
-spin PRESET -67
+spin PRESET -64
 wait 30
 expect preset 0
-spin PRESET 49
+spin PRESET 46
 wait 30
-expect preset 32
+expect preset 29
 expect fatt 70
 expect attack 70
 wait 4000

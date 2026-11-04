@@ -15,9 +15,9 @@ spin K2 30
 wait 30
 expect chord 1
 expect strum 30
-spin PRESET 4
+spin PRESET 2
 wait 30
-expect preset 5
+expect preset 3
 expect strum 30
 tap HOME
 wait 30
@@ -27,7 +27,7 @@ expect page 16
 tap SAVE
 wait 30
 expect user1_used 1
-expect preset 67
+expect preset 64
 # CHORDS off again; LOADS on SOUND: U01 brings back its sound only
 tap ARP
 wait 30
@@ -42,7 +42,7 @@ spin PRESET -1
 wait 30
 spin PRESET 1
 wait 30
-expect preset 67
+expect preset 64
 expect chord 0
 expect strum 0
 # LOADS on ALL: U01 brings back its CHORDS; a factory sound the arp and effects as new
@@ -58,12 +58,12 @@ spin PRESET -1
 wait 30
 spin PRESET 1
 wait 30
-expect preset 67
+expect preset 64
 expect chord 1
 expect strum 30
 spin PRESET -1
 wait 30
-expect preset 66
+expect preset 63
 expect chord 0
 expect strum 0
 spin PRESET 1
@@ -75,25 +75,12 @@ wait 30
 reboot
 wait 600
 expect loads 1
-expect preset 67
+expect preset 64
 expect strum 30
 spin PRESET -1
 wait 30
 spin PRESET 1
 wait 30
-expect strum 30
-# a save from the 60-sound bank (MARB), and from the 64 (MARC): its USER slot (60, or 64: U01) is U01 still (now 67)
-tap SAVE
-wait 30
-expect as_marb 0
-reboot
-wait 600
-expect preset 67
-expect strum 30
-expect as_marc 0
-reboot
-wait 600
-expect preset 67
 expect strum 30
 # GLOBAL PARAMS: a detent right to RESET, the arp and effects as new (the sound and TEMPO kept)
 spin SELECT 10
@@ -109,7 +96,7 @@ wait 30
 expect strum 0
 expect chord 0
 expect tempo 100
-expect preset 67
+expect preset 64
 expect loads 1
 # RESET holds: turned on further nothing more happens; back left, it starts over
 turn ALGO -10

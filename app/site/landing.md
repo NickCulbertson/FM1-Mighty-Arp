@@ -1,7 +1,7 @@
 # Mighty Arp
 
 An FM and analog-style synth for the M-VAVE FM-1, built around a chance arpeggiator: you choose the notes, it
-decides when they play. 67 sounds, chords with strum, swing and humanize, your own presets, MIDI and clock in and out.
+decides when they play. 64 sounds, chords with strum, swing and humanize, your own presets, MIDI and clock in and out.
 
 ![Mighty Arp's HOME page: the arp's recent notes above, then CHANCE, RATE, SPACE and DRIFT](manual/img/home.png "Mighty Arp on the FM-1's screen")
 

@@ -2,7 +2,7 @@
 wait 600
 tap PLAY
 wait 30
-expect npreset 67
+expect npreset 64
 # TINE EP
 expect preset 0
 peakreset
@@ -16,20 +16,7 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# BRIGHT EP
-expect preset 1
-peakreset
-wav snd_01.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SOFT TINE
+# DYNO EP
 expect preset 2
 peakreset
 wav snd_02.wav
@@ -42,150 +29,7 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# DYNO EP
-expect preset 4
-peakreset
-wav snd_04.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
 # BELL EP
-expect preset 5
-peakreset
-wav snd_05.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# WURLY
-expect preset 6
-peakreset
-wav snd_06.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# LOFI EP
-expect preset 7
-peakreset
-wav snd_07.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# DREAM EP
-expect preset 8
-peakreset
-wav snd_08.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# GLASS EP
-expect preset 9
-peakreset
-wav snd_09.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# FM PIANO
-expect preset 10
-peakreset
-wav snd_10.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# 80S KEYS
-expect preset 48
-peakreset
-wav snd_48.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# POLY SYNTH
-expect preset 47
-peakreset
-wav snd_47.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# CLAV
-expect preset 11
-peakreset
-wav snd_11.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# FM ORGAN
-expect preset 12
-peakreset
-wav snd_12.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# PERC ORGAN
 expect preset 3
 peakreset
 wav snd_03.wav
@@ -198,10 +42,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# VIBES
-expect preset 13
+# WURLY
+expect preset 4
 peakreset
-wav snd_13.wav
+wav snd_04.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -211,10 +55,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# GLASS BELL
-expect preset 14
+# LOFI EP
+expect preset 5
 peakreset
-wav snd_14.wav
+wav snd_05.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -224,10 +68,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# MARIMBA
-expect preset 16
+# DREAM EP
+expect preset 6
 peakreset
-wav snd_16.wav
+wav snd_06.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -237,10 +81,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# KALIMBA
-expect preset 17
+# GLASS EP
+expect preset 7
 peakreset
-wav snd_17.wav
+wav snd_07.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -250,10 +94,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# MUSIC BOX
-expect preset 18
+# FM PIANO
+expect preset 8
 peakreset
-wav snd_18.wav
+wav snd_08.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -263,488 +107,7 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# CELESTA
-expect preset 19
-peakreset
-wav snd_19.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# CRYSTAL
-expect preset 20
-peakreset
-wav snd_20.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# HARP
-expect preset 21
-peakreset
-wav snd_21.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# KOTO
-expect preset 22
-peakreset
-wav snd_22.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# NYLON
-expect preset 23
-peakreset
-wav snd_23.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# PLUCK
-expect preset 24
-peakreset
-wav snd_24.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# PULSE PLUCK
-expect preset 44
-peakreset
-wav snd_44.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SAW PLUCK
-expect preset 49
-peakreset
-wav snd_49.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SQR PLUCK
-expect preset 50
-peakreset
-wav snd_50.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# FM BASS
-expect preset 25
-peakreset
-wav snd_25.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SLAP BASS
-expect preset 26
-peakreset
-wav snd_26.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# 16BIT BASS
-expect preset 27
-peakreset
-wav snd_27.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# WOOD BASS
-expect preset 28
-peakreset
-wav snd_28.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SAW BASS
-expect preset 34
-peakreset
-wav snd_34.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# ANALOG BASS
-expect preset 41
-peakreset
-wav snd_41.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SQUARE BASS
-expect preset 51
-peakreset
-wav snd_51.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# PULSE BASS
-expect preset 52
-peakreset
-wav snd_52.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SYNTH BASS
-expect preset 53
-peakreset
-wav snd_53.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# FM BRASS
-expect preset 29
-peakreset
-wav snd_29.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# 80S BRASS
-expect preset 56
-peakreset
-wav snd_56.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SYNC LEAD
-expect preset 30
-peakreset
-wav snd_30.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# FM SAW
-expect preset 31
-peakreset
-wav snd_31.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# METAL LEAD
-expect preset 60
-peakreset
-wav snd_60.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SAW LEAD
-expect preset 33
-peakreset
-wav snd_33.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# WEST COAST
-expect preset 54
-peakreset
-wav snd_54.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SQUARE LEAD
-expect preset 42
-peakreset
-wav snd_42.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# PULSE LEAD
-expect preset 55
-peakreset
-wav snd_55.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# CHIP ARP
-expect preset 43
-peakreset
-wav snd_43.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# TRI FLUTE
-expect preset 46
-peakreset
-wav snd_46.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SAW PAD
-expect preset 32
-peakreset
-wav snd_32.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SUPER SAW
-expect preset 40
-peakreset
-wav snd_40.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# SAW STRINGS
-expect preset 57
-peakreset
-wav snd_57.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# STRINGS
-expect preset 36
-peakreset
-wav snd_36.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# GLASS PAD
-expect preset 35
-peakreset
-wav snd_35.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# CHOIR
-expect preset 37
-peakreset
-wav snd_37.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# DRIFT PAD
-expect preset 38
-peakreset
-wav snd_38.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# HALO
-expect preset 39
-peakreset
-wav snd_39.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
-# TRI PAD
+# 80S KEYS
 expect preset 45
 peakreset
 wav snd_45.wav
@@ -757,10 +120,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# SQUARE PAD
-expect preset 58
+# POLY SYNTH
+expect preset 44
 peakreset
-wav snd_58.wav
+wav snd_44.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -770,10 +133,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# SWEEP PAD
-expect preset 59
+# CLAV
+expect preset 9
 peakreset
-wav snd_59.wav
+wav snd_09.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -783,10 +146,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# FM SNARE
-expect preset 62
+# FM ORGAN
+expect preset 10
 peakreset
-wav snd_62.wav
+wav snd_10.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -796,10 +159,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# NOISE HAT
-expect preset 63
+# PERC ORGAN
+expect preset 1
 peakreset
-wav snd_63.wav
+wav snd_01.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -809,7 +172,46 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# SONAR
+# VIBES
+expect preset 11
+peakreset
+wav snd_11.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# GLASS BELL
+expect preset 12
+peakreset
+wav snd_12.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# MARIMBA
+expect preset 14
+peakreset
+wav snd_14.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# MUSIC BOX
 expect preset 15
 peakreset
 wav snd_15.wav
@@ -822,7 +224,579 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
+# CELESTA
+expect preset 16
+peakreset
+wav snd_16.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# CRYSTAL
+expect preset 17
+peakreset
+wav snd_17.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# HARP
+expect preset 18
+peakreset
+wav snd_18.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# KOTO
+expect preset 19
+peakreset
+wav snd_19.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# NYLON
+expect preset 20
+peakreset
+wav snd_20.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# PLUCK
+expect preset 21
+peakreset
+wav snd_21.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# PULSE PLUCK
+expect preset 41
+peakreset
+wav snd_41.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SAW PLUCK
+expect preset 46
+peakreset
+wav snd_46.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SQR PLUCK
+expect preset 47
+peakreset
+wav snd_47.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# FM BASS
+expect preset 22
+peakreset
+wav snd_22.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SLAP BASS
+expect preset 23
+peakreset
+wav snd_23.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# 16BIT BASS
+expect preset 24
+peakreset
+wav snd_24.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# WOOD BASS
+expect preset 25
+peakreset
+wav snd_25.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SAW BASS
+expect preset 31
+peakreset
+wav snd_31.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# ANALOG BASS
+expect preset 38
+peakreset
+wav snd_38.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SQUARE BASS
+expect preset 48
+peakreset
+wav snd_48.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# PULSE BASS
+expect preset 49
+peakreset
+wav snd_49.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SYNTH BASS
+expect preset 50
+peakreset
+wav snd_50.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# FM BRASS
+expect preset 26
+peakreset
+wav snd_26.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# 80S BRASS
+expect preset 53
+peakreset
+wav snd_53.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SYNC LEAD
+expect preset 27
+peakreset
+wav snd_27.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# FM SAW
+expect preset 28
+peakreset
+wav snd_28.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# METAL LEAD
+expect preset 57
+peakreset
+wav snd_57.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SAW LEAD
+expect preset 30
+peakreset
+wav snd_30.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# WEST COAST
+expect preset 51
+peakreset
+wav snd_51.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SQUARE LEAD
+expect preset 39
+peakreset
+wav snd_39.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# PULSE LEAD
+expect preset 52
+peakreset
+wav snd_52.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# CHIP ARP
+expect preset 40
+peakreset
+wav snd_40.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# TRI FLUTE
+expect preset 43
+peakreset
+wav snd_43.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SAW PAD
+expect preset 29
+peakreset
+wav snd_29.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SUPER SAW
+expect preset 37
+peakreset
+wav snd_37.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SAW STRINGS
+expect preset 54
+peakreset
+wav snd_54.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# STRINGS
+expect preset 33
+peakreset
+wav snd_33.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# GLASS PAD
+expect preset 32
+peakreset
+wav snd_32.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# CHOIR
+expect preset 34
+peakreset
+wav snd_34.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# DRIFT PAD
+expect preset 35
+peakreset
+wav snd_35.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# HALO
+expect preset 36
+peakreset
+wav snd_36.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# TRI PAD
+expect preset 42
+peakreset
+wav snd_42.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SQUARE PAD
+expect preset 55
+peakreset
+wav snd_55.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SWEEP PAD
+expect preset 56
+peakreset
+wav snd_56.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# FM SNARE
+expect preset 59
+peakreset
+wav snd_59.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# NOISE HAT
+expect preset 60
+peakreset
+wav snd_60.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# SONAR
+expect preset 13
+peakreset
+wav snd_13.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
 # DEEP SEA
+expect preset 58
+peakreset
+wav snd_58.wav
+key 7 down 100
+wait 900
+key 7 up
+wait 600
+wavstop
+expect peak_db_min -36
+expect dsp_resets 0
+spin PRESET 1
+wait 300
+# STATIC
 expect preset 61
 peakreset
 wav snd_61.wav
@@ -835,23 +809,10 @@ expect peak_db_min -36
 expect dsp_resets 0
 spin PRESET 1
 wait 300
-# STATIC
-expect preset 64
-peakreset
-wav snd_64.wav
-key 7 down 100
-wait 900
-key 7 up
-wait 600
-wavstop
-expect peak_db_min -36
-expect dsp_resets 0
-spin PRESET 1
-wait 300
 # WIND
-expect preset 65
+expect preset 62
 peakreset
-wav snd_65.wav
+wav snd_62.wav
 key 7 down 100
 wait 900
 key 7 up
@@ -862,9 +823,9 @@ expect dsp_resets 0
 spin PRESET 1
 wait 300
 # ALIEN
-expect preset 66
+expect preset 63
 peakreset
-wav snd_66.wav
+wav snd_63.wav
 key 7 down 100
 wait 900
 key 7 up

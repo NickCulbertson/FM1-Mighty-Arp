@@ -46,12 +46,6 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
                                           * W14 NOISE */
 static const char *const WAVE_SHORT[NWAVE] = {"SINE", "", "", "", "", "", "", "", "SAW", "SQR", "25%", "12%", "TRI",
                                               "NOISE"};
-#define NP5 (NP - 19u)                   /* the parameters a save had before CHORUS's rate and depth */
-#define NP6 (NP - 17u)                   /* and before VOICES and GLIDE */
-#define NP7 (NP - 15u)                   /* and before the filter and PWM */
-#define NP8 (NP - 9u)                    /* and before the filter's own envelope */
-#define NP9 (NP - 5u)                    /* and before CHORDS */
-#define NPA (NP - 1u)                    /* and before LOADS */
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
        U_SECS, U_VOICES, U_GLIDE, U_CUT, U_CHORD, U_STRUM, U_KEY, U_SCALE, U_LOADS,
        U_SYNC, U_ONOFF, U_CH, U_CURVE };
@@ -204,12 +198,6 @@ static const preset_t PRESET[] = {
     {"TINE EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.25f, 0, 0, 0, 1.2f, 0.15f),
                         OP(1, 3, 0.35f, 0, 1, 0, 2.0f, 0.08f), OP(14, 0, 0.21f, 0, 0, 0, 0.07f, 0)}, 0, 0},
      0, 74, 25, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"BRIGHT EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.36f, 0, 0, 0, 0.9f, 0.2f),
-                          OP(1, 3, 0.5f, 0, 1, 0, 1.5f, 0.08f), OP(14, 0, 0.3f, 0, 0, 0, 0.12f, 0)}, 0, 0},
-     0, 76, 22, 80, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"SOFT TINE", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.15f, 0, 0, 0, 1.6f, 0.15f),
-                          OP(1, 2, 0.22f, 0, 1, 0, 2.5f, 0.1f), OP(14, 0, 0.12f, 0, 0, 0, 0.06f, 0)}, 0, 0},
-     1, 80, 25, 86, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* a jazz organ: three drawbars (16', 8', 4') and the third harmonic's percussion, a strike carrier that falls
      * away (STRIKE: how much) */
     {"PERC ORGAN", CAT_KEYS, 7, 0, {{CARRIER(0.5f, 0, 0.28f), CARRIER(1, 0, 0.45f), CARRIER(2, 1, 0.22f),
@@ -224,9 +212,11 @@ static const preset_t PRESET[] = {
     {"WURLY", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.32f, 1, 0, 0, 0.6f, 0.3f),
                       OP(1, 0, 0.3f, 0, 1, 0, 1.0f, 0.2f), OP(3, 0, 0.12f, 0, 0, 0, 0.25f, 0.05f)}, 0, 0},
      0, 72, 35, 74, 74, LFO_TRI, 0, 35, 0, 0, 0, 0, 0, 0},
+    /* a worn tape of an EP: dull (the filter low), wobbling (deep, slow drift: wow), dusty (W14 NOISE stirring the
+     * tine) */
     {"LOFI EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.2f, 0, 0, 0, 1.2f, 0.15f),
-                        OP(1, 5, 0.3f, 0, 1, 0, 2.0f, 0.08f), OP(14, 0, 0.12f, 0, 0, 0, 0.07f, 0)}, 0, 0},
-     2, 78, 25, 84, 30, LFO_DRIFT, 22, 0, 0, 0, 0, 0, 0, 0},
+                        OP(1, 5, 0.3f, 0, 1, 0, 2.0f, 0.08f), OP(1, 0, 0.05f, 13, 0, 0, 0.5f, 1.0f)}, 0, 0},
+     2, 78, 25, 84, 14, LFO_DRIFT, 48, 10, 1, 40, 15, 20, 50, 0},
     {"DREAM EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.18f, 0, 0, 0, 2.5f, 0.2f),
                          OP(2, 5, 0.25f, 0, 1, 0, 3.5f, 0.15f), OP(14, 0, 0.08f, 0, 0, 0, 0.1f, 0)}, 0, 0},
      8, 86, 35, 92, 25, LFO_DRIFT, 14, 15, 0, 0, 0, 0, 0, 0},
@@ -257,9 +247,6 @@ static const preset_t PRESET[] = {
     {"MARIMBA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.32f, 0, 0, 0, 0.03f, 0),
                         OP(1, 0, 0.6f, 0, 1, 0, 0.5f, 0), OP(1, 0, 0.08f, 0, 0, 0, 0.12f, 0)}, 0, 0},
      0, 58, 0, 66, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"KALIMBA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(5, 0, 0.29f, 0, 0, 0, 0.05f, 0),
-                        OP(1, 0, 0.5f, 0, 1, 0, 0.6f, 0), OP(1, 0, 0.065f, 0, 0, 0, 0.3f, 0)}, 0, 0},
-     0, 62, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"MUSIC BOX", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(7, 0, 0.24f, 0, 0, 0, 0.15f, 0.05f),
                           OP(3, 0, 0.3f, 0, 1, 0, 0.8f, 0), OP(1, 0, 0.03f, 0, 0, 0, 0.4f, 0)}, 0, 0},
      0, 68, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -428,27 +415,26 @@ static const preset_t PRESET[] = {
 /* the order PRESET and SOUNDS go through them: kind by kind, each kind's like sounds together (the numbers stay
  * as saves know them; a sound added goes into its kind here). tests/make_sounds_test.py reads it */
 static const uint8_t ORDER[] = {
-    0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 48, 47, 11, 12, 3, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 44, 49, 50, 25,
-    26, 27, 28, 34, 41, 51, 52, 53, 29, 56, 30, 31, 60, 33, 54, 42, 55, 43, 46, 32, 40, 57, 36, 35, 37, 38, 39, 45,
-    58, 59, 62, 63, 15, 61, 64, 65, 66};
-typedef char order_is_every_sound[sizeof ORDER == NPRESET ? 1 : -1];
-static uint32_t browse_at(uint32_t k) { return k < NPRESET ? ORDER[k] : k; }   /* the k-th sound browsed */
-static uint32_t browse_pos(uint32_t n)   /* where sound n is in it */
+    0, 2, 3, 4, 5, 6, 7, 8, 45, 44, 9, 10, 1, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 41, 46, 47, 22, 23, 24, 25,
+    31, 38, 48, 49, 50, 26, 53, 27, 28, 57, 30, 51, 39, 52, 40, 43, 29, 37, 54, 33, 32, 34, 35, 36, 42, 55, 56, 59,
+    60, 13, 58, 61, 62, 63};
+#define NORDER (sizeof ORDER)
+#define NBROWSE (NORDER + NUSER)         /* what PRESET goes through: the sounds in ORDER, then the USER slots */
+typedef char order_is_every_sound[NORDER == NPRESET ? 1 : -1];
+static uint32_t browse_at(uint32_t k) { return k < NORDER ? ORDER[k] : NPRESET + (k - NORDER); }   /* the k-th */
+static uint32_t browse_pos(uint32_t n)   /* where sound n is browsed */
 {
     uint32_t k;
-    for (k = 0; k < NPRESET; k++)
+    if (n >= NPRESET)
+        return NORDER + (n - NPRESET);
+    for (k = 0; k < NORDER; k++)
         if (ORDER[k] == n)
             return k;
-    return n;
+    return 0;
 }
-/* the bank MARD records (67 sounds; MARC: 64; MAR8..MARB: 60): another factory sound moves the USER slots' numbers,
- * so bump SET_MAGIC (and migrate: from_bank) first */
-typedef char npreset_is_mards[NPRESET == 67u ? 1 : -1];
-static uint8_t from_bank(uint8_t p, uint32_t n)   /* a sound number a record from an n-sound bank holds: its USER
-                                                  * slots moved on */
-{
-    return (uint8_t)(p >= n ? p - n + NPRESET : p);
-}
+/* a saved record names sounds by number: a sound added or taken out, or a knob, changes what the numbers mean, so
+ * bump SET_MAGIC and USER_MAGIC (an older record then loads as new: there are no saves before 0.1 to bring forward) */
+typedef char npreset_is_mare[NPRESET == 64u ? 1 : -1];
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
 static uint32_t preset_wave(const preset_t *pr)
@@ -461,22 +447,8 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-/* "MARD": the settings record; another magic loads defaults. NPRESET is 67 under it (64 under MARC, 60 under
- * MAR8..MARB): a factory sound added (the USER slots' numbers move) must bump it, so a record's magic names its bank
- * (MAR5 and MAR7 did not: app_init) */
-#define SET_MAGIC 0x4452414Du
-#define SET_MAGIC_C 0x4352414Du          /* "MARC": the 64-sound bank's (the same record) */
-#define SET_MAGIC_B 0x4252414Du          /* "MARB": the 60-sound bank's (the same record) */
-#define SET_MAGIC_A 0x4152414Du          /* "MARA": before LOADS (settingsA_t) */
-#define SET_MAGIC_9 0x3952414Du          /* "MAR9": before CHORDS (settings9_t) */
-#define SET_MAGIC_8 0x3852414Du          /* "MAR8": before the filter's own envelope (settings8_t) */
-#define SET_MAGIC_7 0x3752414Du          /* "MAR7": before the filter and PWM (settings7_t) */
-#define SET_MAGIC_6 0x3652414Du          /* "MAR6": before VOICES and GLIDE (settings6_t) */
-#define SET_MAGIC_5 0x3552414Du          /* "MAR5": before CHORUS's rate and depth and the operators (settings5_t) */
-#define SET_MAGIC_4 0x3452414Du          /* "MAR4": the same record with RATCHET, SYNC and CLOCK OUT in three slots */
-#define SET_MAGIC_3 0x3352414Du          /* "MAR3": MAR4 with the arp's modes in their old order */
-static const uint8_t MODE_FROM_3[11] = {M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_PINKY,
-                                        M_CHORD, M_RANDOM, M_WALK};
+/* "MARE": the settings record (another magic, or size: the settings as new) */
+#define SET_MAGIC 0x4552414Du
 typedef struct {
     uint32_t magic;
     int16_t p[NP];
@@ -487,53 +459,6 @@ typedef struct {
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
 } settings_t;
-typedef struct {                         /* MARA */
-    uint32_t magic;
-    int16_t p[NPA];
-    uint8_t preset;
-    int8_t octave;
-    uint8_t arp_on, hold;
-    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
-} settingsA_t;
-typedef struct {                         /* MAR9 */
-    uint32_t magic;
-    int16_t p[NP9];
-    uint8_t preset;
-    int8_t octave;
-    uint8_t arp_on, hold;
-    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
-} settings9_t;
-typedef struct {                         /* MAR8 */
-    uint32_t magic;
-    int16_t p[NP8];
-    uint8_t preset;
-    int8_t octave;
-    uint8_t arp_on, hold;
-    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
-} settings8_t;
-typedef struct {                         /* MAR7 */
-    uint32_t magic;
-    int16_t p[NP7];
-    uint8_t preset;
-    int8_t octave;
-    uint8_t arp_on, hold;
-    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
-} settings7_t;
-typedef struct {                         /* MAR6 */
-    uint32_t magic;
-    int16_t p[NP6];
-    uint8_t preset;
-    int8_t octave;
-    uint8_t arp_on, hold;
-    uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
-} settings6_t;
-typedef struct {                         /* MAR3..MAR5 */
-    uint32_t magic;
-    int16_t p[NP5];
-    uint8_t preset;
-    int8_t octave;
-    uint8_t arp_on, hold;
-} settings5_t;
 static settings_t set;
 static uint8_t set_dirty;                /* changed since the last save: SAVE is lit */
 
@@ -546,15 +471,10 @@ static const uint8_t SOUND_P[] = {P_TONE, P_STRIKE, P_DETUNE, P_VELO, P_ATTACK, 
                                   P_LRATE, P_LSHAPE, P_VIB, P_TREM, P_ALGO, P_RATIO, P_FDBK, P_WAVE, P_VOICES,
                                   P_GLIDE, P_CUTOFF, P_RES, P_FENV, P_FDEC, P_PWM, P_LFOCUT, P_FATT, P_FSUS,
                                   P_FREL, P_KEYTRK};
-#define NSOUNDP1 18u                     /* those a MAU1 bank kept (before the filter and PWM) */
-#define NSOUNDP2 24u                     /* a MAU2 bank (before the filter's own envelope) */
 #define NSOUNDP (sizeof SOUND_P)
 #define NUSER 16u
-#define USER_MAGIC 0x3455414Du           /* "MAU4": every knob (user_t) */
-#define USER_MAGIC_3 0x3355414Du         /* "MAU3": the sound's knobs only, SOUND_P's order */
-typedef char np_is_mau4s[NP == 57u ? 1 : -1];   /* a knob added: bump USER_MAGIC and bring MAU4 forward (app_init) */
-#define USER_MAGIC_2 0x3255414Du         /* "MAU2": before the filter's own envelope */
-#define USER_MAGIC_1 0x3155414Du         /* "MAU1": before the filter and PWM (user1_t) */
+#define USER_MAGIC 0x3555414Du           /* "MAU5": every knob (user_t); another magic, or size: an empty bank */
+typedef char np_is_mau5s[NP == 57u ? 1 : -1];   /* a knob added: bump USER_MAGIC (and SET_MAGIC) */
 typedef struct {
     uint8_t used, base;
     uint8_t whole;                       /* it kept everything; one from an older bank its sound only */
@@ -1803,7 +1723,7 @@ static int user_store(uint32_t slot)
  * (cat NCAT) */
 static uint32_t sound_step(uint32_t n, int32_t d, uint32_t cat)
 {
-    uint32_t total = NPRESET + NUSER, i, k = browse_pos(n);   /* (in the browsing order) */
+    uint32_t total = NBROWSE, i, k = browse_pos(n);   /* (in the browsing order) */
     while (d) {
         for (i = 0; i < total; i++) {
             k = (k + (d > 0 ? 1u : total - 1u)) % total;
@@ -1813,27 +1733,6 @@ static uint32_t sound_step(uint32_t n, int32_t d, uint32_t cat)
         d += d > 0 ? -1 : 1;
     }
     return browse_at(k);
-}
-
-/* how many of the knobs a sound sets (ENV, LFO, ALGO, FEEDBACK) a saved record holds as that sound has them: which
- * sound an old record (its number ambiguous between banks) was playing */
-static const uint8_t MATCH_P[] = {P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE, P_LRATE, P_LSHAPE, P_VIB, P_TREM, P_ALGO,
-                                  P_FDBK};
-static uint32_t sound_match(const int16_t *p, const preset_t *pr)
-{
-    const int8_t v[] = {pr->a, pr->d, pr->su, pr->r, pr->lrate, pr->lshape, pr->vib, pr->trem, (int8_t)pr->alg,
-                        (int8_t)pr->fb};
-    uint32_t i, n = 0;
-    for (i = 0; i < sizeof MATCH_P; i++)
-        n += p[MATCH_P[i]] == v[i];
-    return n;
-}
-static uint32_t user_match(const int16_t *p, const user_t *u)   /* the same, against a user sound */
-{
-    uint32_t i, n = 0;
-    for (i = 0; i < sizeof MATCH_P; i++)
-        n += p[MATCH_P[i]] == u->p[MATCH_P[i]];
-    return n;
 }
 
 static void settings_defaults(void)
@@ -1873,203 +1772,25 @@ void app_init(void)
 #endif
     for (i = 0; i < NHELD; i++)
         out_note[i] = -1;
-    {                                    /* the user sounds (before the settings: they may name one) */
+    {                                    /* the user presets (before the settings: they may name one); a bank
+                                          * not this firmware's: empty */
         static uint8_t raw[sizeof users];
         int got = plat_store_load(OBJ_USER, raw, sizeof raw);
         uint32_t magic = got >= 4 ? (uint32_t)raw[0] | (uint32_t)raw[1] << 8 | (uint32_t)raw[2] << 16 | (uint32_t)raw[3] << 24
-                                  : 0u, n = 0, k, j;
-        if (magic == USER_MAGIC && got == (int)sizeof users) {   /* this bank's: as it is */
-            const uint8_t *b = raw;
+                                  : 0u, k;
+        if (magic == USER_MAGIC && got == (int)sizeof users) {
             uint8_t *d = (uint8_t *)&users;
             for (k = 0; k < sizeof users; k++)
-                d[k] = b[k];
+                d[k] = raw[k];
             for (k = 0; k < NUSER; k++) {
                 users.u[k].used = (uint8_t)(users.u[k].used == 1u && users.u[k].base < NPRESET);
                 users.u[k].whole = (uint8_t)(users.u[k].whole == 1u);
             }
-        } else if (magic == USER_MAGIC_3 && got == (int)(4u + NUSER * (18u + 2u * NSOUNDP)))
-            n = NSOUNDP;
-        else if (magic == USER_MAGIC_2 && got == (int)(4u + NUSER * (18u + 2u * NSOUNDP2)))
-            n = NSOUNDP2;
-        else if (magic == USER_MAGIC_1 && got == (int)(4u + NUSER * (18u + 2u * NSOUNDP1)))
-            n = NSOUNDP1;
-        users.magic = USER_MAGIC;
-        for (k = 0; k < NUSER && magic != USER_MAGIC; k++) {   /* an older bank's slot from its bytes: its sound,
-                                          * the knobs it had not as they then sounded (fenv_fill) */
-            const uint8_t *e = raw + 4u + k * (18u + 2u * n);
-            user_t *u = &users.u[k];
-            int16_t full[NP];
-            u->used = (uint8_t)(n && e[0] == 1u && e[1] < NPRESET);
-            u->whole = u->name = 0;
-            if (!u->used)
-                continue;
-            u->base = e[1];
-            for (j = 0; j < NP; j++)
-                full[j] = PAR[j].def;
-            for (j = 0; j < NSOUNDP; j++)
-                full[SOUND_P[j]] = j < n ? (int16_t)(e[2u + 2u * j] | e[3u + 2u * j] << 8) : PAR[SOUND_P[j]].def;
-            if (n < NSOUNDP)
-                fenv_fill(full);
-            for (j = 0; j < NP; j++)
-                u->p[j] = full[j];
-            for (j = 0; j < 4u; j++) {
-                u->op_ratio[j] = e[2u + 2u * n + j];
-                u->op_level[j] = e[6u + 2u * n + j];
-                u->op_wave[j] = e[10u + 2u * n + j];
-                u->op_decay[j] = e[14u + 2u * n + j];
-            }
         }
+        users.magic = USER_MAGIC;
     }
-    {
-        static union {
-            settings_t s;
-            settingsA_t oA;
-            settings9_t o9;
-            settings8_t o8;
-            settings7_t o7;
-            settings6_t o6;
-            settings5_t o;
-        } ld;
-        int got = plat_store_load(OBJ_SETTINGS, &ld, sizeof ld);
-        settings5_t *o = &ld.o;
-        if (got == (int)sizeof(settings5_t)) {   /* an older save: brought forward */
-            int before_saws = o->magic == SET_MAGIC_3 || o->magic == SET_MAGIC_4;   /* MAR3/4: the 37 bank, surely */
-            if (o->magic == SET_MAGIC_3 && (uint16_t)o->p[P_MODE] < 11u) {   /* before RANDOM came first */
-                o->p[P_MODE] = MODE_FROM_3[o->p[P_MODE]];
-                o->magic = SET_MAGIC_4;
-            }
-            if (o->magic == SET_MAGIC_4) {   /* before HUMANIZE, CLOCK and WIDTH: those three slots anew */
-                o->p[P_HUMAN] = 0;           /* (was RATCHET) */
-                o->p[P_CLOCK] = o->p[P_CLOCK] ? 2 : o->p[P_WIDTH] ? 1 : 0;   /* (were SYNC and CLOCK OUT) */
-                o->p[P_WIDTH] = PAR[P_WIDTH].def;
-                o->magic = SET_MAGIC_5;
-            }
-            if (o->magic == SET_MAGIC_5 && o->preset < 40u) {   /* before the chorus's two and the operators. MAR5
-                                                            * was written by two banks: 37 sounds (before the
-                                                            * saws), and 40 (the three saws at 32, GLASS PAD on
-                                                            * three places further). 37..39 are the 40's; 32..36
-                                                            * are either: the sound the save's own knobs match */
-                uint32_t k;
-                for (i = 0; i < NP; i++)
-                    set.p[i] = i < NP5 ? o->p[i] : PAR[i].def;
-                set.preset = o->preset;
-                if (o->preset >= 32u && o->preset < 37u
-                    && (before_saws
-                        || sound_match(set.p, &PRESET[o->preset + 3u]) >= sound_match(set.p, &PRESET[o->preset])))
-                    set.preset = (uint8_t)(o->preset + 3u);   /* the 37 bank's (an FM-1's: on a tie, too) */
-                set.octave = o->octave;
-                set.arp_on = o->arp_on;
-                set.hold = o->hold;
-                ops_load(&PRESET[set.preset]);
-                voice_load(&PRESET[set.preset]);
-                if ((uint32_t)set.p[P_WAVE] != preset_wave(&PRESET[set.preset]))   /* its WAVE then overrode every
-                                                                                * modulator's: so now on them */
-                    for (k = 0; k < 4u; k++)
-                        if (!(ENG_CAR[set.p[P_ALGO] & 7] >> k & 1u))
-                            set.op_wave[k] = (uint8_t)set.p[P_WAVE];
-                set.magic = SET_MAGIC;
-            }
-        } else if (got == (int)sizeof(settingsA_t) && ld.oA.magic == SET_MAGIC_A) {
-            settingsA_t *oA = &ld.oA;    /* before LOADS: all as it was, a sound change the sound only */
-            for (i = 0; i < NP; i++)
-                set.p[i] = i < NPA ? oA->p[i] : PAR[i].def;
-            set.preset = from_bank(oA->preset, 60u);
-            set.octave = oA->octave;
-            set.arp_on = oA->arp_on;
-            set.hold = oA->hold;
-            for (i = 0; i < 4u; i++) {
-                set.op_ratio[i] = oA->op_ratio[i];
-                set.op_level[i] = oA->op_level[i];
-                set.op_wave[i] = oA->op_wave[i];
-                set.op_decay[i] = oA->op_decay[i];
-            }
-            set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof(settings9_t) && ld.o9.magic == SET_MAGIC_9) {
-            settings9_t *o9 = &ld.o9;    /* before CHORDS: all as it was, CHORDS off */
-            for (i = 0; i < NP; i++)
-                set.p[i] = i < NP9 ? o9->p[i] : PAR[i].def;
-            set.preset = from_bank(o9->preset, 60u);
-            set.octave = o9->octave;
-            set.arp_on = o9->arp_on;
-            set.hold = o9->hold;
-            for (i = 0; i < 4u; i++) {
-                set.op_ratio[i] = o9->op_ratio[i];
-                set.op_level[i] = o9->op_level[i];
-                set.op_wave[i] = o9->op_wave[i];
-                set.op_decay[i] = o9->op_decay[i];
-            }
-            set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof(settings8_t) && ld.o8.magic == SET_MAGIC_8) {
-            settings8_t *o8 = &ld.o8;    /* before the filter's own envelope: as it sounded */
-            for (i = 0; i < NP; i++)
-                set.p[i] = i < NP8 ? o8->p[i] : PAR[i].def;
-            fenv_fill(set.p);
-            set.preset = from_bank(o8->preset, 60u);
-            set.octave = o8->octave;
-            set.arp_on = o8->arp_on;
-            set.hold = o8->hold;
-            for (i = 0; i < 4u; i++) {
-                set.op_ratio[i] = o8->op_ratio[i];
-                set.op_level[i] = o8->op_level[i];
-                set.op_wave[i] = o8->op_wave[i];
-                set.op_decay[i] = o8->op_decay[i];
-            }
-            set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof(settings7_t) && ld.o7.magic == SET_MAGIC_7) {
-            settings7_t *o7 = &ld.o7;    /* before the filter and PWM: the sound's own filter. Its bank had 47
-                                          * sounds, so a USER slot was 47 on: the 13 VA sounds came after */
-            for (i = 0; i < NP; i++)
-                set.p[i] = i < NP7 ? o7->p[i] : PAR[i].def;
-            /* MAR7 was written by three banks: 40 sounds, 47 with USER slots from 47, and 60 with them from 60. 60 on is
-             * a USER slot; 47..59, a 47 bank's slot or a 60 bank's VA sound: the one the save's own knobs match */
-            set.preset = o7->preset;
-            if (o7->preset >= 47u && o7->preset < 60u && users.u[o7->preset - 47u].used
-                && user_match(set.p, &users.u[o7->preset - 47u]) > sound_match(set.p, &PRESET[o7->preset]))
-                set.preset = (uint8_t)(o7->preset - 47u + NPRESET);
-            else if (o7->preset >= 60u && o7->preset < 63u) {   /* 60..62: the 47 bank's U14..U16, or the 60 bank's
-                                                              * U01..U03: the one that holds a sound (both: the closer) */
-                const user_t *a = &users.u[o7->preset - 47u], *b = &users.u[o7->preset - 60u];
-                if (a->used && (!b->used || user_match(set.p, a) > user_match(set.p, b)))
-                    set.preset = (uint8_t)(o7->preset - 47u + NPRESET);
-                else
-                    set.preset = (uint8_t)(o7->preset - 60u + NPRESET);
-            } else if (o7->preset >= 63u)
-                set.preset = (uint8_t)(o7->preset - 60u + NPRESET);
-            set.octave = o7->octave;
-            set.arp_on = o7->arp_on;
-            set.hold = o7->hold;
-            for (i = 0; i < 4u; i++) {
-                set.op_ratio[i] = o7->op_ratio[i];
-                set.op_level[i] = o7->op_level[i];
-                set.op_wave[i] = o7->op_wave[i];
-                set.op_decay[i] = o7->op_decay[i];
-            }
-            if (set.preset < NPRESET)
-                filter_load(&PRESET[set.preset]);
-            set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof(settings6_t) && ld.o6.magic == SET_MAGIC_6 && ld.o6.preset < NPRESET) {
-            settings6_t *o6 = &ld.o6;    /* before VOICES and GLIDE: the sound's own */
-            for (i = 0; i < NP; i++)
-                set.p[i] = i < NP6 ? o6->p[i] : PAR[i].def;
-            set.preset = o6->preset;
-            set.octave = o6->octave;
-            set.arp_on = o6->arp_on;
-            set.hold = o6->hold;
-            for (i = 0; i < 4u; i++) {
-                set.op_ratio[i] = o6->op_ratio[i];
-                set.op_level[i] = o6->op_level[i];
-                set.op_wave[i] = o6->op_wave[i];
-                set.op_decay[i] = o6->op_decay[i];
-            }
-            voice_load(&PRESET[set.preset]);
-            set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof set && (ld.s.magic == SET_MAGIC_B || ld.s.magic == SET_MAGIC_C)) {
-            set = ld.s;                  /* a 60- or 64-sound bank's: its USER slots moved on */
-            set.preset = from_bank(set.preset, ld.s.magic == SET_MAGIC_B ? 60u : 64u);
-            set.magic = SET_MAGIC;
-        } else if (got == (int)sizeof set)
-            set = ld.s;
-    }
+    if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) != (int)sizeof set)   /* the settings (else as new, below) */
+        set.magic = 0;
     if (set.magic != SET_MAGIC || !settings_ok())
         settings_defaults();
 #ifndef PLAT_HOST
@@ -2411,7 +2132,7 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
         return (int32_t)shown_cat() * w / (int32_t)(NCAT - 1u);
     case PX_SND: {
         uint32_t n = 0, at = 0, i, k;        /* where in its kind */
-        for (k = 0; k < NPRESET + NUSER; k++)
+        for (k = 0; k < NBROWSE; k++)
             if (i = browse_at(k), sound_ok(i) && sound_cat(i) == sound_cat(set.preset)) {
                 if (i == set.preset)
                     at = n;
@@ -2599,7 +2320,7 @@ static void param_turn(uint32_t p, int32_t d)
             return;
         if (p == PX_SND) {
             uint32_t k;
-            for (k = 0; k < NPRESET + NUSER; k++)
+            for (k = 0; k < NBROWSE; k++)
                 if (i = browse_at(k), sound_ok(i) && sound_cat(i) == c) {
                     if (i == set.preset)
                         at = cnt;
@@ -2612,7 +2333,7 @@ static void param_turn(uint32_t p, int32_t d)
                 int32_t nx = cc + step;
                 uint32_t j, first = NPRESET + NUSER;
                 for (; nx >= 0 && nx < (int32_t)NCAT; nx += step) {
-                    for (j = 0; j < NPRESET + NUSER && first == NPRESET + NUSER; j++)   /* (the first browsed) */
+                    for (j = 0; j < NBROWSE && first == NPRESET + NUSER; j++)   /* (the first browsed) */
                         if (sound_ok(browse_at(j)) && sound_cat(browse_at(j)) == (uint32_t)nx)
                             first = browse_at(j);
                     if (first < NPRESET + NUSER)
@@ -3106,7 +2827,7 @@ static void sounds_view(int32_t h)
     int32_t first, row;
     char nm[16];
     uint32_t k;
-    for (k = 0; k < NPRESET + NUSER; k++)
+    for (k = 0; k < NBROWSE; k++)
         if (i = browse_at(k), c == CAT_USER ? i >= NPRESET : sound_cat(i) == c) {
             if (i == set.preset)
                 at = n;
@@ -3400,19 +3121,6 @@ int app_expect(const char *what, int *got)
     else if (!strcmp(what, "arp_mark")) {    /* (always 0: counting starts again) */
         arp_mark = arp_count;
         arp_mark_at = arp_count;
-        *got = 0;
-    }
-    else if (!strcmp(what, "as_marb") || !strcmp(what, "as_marc")) {   /* (always 0) the saved settings rewritten
-                                              * as the 60-sound bank's MARB record, or the 64's MARC (its USER slots
-                                              * lower): for the migration's test */
-        static settings_t t;
-        uint32_t n = what[5] == 'b' ? 60u : 64u;
-        if (plat_store_load(OBJ_SETTINGS, &t, sizeof t) == (int)sizeof t) {
-            t.magic = n == 60u ? SET_MAGIC_B : SET_MAGIC_C;
-            if (t.preset >= NPRESET)
-                t.preset = (uint8_t)(t.preset - NPRESET + n);
-            plat_store_save(OBJ_SETTINGS, &t, sizeof t);
-        }
         *got = 0;
     }
     else if (!strcmp(what, "queued"))        /* the arp has a note waiting: a strum's next, a late or swung step */
