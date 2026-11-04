@@ -58,7 +58,7 @@ enum { CH_OFF, CH_TRIAD, CH_7TH, CH_LUSH, CH_OPEN, CH_TRIAD_T, CH_7TH_T, CH_OMNI
 #define NSCALE 5u
 /* the arp's modes */
 enum { M_RANDOM, M_UP, M_DOWN, M_UPDN, M_PLAYED, M_CONVERGE, M_DIVERGE, M_THUMB, M_THUMB_UD, M_PINKY, M_PINKY_UD,
-       M_CHORD, M_WALK, M_SEQ, NMODE };   /* SEQ: the sequence's steps, not the held notes */
+       M_CHORD, M_WALK, NMODE };
 typedef struct {
     const char *name, *id;               /* id: the host tests' name for it */
     int16_t lo, hi, def;
@@ -169,12 +169,15 @@ static const uint8_t DIV_TICKS[11] = {96, 48, 36, 24, 18, 12, 9, 8, 6, 4, 3};
 static const char *const DDIV_NAME[9] = {"1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2"};
 static const float DDIV_BEATS[9] = {0.25f, 0.375f, 1.0f / 3.0f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f, 1.5f, 2.0f};
 static const char *const MODE_NAME[NMODE] = {"RANDOM", "UP", "DOWN", "UP-DN", "AS PLAYED", "CONVERGE", "DIVERGE",
-                                             "THUMB UP", "THUMB U/D", "PINKY UP", "PINKY U/D", "CHORD", "WALK", "SEQ"};
+                                             "THUMB UP", "THUMB U/D", "PINKY UP", "PINKY U/D", "CHORD", "WALK"};
 static const char *const SHAPE_NAME[LFO_NSHAPE] = {"SINE", "TRI", "SQUARE", "S&H", "DRIFT"};
 static const char *const RATIO_NAME[8] = {"X1/2", "X1", "X2", "X3", "X4", "X5", "X6", "X7"};
 static const float RATIO_MUL[8] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f};
 static const char *const CURVE_NAME[4] = {"SOFT", "LINEAR", "HARD", "FIXED"};
 enum { H_OFF, H_HOLD, H_LATCH };
+enum { PL_KEYS, PL_ARP, PL_SEQ };        /* PLAY: the keys alone, the arp, the sequencer (the arp's engine, its steps;
+                                          * it runs on its own, a held note transposing it) */
+static const char *const PLAY_NAME[3] = {"KEYS", "ARP", "SEQ"};
 static const char *const HOLD_NAME[3] = {"NO HOLD", "HOLD", "LATCH"};
 
 /* ----------------------------------------------------------------- sounds --- */
@@ -460,7 +463,7 @@ typedef struct {
     int16_t p[NP];
     uint8_t preset;
     int8_t octave;                       /* -2 .. +2 */
-    uint8_t arp_on, hold;                /* hold: H_OFF, H_HOLD, H_LATCH */
+    uint8_t arp_on, hold;                /* arp_on: PLAY, PL_KEYS, PL_ARP, PL_SEQ; hold: H_OFF, H_HOLD, H_LATCH */
     /* the sound's four operators as OP 1-4 left them (the sound sets them): the ratio (OP_RATIO's index), the level
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
@@ -714,7 +717,8 @@ static void held_remove(int32_t note)
         held_ch[i] = held_ch[i + 1];
     }
     nheld--;
-    if (!nheld)                          /* nothing held: what the arp had queued (a strum's notes, a late step) goes */
+    if (!nheld && arp_on_now != PL_SEQ)  /* nothing held: what the arp had queued (a strum's notes, a late step) goes
+                                          * (SEQ plays on) */
         arp_cancel();
     if (!arp_on_now) {
         if (set.p[P_VOICES] != V_POLY && nheld && eng_sounding(note))   /* mono: back to the top note still held */
@@ -997,12 +1001,13 @@ static void strummed(void)               /* the strum's next note (STRUM turned 
 }
 
 /* SEQ: the step the sequence is on (arp_s, round LENGTH), transposed by the held note pressed last against the
- * sequence's first note, into st_note (a chord with CHORDS; their TONES kinds have no pool here). 0: nothing to
+ * sequence's first note (kept when it is let go: a key transposes, PLAY starts and stops), into st_note (a chord with CHORDS; their TONES kinds have no pool here). 0: nothing to
  * strike: a rest, or a step a tie joins to the one before (GATE 100 %, the same note: the run is one note, one
  * chance roll). A tie never runs from the last step round to the first */
 static volatile int32_t seq_at = -1;     /* the step it is on (the screen) */
 static uint32_t seq_run;                 /* the steps the note struck lasts (a tie's run) */
 static uint8_t seq_legato;               /* and a note follows the run */
+static int32_t seq_tr;                   /* the transpose, semitones (the last held note's, kept) */
 static int seq_take(uint32_t kind)
 {
     uint32_t len = (uint32_t)set.p[P_SEQLEN], s = (uint32_t)++arp_s, pos = s % len, i, h, last = 0;
@@ -1018,8 +1023,10 @@ static int seq_take(uint32_t kind)
     for (h = 1; h < nheld; h++)
         if (held_seq[h] > held_seq[last])
             last = h;
-    root = held[last];
-    note = (int32_t)n + root - (int32_t)set.seq_note[i];
+    root = nheld ? held[last] : -1;      /* (the note's owner, for the panics: none, a key's) */
+    if (nheld)
+        seq_tr = root - (int32_t)set.seq_note[i];
+    note = (int32_t)n + seq_tr;
     while (note > 127)
         note -= 12;
     while (note < 0)
@@ -1054,11 +1061,10 @@ static void arp_step(void)
     uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], s, i, k, idx, kind = (uint32_t)set.p[P_CHORD];
     int32_t gate, vr, j;
     float step = step_samples();
-    if (!n)
+    if (!n && arp_on_now != PL_SEQ)      /* (SEQ runs with none held) */
         return;
     strum_wait = 0;
-    if (set.p[P_MODE] == M_SEQ) {        /* SEQ: the sequence's step (none: a rest, or a tie's)
-                                         */
+    if (arp_on_now == PL_SEQ) {          /* SEQ: the sequence's step (none: a rest, or a tie's) */
         if (!seq_take(kind))
             return;
     } else {
@@ -1139,7 +1145,7 @@ static void arp_step(void)
     for (i = 0; i < st_n; i++)
         st_vel[i] = (uint8_t)clamp((int32_t)st_vel[i] + (vr ? (int32_t)rnd_n((uint32_t)(2 * vr + 1)) - vr : 0), 1, 127);
     gate = (int32_t)(step * (float)set.p[P_GATE] / 100.0f);
-    if (set.p[P_MODE] == M_SEQ && set.p[P_GATE] >= 100) {   /* SEQ's ties: the run one note; a note after it reached
+    if (arp_on_now == PL_SEQ && set.p[P_GATE] >= 100) {   /* SEQ's ties: the run one note; a note after it reached
                                                             * with an overlap (LEGATO glides), past a swing or a late
                                                             * step */
         gate = (int32_t)(step * (float)seq_run);
@@ -1168,7 +1174,7 @@ static void on_tick(void)                /* a clock tick: MIDI out, and a step w
     tick_n = (tick_n + 1u) % CLK_WRAP;
     if (clk_out_now && !sync_now && plat_midi_out_room(TO_USB))
         midi_rt(0xF8u);
-    if (!arp_on_now || !nheld || tick_n % L)
+    if (!arp_on_now || (!nheld && arp_on_now != PL_SEQ) || tick_n % L)
         return;
     step_at = sample_clock + rend_i;
     if ((tick_n / L) & 1u && set.p[P_SWING]) {   /* SWING: every second step late, up to half a step */
@@ -1231,7 +1237,8 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     }
     held_add(note, vel);
     held_publish();
-    if (was == 0 && nheld && arp_on_now)   /* a new chord: the pattern from its top, on the grid */
+    if (was == 0 && nheld && arp_on_now == PL_ARP)   /* a new chord: the pattern from its top, on the grid (SEQ runs
+                                                    * on: a note only transposes it) */
         arp_restart();
 }
 
@@ -1378,7 +1385,8 @@ static void modes_follow(void)
         else {
             for (i = 0; i < nheld; i++)
                 midi_off((uint32_t)held[i]);
-            if (nheld)
+            seq_tr = 0;                  /* SEQ: as written, from step 1, until a key transposes it */
+            if (nheld || arp_on_now == PL_SEQ)
                 arp_restart();
         }
     }
@@ -1594,7 +1602,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
          * step may replace the step's notes, and an old timer must never play the new ones */
         if (ev & 8u && arp_on_now)
             strummed();
-        if (ev & 4u && arp_on_now && nheld)
+        if (ev & 4u && arp_on_now && (nheld || arp_on_now == PL_SEQ))
             humanized();
         if (ev & 2u && arp_on_now)
             arp_step();
@@ -1842,7 +1850,7 @@ static void settings_defaults(void)
 static int settings_ok(void)
 {
     uint32_t i;
-    if (set.magic != SET_MAGIC || !sound_ok(set.preset) || set.octave < -2 || set.octave > 2 || set.arp_on > 1u
+    if (set.magic != SET_MAGIC || !sound_ok(set.preset) || set.octave < -2 || set.octave > 2 || set.arp_on > PL_SEQ
         || set.hold > H_LATCH)
         return 0;
     for (i = 0; i < NP; i++)
@@ -2388,7 +2396,9 @@ static void speak(void)
             sound_name(set.preset, nm);
             text_cat(t, nm);
         }
-        text_cat(t, set.arp_on ? ". ARP ON. " : ". ARP OFF. ");
+        text_cat(t, ". PLAY ");
+        text_cat(t, PLAY_NAME[set.arp_on % 3u]);
+        text_cat(t, ". ");
         text_cat(t, HOLD_NAME[set.hold]);
         text_cat(t, ". ");
         text_cat(t, PAGE[ui.page].name);
@@ -2737,9 +2747,10 @@ static void input(void)
         } else if (k == B_OCTUP) {
             octave_step(1);
         } else if (k == B_PLAY) {
-            set.arp_on = (uint8_t)!set.arp_on;
+            set.arp_on = (uint8_t)(set.arp_on == PL_ARP ? PL_SEQ : set.arp_on == PL_SEQ ? PL_KEYS : PL_ARP);   /* ARP ->
+                                                                                                  * SEQ -> KEYS */
             set_dirty = 1;
-            app_say("ARP", set.arp_on ? "ON" : "OFF");
+            app_say("PLAY", PLAY_NAME[set.arp_on]);
         } else if (k == B_REC) {             /* REC: NO HOLD -> HOLD -> LATCH */
             set.hold = (uint8_t)((set.hold + 1u) % 3u);
             set_dirty = 1;
@@ -3033,8 +3044,7 @@ static void seq_view(int32_t h)
 {
     uint32_t len = (uint32_t)set.p[P_SEQLEN], i, cur = seq_cur();
     int32_t cw = 220 / (int32_t)len, x0 = 10 + (220 - cw * (int32_t)len) / 2, lo = 127, hi = 0, span, at = seq_at;
-    int tie = set.p[P_GATE] >= 100, live = set.arp_on && set.p[P_MODE] == M_SEQ && held_mask[0] | held_mask[1]
-                                                                                    | held_mask[2] | held_mask[3];
+    int tie = set.p[P_GATE] >= 100, live = set.arp_on == PL_SEQ;
     for (i = 0; i < len; i++)
         if (set.seq_note[i] != SEQ_REST) {
             lo = set.seq_note[i] < lo ? set.seq_note[i] : lo;
@@ -3178,7 +3188,7 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
     char t[24];
     cv_begin(240, 28, C_BG);
     cv_text(10, 0, &FONT_XS, "PLAY", C_DIM);
-    cv_text(10, 12, &FONT_B, set.arp_on ? "ARP" : "KEYS", set.arp_on ? C_HI : C_GRAY);
+    cv_text(10, 12, &FONT_B, PLAY_NAME[set.arp_on % 3u], set.arp_on ? C_HI : C_GRAY);
     cv_text(52, 0, &FONT_XS, "REC", C_DIM);
     cv_text(52, 12, &FONT_B, HOLD_NAME[set.hold], set.hold ? C_HI : C_GRAY);
     cv_text(120, 0, &FONT_XS, "TEMPO", C_DIM);
@@ -3407,6 +3417,11 @@ int app_expect(const char *what, int *got)
         *got = users.u[(uint32_t)(atoi(what + 4) - 1) % NUSER].name;
     else if (!strncmp(what, "step", 4) && what[4] >= '1' && what[4] <= '9')   /* stepN: its note (255 a rest) */
         *got = set.seq_note[(uint32_t)(atoi(what + 4) - 1) % SEQ_N];
+    else if (!strcmp(what, "play_keys")) {   /* (always 0) PLAY straight to KEYS, not through SEQ (a step of it
+                                          * would sound on the way: the tests that count notes) */
+        set.arp_on = PL_KEYS;
+        *got = 0;
+    }
     else if (!strcmp(what, "seq_cur"))       /* the cursor's step, 1.. */
         *got = (int)seq_cur() + 1;
     else if (!strcmp(what, "seq_at"))        /* the step the sequence is on, 1.. (0 none yet) */

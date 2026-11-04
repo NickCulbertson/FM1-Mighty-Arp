@@ -1,6 +1,6 @@
 # The third review (Codex, Nov 2026): saves, panic's channel, VOICES (tests/run_tests.sh)
 wait 600
-tap PLAY
+expect play_keys 0
 wait 30
 expect arp 0
 expect preset 0
@@ -28,9 +28,7 @@ wait 600
 expect user1_used 1
 expect preset 64
 # All Sound Off on channel 1 leaves a key's note and channel 2's
-tap PLAY
-wait 30
-tap PLAY
+expect play_keys 0
 wait 30
 expect arp 0
 key 7 down 100

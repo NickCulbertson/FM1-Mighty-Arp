@@ -3,6 +3,8 @@
 wait 600
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 expect arp 0
 key 0 down 100
 key 2 down 100

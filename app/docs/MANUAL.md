@@ -18,7 +18,7 @@ steps actually play: at 100% every step, lower and it thins out into something m
 
 | Control | What it does |
 | --- | --- |
-| PLAY | Arp on or off. Off, the keys play the sound directly. |
+| PLAY | ARP, SEQ (the sequencer) or KEYS (the keys play the sound directly). |
 | REC | Hold: NO HOLD (let go and it stops), HOLD (a new chord replaces the last), LATCH (each key on or off). |
 | SELECT | Tempo. |
 | ALGORITHM | Chance. |
@@ -48,8 +48,9 @@ from your chords' notes (the TONES settings). STRUM rolls each chord from low to
 
 ## The sequencer
 
-Set the arp's MODE to **SEQ** (the last one) and it plays your own steps instead of the notes you hold. Hold a key to
-play it: the sequence's first note plays it as written, and any other key transposes it.
+Press PLAY until the screen says **SEQ**: the sequence starts from step 1 and runs by itself. A key transposes it from
+the next step, and it stays transposed after you let go (the sequence's first note puts it back as written). Press
+PLAY again to stop it.
 
 On the **SEQ** page the keys write instead of playing. Each key writes its note at the cursor and moves on, and REC
 writes a rest. STEP moves the cursor, NOTE and VELOCITY change its step, and LENGTH sets 1 to 32 steps.
@@ -86,7 +87,7 @@ card, named "Mighty Arp FM-1".
 
 ## Trouble
 
-**No sound:** turn MASTER up, and check that CHANCE isn't at 0%. With PLAY on, notes only play while held (or with
+**No sound:** turn MASTER up, and check that CHANCE isn't at 0%. On ARP, notes only play while held (or with
 HOLD or LATCH).
 
 **It won't start after an install:** put the stock firmware back with the installer, then install again.

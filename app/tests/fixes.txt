@@ -2,6 +2,8 @@
 wait 600
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 expect arp 0
 # a key and MIDI on the same note: letting go of one leaves the other's note held
 key 7 down 100

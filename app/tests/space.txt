@@ -3,6 +3,8 @@
 wait 600
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 tap FX
 wait 30
 tap FX

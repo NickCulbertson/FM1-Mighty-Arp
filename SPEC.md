@@ -21,7 +21,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
 | SAVE | saves everything (one slot); SAVE on SOUNDS: a USER preset (everything but GLOBAL and PARAMS) |
-| PLAY | arp on / off (keys) |
+| PLAY | ARP -> SEQ -> KEYS (the arp, the step sequencer, the keys alone) |
 | REC | hold: OFF -> HOLD -> LATCH -> OFF |
 | OCT- / OCT+ | octave |
 
@@ -120,11 +120,12 @@ device build (size, RAM, pool). Installing on the FM-1 waits for Nick.
 
 User preset slots (one save, as now), reverb freeze, Bluetooth MIDI, samples.
 
-## The step sequencer (MODE: SEQ)
+## The step sequencer (PLAY: SEQ)
 
-The arp's last MODE plays the sequence's steps instead of walking the held notes: up to 32 steps (LENGTH), each a note
-with its velocity or a rest. It runs while notes are held, as the arp does (HOLD and LATCH keep them), and starts from
-step 1 with a new chord. The held note pressed last transposes it, against the sequence's first note. RATE, CHANCE,
+PLAY's second state plays the sequence's steps on the arp's engine: up to 32 steps (LENGTH), each a note with its
+velocity or a rest. It runs on its own from step 1 when PLAY reaches SEQ (nothing need be held) and stops when PLAY
+moves on. The held note pressed last transposes it, against the sequence's first note, from the next step; the
+transpose stays when it is let go (a key only transposes: the sequence never restarts for one). RATE, CHANCE,
 GATE, GROOVE (SWING, HUMANIZE, OCT JUMP, VEL RAND), CHORDS (not the TONES kinds) and STRUM all apply; OCTAVES doesn't.
 At GATE 100 % a step followed by the same note is tied into it (one note, one chance roll; never from the last step
 round to the first), and a different note follows with a small overlap so LEGATO glides. On the SEQ page the keys write

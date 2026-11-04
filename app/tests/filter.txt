@@ -2,6 +2,8 @@
 wait 600
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 spin PRESET 46
 wait 30
 expect preset 29

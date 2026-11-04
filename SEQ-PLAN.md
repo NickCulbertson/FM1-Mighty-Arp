@@ -6,14 +6,14 @@ the grid is on the SEQ button.
 
 ## What it is
 
-- **MODE: SEQ**, the arp's last mode. The arp plays the sequence's steps instead of walking the held notes. Everything
+- **PLAY: ARP -> SEQ -> KEYS** (changed after Nick's first try: SEQ was a MODE, and it ran only while a key was
+  held). On SEQ the arp plays the sequence's steps instead of walking the held notes. Everything
   else the arp has applies as it is: RATE, CHANCE (a step rests at random), GATE, SWING, HUMANIZE, OCT JUMP,
   VEL RAND, CHORDS (each step's note a chord; the TONES kinds don't apply: there's no pool) and STRUM. OCTAVES
   doesn't apply.
-- **When it plays:** as the arp does, while notes are held (by keys or MIDI; HOLD and LATCH keep them). A new chord
-  starts it from step 1 on the grid's next step.
-- **Transpose:** the last-pressed held note, against the sequence's first note. Holding the first note plays it as
-  written; a key 3 semitones up plays it 3 up.
+- **When it plays:** on its own, from step 1, as soon as PLAY reaches SEQ; it stops when PLAY moves on to KEYS.
+- **Transpose:** the last-pressed held note (keys or MIDI), against the sequence's first note, from the next step; it
+  stays when the key is let go. A key never restarts it. Holding the first note plays it as written.
 - **Steps:** up to 32. Each step is a note (with its velocity) or a rest. LENGTH is 1–32, default 16.
 - **Ties (GATE 100%):** a step whose next step has the same note joins it into one long note (no retrigger, one
   chance roll for the whole run). A different note follows with a small overlap, so LEGATO glides into it. Below
