@@ -1,0 +1,8 @@
+{
+  "what": "A 4-op FM and subtractive hybrid synth built around a chance arpeggiator: hold a chord, set CHANCE, and it plays melodies. Plus a 32-step sequencer, 64 sounds, chords with strum, swing and humanize, chorus, delay and a shimmer reverb, 16 presets of your own, and MIDI and clock in and out.",
+  "author": "Nick Culbertson",
+  "kinds": ["synth"],
+  "play": "https://nickculbertson.github.io/FM1-Mighty-Arp/emu/",
+  "image": "docs/card.png",
+  "color": "#FF2E97"
+}

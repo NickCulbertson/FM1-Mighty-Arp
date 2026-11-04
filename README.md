@@ -46,6 +46,7 @@ with screenshots coming out. `./build.sh --web` builds the same code for the bro
 
 Installing it is at your own risk, though it's hard to get stuck: fm1-base's installer can put M-VAVE's own firmware
 back, and an FM-1 that fails to start twice comes up in a safe mode the installer can reach.
+Mighty Arp keeps its own settings and presets: it does not read other firmwares' projects or samples.
 
 ## Credits
 
