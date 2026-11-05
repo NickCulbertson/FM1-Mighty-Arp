@@ -276,8 +276,17 @@ for (let i = 0; i < 256; i++) {
 const crc16 = (d) => { let c = 0; for (let i = 0; i < d.length; i++) c = ((c << 8) & 0xFFFF) ^ T16[((c >> 8) ^ d[i]) & 0xFF]; return c; };
 const ufwDec = (b, n) => { for (let i = 0, k = 0xFFFF; i < n; i++) { b[i] ^= k & 0xFF; k = ((k << 1) ^ (k & 0x8000 ? 0x1021 : 0)) & 0xFFFF; } return b; };
 
+// the part types whose CRC is crc16 of the part's bytes as stored (bsp/tools/fm1pkg.py ufw() writes types 0 flash.bin
+// and 100 ota.bin so; M-VAVE's V15 stock file has 2 info.log, empty, and 255 tail.bin so too). M-VAVE's other parts
+// (50 USR, 52 isd_config.ini, 161 blimit.bin, 251 script.ver) carry a CRC that is not crc16 of the stored bytes, nor of
+// them deciphered, padded to the entry's size or 512, or seeded 0xFFFF (measured on V15); its scheme is unknown, and
+// the FM-1's loader (bsp chip/ota.c ota_ufw) reads only types 0 and 100 from the list, so those parts are only
+// required to lie inside the image
+const CHECKED_TYPES = new Set([0, 2, 100, 255]);
+
 // a damaged or wrong file, caught before anything is sent: the UFW header's CRC, its entry list's, and each part's
-// (bsp/tools/fm1pkg.py ufw() writes them). Throws an Error saying which; returns nothing when all match
+// (bsp/tools/fm1pkg.py ufw() writes them), for the part types in CHECKED_TYPES; every other part must lie inside
+// the image. Throws an Error saying which; returns nothing when all match
 function checkUfw(image) {
   const rd16 = (b, o) => b[o] | (b[o + 1] << 8);
   const rd32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
@@ -289,8 +298,10 @@ function checkUfw(image) {
   for (let i = 0; i < n; i++) {
     const e = ufwDec(image.slice(0x40 + i * 0x50, 0x90 + i * 0x50), 0x50);
     const off = rd32(e, 8), len = rd32(e, 12);
-    if (off + len > image.length || crc16(image.subarray(off, off + len)) !== rd16(e, 4))
-      throw new Error(`the package is damaged (part ${rd16(e, 0)} checksum)`);
+    const type = rd16(e, 0);
+    if (off + len > image.length) throw new Error(`the package is damaged (part ${type} outside the file)`);
+    if (CHECKED_TYPES.has(type) && crc16(image.subarray(off, off + len)) !== rd16(e, 4))
+      throw new Error(`the package is damaged (part ${type} checksum)`);
   }
 }
 
@@ -323,10 +334,19 @@ function ufwEntries(image) {
 
 
 const HS_QUERY = [0xF0, 0x00, 0x32, 0x45, 0x00, 0x00, 0x00, 0x40, 0x7F, 0xF7];
+// the handshake with the one-byte body 01 (00 59 11, length 1, 01, checksum FE): a firmware on felucca-bsp's chip/ota.c
+// answers HS_QUERY with its name, '_' and three digits only ("FM-1_601": M-UPGRADE 3.11 refuses more) and this one with
+// its whole identity ("FM-1_6010000"). M-VAVE's firmware, the update loaders and older builds don't answer it.
+// (PERF-1's scheme: its installers and ours ask the same way)
+const HS_FULL = [0xF0, 0x00, 0x32, 0x45, 0x08, 0x00, 0x00, 0x40, 0x00, 0x7E, 0x01, 0xF7];
 const UPGRADE = [0xF0, 0x22, 0x24, 0x35, 0x7F, 0xF7];
 const MAXDATA = 512;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const IS_OTA = (id) => /^ota-/i.test(id.model);
+
+// an FM-1 paired over Bluetooth MIDI shows a port named "... Bluetooth" beside its USB one: it never answers an update
+// (and a Mac lists the paired one first), so no port with that word is asked, picked, listed or tried
+const IS_BLUETOOTH = (name) => /bluetooth/i.test(name || "");
 
 // M-VAVE's FM1 Open firmware (V10, 2026-10): its updater takes only a package it has been told about
 // first (cmd 49 reads its state, cmd 50 arms it with the image length and the package's SHA-256); then
@@ -391,7 +411,8 @@ function parseRequest(pkt) {
 function parseIdentity(pkt) {
   const d = unpack7(pkt.slice(1, -1));
   if (d.length !== 34 || d[0] !== 0 || d[1] !== 0x59 || d[2] !== 0x11) return null;
-  const txt = String.fromCharCode(...d.slice(6, 33)).replace(/\0+$/, "");
+  const z = d.indexOf(0, 6);                     // the text up to its first zero (bytes after it may carry data)
+  const txt = String.fromCharCode(...d.slice(6, z < 0 || z > 33 ? 33 : z));
   if (OPEN_RE.test(txt)) return { text: txt, model: "FM-1", version: 0, open: true };
   if (OPEN_LOADER_RE.test(txt)) return { text: txt, model: "ota-FM1C", version: 0, open: true };
   const m = /^([^_]+)_(\d+)$/.exec(txt);
@@ -454,17 +475,30 @@ class Link {
   close() { this.input.onmidimessage = null; }
 }
 
+// send a handshake -> the identity answered, null (no answer in ms), false (the send failed)
+async function ask(link, query, ms) {
+  if (!link.send(query)) return false;
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const p = await link.read(end - Date.now());
+    if (!p) break;
+    const id = parseIdentity(p);
+    if (id) return id;
+  }
+  return null;
+}
+
+// the identity: HS_QUERY, then HS_FULL when the answer is NAME_ and three digits (a firmware on chip/ota.c tells its
+// whole identity so); the plain answer when nothing answers HS_FULL (M-VAVE's, an older build)
 async function handshake(link, tries = 3) {
   link.drain();
   for (let t = 0; t < tries; t++) {
-    if (!link.send(HS_QUERY)) return null;
-    const end = Date.now() + 1000;
-    while (Date.now() < end) {
-      const p = await link.read(end - Date.now());
-      if (!p) break;
-      const id = parseIdentity(p);
-      if (id) return id;
-    }
+    const id = await ask(link, HS_QUERY, 1000);
+    if (id === false) return null;
+    if (id === null) continue;
+    if (IS_OTA(id) || !/^[^_]+_\d{3}$/.test(id.text)) return id;
+    const full = await ask(link, HS_FULL, 600);
+    return full && full.model === id.model && full.text.startsWith(id.text) ? full : id;
   }
   return null;
 }
@@ -514,16 +548,16 @@ class Updater {
   unwatch() { this.baseline = null; }
 
   // the port names that have an input and an output, whatever they are called (for a list to pick from)
-  ports() { return [...new Set(pairs(this.access).map((p) => p.name))]; }
+  ports() { return [...new Set(pairs(this.access).map((p) => p.name))].filter((n) => !IS_BLUETOOTH(n)); }
 
   // never probe other gear: a usual name, a port the user allowed or that answered a HELLO, or one that appeared during
-  // an update
-  askable(name) { return this.usual(name) || this.allowed.has(name) || (!!this.baseline && !this.baseline.has(name || "")); }
+  // an update; never a Bluetooth MIDI port
+  askable(name) { return !IS_BLUETOOTH(name) && (this.usual(name) || this.allowed.has(name) || (!!this.baseline && !this.baseline.has(name || ""))); }
 
   // FM-1s on ports of any name: the ones that answer the screen reader's HELLO (fm1ports.js askAll; every fm1-base
   // firmware does), allowed from then on -> their port names (also kept in this.answered)
   async answering() {
-    const got = await askAll(this.access, { skip: (n) => this.askable(n) });
+    const got = await askAll(this.access, { skip: (n) => this.askable(n) || IS_BLUETOOTH(n) });
     for (const g of got) { this.allow(g.name); this.answered.add(g.name); }
     return got.map((g) => g.name);
   }
@@ -545,7 +579,7 @@ class Updater {
   // every in/out pair with the same port name that answers the handshake (only: the port called only)
   async find(filter, only) {
     for (const input of livePorts(this.access.inputs)) {
-      if (only != null ? input.name !== only : !this.askable(input.name)) continue;
+      if (IS_BLUETOOTH(input.name) || (only != null ? input.name !== only : !this.askable(input.name))) continue;
       const output = outputFor(this.access, input);
       if (!output) continue;
       try { await input.open(); await output.open(); } catch (_) { continue; }
@@ -756,7 +790,7 @@ const TEXT = {
     direct: "USB ケーブルはパソコンに直接つないでください。Probe や Transporter などの機材は不要です。",
     brick: "万一 FM-1 が起動しなくなった場合は、Mac から標準ファームウェアに戻せます:",
     bricklink: "起動しない FM-1 の復旧（英語）",
-    back: "公式ファームウェアに戻すには、このページ下の「純正ファームウェアに戻す」か、M-VAVE 公式のアップデーター M-UPGRADE（Downloads → PC Software → M-UPGRADE）を使います。",
+    back: "公式ファームウェアに戻すには、このページ下の「純正ファームウェアに戻す」か、M-VAVE 公式のアップデーター M-UPGRADE（Downloads → PC Software → M-UPGRADE）を使います。M-UPGRADE 3.11 はこのページのバージョンを見つけますが、それより古いバージョンは見つけられません（「A USB MIDI device is present but did not answer」と表示されます）。その場合はこのページ下のボタンを使ってください。",
     stockh: "純正ファームウェアに戻す",
     stockwhy: "M-VAVE の FM-1 ファームウェアを、Mighty Arp（またはそのセーフモード）から同じ USB ケーブルで書き込みます。Mighty Arp で保存したものは消えることがあります。",
     stock1: "M-VAVE の FM-1 ファームウェアをダウンロード:",
@@ -820,7 +854,7 @@ const TEXT = {
     direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",
     brick: "If the FM-1 no longer starts, a Mac can put the stock firmware back:",
     bricklink: "recovering an FM-1 that won't start",
-    back: "To go back to the official firmware, use \"Back to the stock firmware\" below, or M-VAVE's own updater, M-UPGRADE (Downloads → PC Software → M-UPGRADE).",
+    back: "To go back to the official firmware, use \"Back to the stock firmware\" below, or M-VAVE's own updater, M-UPGRADE (Downloads → PC Software → M-UPGRADE). M-UPGRADE 3.11 finds the version on this page, not older ones (it says \"A USB MIDI device is present but did not answer\"): use the button below for those.",
     stockh: "Back to the stock firmware",
     stockwhy: "This writes M-VAVE's own FM-1 firmware back, from Mighty Arp (or its safe mode, or another firmware with the same update entry) over the same USB cable. What Mighty Arp saved may be lost.",
     stock1: "Download M-VAVE's FM-1 firmware:",
@@ -916,7 +950,7 @@ const log = (t) => {
   if (atEnd) el.scrollTop = el.scrollHeight;
 };
 let image = null, boot = null, res = null;
-const meta = {"version": "1.1", "product": "FM-1_6279010100", "pkg": "../firmware/mightyarp-1.1.fwsc", "backup": false, "res": null, "boot": {"pkg": "../firmware/m-bootloader-1.2.fwsc", "version": "1.2", "sha256": "0e89141f52d1f2d62198d4f69147a2c15c8360806e64d48002990a6fdab6d6dd"}};
+const meta = {"version": "1.2", "product": "FM-1_6279010200", "pkg": "../firmware/mightyarp-1.2.fwsc", "backup": false, "res": null, "boot": {"pkg": "../firmware/m-bootloader-1.2.fwsc", "version": "1.2", "sha256": "0e89141f52d1f2d62198d4f69147a2c15c8360806e64d48002990a6fdab6d6dd"}};
 /* the firmware's own steps around an install (its site's install_app script, or none): before(midi, ui) runs before
    anything is written, may ask (ui.ask) and returns its state, or false to stop there; after(midi, ui, state) once
    the new firmware has started (it waits for it itself). A failure in after is said, the install stays done */
