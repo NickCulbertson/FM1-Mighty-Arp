@@ -52,8 +52,8 @@ stays in felucca-bsp, and that no double-precision code is linked.
 
 Mighty Arp's package identity is `FM-1_6279` (`id_prefix` in `app/fm1.toml`): development builds report
 `FM-1_627900`, releases the prefix and the version's two numbers, two digits each: 1.3 is `FM-1_62790103`, 8 digits,
-the longest the Firmware Hub takes. `tools/build.py`, which `build.sh` runs, makes fm1-base's build leave out its patch
-digits, so releases are X.Y only. (1.1 had `FM-1_6279010100`, 1.2 `FM-1_6279010200`, 1.0 `FM-1_62791001010000`.) The part
+the longest the Firmware Hub takes. `tools/xxyy.py`, which `build.sh` and `tools/make_pages.sh` run, makes fm1-base's
+build leave out its patch digits and its site builder take them, so releases are X.Y only. (1.1 had `FM-1_6279010100`, 1.2 `FM-1_6279010200`, 1.0 `FM-1_62791001010000`.) The part
 before the version stays the same for every release, so updates install over
 each other and keep what players saved.
 

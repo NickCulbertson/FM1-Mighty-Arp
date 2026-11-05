@@ -13,7 +13,7 @@ PKG="${2:-app/build/mightyarp-$V.fwsc}"
 [ -f "$PKG" ] || { echo "make_pages.sh: no package $PKG"; exit 1; }
 ./build.sh --web --release "$V"
 PY="$(python3 -c 'import sys; print(sys.executable)')"
-DYLD_FALLBACK_LIBRARY_PATH="${FRIBIDI_LIB:-$HOME/.local/fribidi-arm64/lib}" "$PY" base/tools/make_site.py app "$PKG" "$V" app/build/site
+DYLD_FALLBACK_LIBRARY_PATH="${FRIBIDI_LIB:-$HOME/.local/fribidi-arm64/lib}" "$PY" tools/xxyy.py make_site.py app "$PKG" "$V" app/build/site
 # the front page: Mighty Arp's own (app/site/index.html), its version and package filled in, over
 # the one make_site.py makes from app/site/landing.md (which it needs)
 sed -e "s/{{VERSION}}/$V/g" -e "s/{{PKG}}/$(basename "$PKG")/g" app/site/index.html > app/build/site/index.html
