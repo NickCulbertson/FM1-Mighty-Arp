@@ -1,6 +1,6 @@
 # Mighty Arp's build settings (tools/build.py)
 name = "MightyArp"             # APP_NAME is in app.h; this names the build's files
-id_prefix = "FM-1_6279"       # package identity, Mighty Arp's own (MBPX on a phone keypad): dev FM-1_627900, releases FM-1_6279XXYYZZ (from 1.1: FM-1_6279010100, 10 digits, as long as any on the Firmware Hub; 1.0 was FM-1_62791001010000)
+id_prefix = "FM-1_6279"       # package identity, Mighty Arp's own (MBPX on a phone keypad): dev FM-1_627900, releases FM-1_6279XXYY (tools/build.py: from 1.3, FM-1_62790103, 8 digits, the Firmware Hub's longest; 1.1 and 1.2 were FM-1_6279XXYYZZ, 1.0 FM-1_62791001010000)
 usb_manufacturer = "Nick Culbertson"
 usb_product = "Mighty Arp FM-1"
 o2 = ["dsp/engine.c"]          # the sound, compiled at -O2 (the unity build is -Os)
