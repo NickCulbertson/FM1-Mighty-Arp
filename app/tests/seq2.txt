@@ -226,9 +226,10 @@ clock 24 21
 wait 30
 expect arp_notes 2
 expect voices 1
-# PRESETS CHANGE mid-tie: the old pattern's long note lets go (and its MIDI off), not left over the new riff
-tap GLO
+# PARAMS CHANGE mid-tie: the old pattern's long note lets go (and its MIDI off), not left over the new riff
+tap HOME
 wait 30
+expect page 16
 spin K4 1
 wait 30
 expect loads 1

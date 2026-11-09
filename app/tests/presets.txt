@@ -30,7 +30,7 @@ tap SAVE
 wait 30
 expect user1_used 1
 expect preset 64
-# CHORDS off again; LOADS on SOUND: U01 brings back its sound only
+# CHORDS off again; LOADS on HOLD: U01 brings back its sound only
 tap ARP
 wait 30
 tap ARP
@@ -47,10 +47,12 @@ wait 30
 expect preset 64
 expect chord 0
 expect strum 0
-# LOADS on ALL: U01 brings back its CHORDS; a factory sound the arp and effects as new
-tap GLO
+# LOADS on CHANGE: U01 brings back its CHORDS; a factory sound the arp and effects as new
+tap HOME
 wait 30
-expect page 9
+tap HOME
+wait 30
+expect page 16
 spin K4 1
 wait 30
 expect loads 1
@@ -87,7 +89,7 @@ wait 30
 spin PRESET 1
 wait 30
 expect strum 30
-# GLOBAL PARAMS: a detent right to RESET, the arp and effects as new (the sound and TEMPO kept)
+# RESETS's PARAMS: a detent right SURE?, then SAVE: the arp and effects as new (the sound and TEMPO kept)
 spin SELECT 10
 wait 30
 expect tempo 100
@@ -98,12 +100,15 @@ wait 30
 expect page 21
 spin K1 1
 wait 30
+expect strum 30
+tap SAVE
+wait 30
 expect strum 0
 expect chord 0
 expect tempo 100
 expect preset 64
 expect loads 1
-# RESET holds: turned on further nothing more happens; back left, it starts over
+# a turn never resets: turned on and on, then back left, nothing; SURE? and SAVE does
 turn ALGO -10
 wait 30
 expect chance 13
@@ -113,7 +118,13 @@ expect chance 13
 spin K1 -1
 wait 30
 expect chance 13
+tap SAVE
+wait 30
+expect chance 13
 spin K1 1
+wait 30
+expect chance 13
+tap SAVE
 wait 30
 expect chance 33
 # A USER preset's name: given at its first save, kept when saved over; none another slot has
@@ -154,7 +165,7 @@ reboot
 wait 600
 expect user1_used 1
 expect user2_used 1
-# RESETS's FACTORY: a turn SURE?, back left KEEP; turned on and on, nothing more (a turn never erases); SAVE on
+# RESETS's FACTORY: a turn SURE?, back left RESET; turned on and on, nothing more (a turn never erases); SAVE on
 # SURE?: every USER preset gone, the settings as new, kept
 tap GLO
 wait 30

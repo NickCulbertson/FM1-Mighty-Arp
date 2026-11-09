@@ -118,6 +118,8 @@ expect page 21
 wait 50
 expect queued 1
 spin K1 1
+expect queued 1
+tap SAVE
 expect queued 0
 expect chord 0
 midi 80 3C 00
@@ -156,9 +158,9 @@ wait 30
 tap GLO
 wait 30
 expect page 21
-spin K1 -1
-wait 30
 spin K1 1
+wait 30
+tap SAVE
 wait 30
 turn ALGO 40
 wait 30

@@ -34,14 +34,14 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_FATT, P_FSUS, P_FREL, P_KEYTRK,              /* FILTER ENVELOPE (ENV a third time; its DECAY is P_FDEC),
                                                        * FILTER's KEY TRACK */
        P_CHORD, P_STRUM, P_KEY, P_SCALE,              /* CHORDS (ARP again) */
-       P_LOADS,                                       /* GLOBAL's PRESETS: what a sound change sets (the player's) */
+       P_LOADS,                                       /* SOUNDS's PARAMS: what a sound change sets (the player's) */
        P_SEQLEN,                                      /* SEQ's fourth: the sequence's LENGTH (it goes with the steps) */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
        PX_OPR, PX_OPL, PX_OPW, PX_OPD,                /* OP 1-4: the operator's ratio, level, wave, decay */
        PX_CAT, PX_SND, PX_SLOT,                       /* SOUNDS: the kind, the sound, the USER slot SAVE writes */
-       PX_RESET,                                      /* RESETS: PARAMS, KEEP or (a detent right) RESET */
-       PX_FACTORY,                                    /* RESETS: FACTORY, KEEP, SURE?, then everything as new */
+       PX_RESET,                                      /* RESETS: PARAMS, RESET, SURE?, then SAVE: the arp and FX as new */
+       PX_FACTORY,                                    /* RESETS: FACTORY, RESET, SURE?, then SAVE: everything as new */
        PX_STEP, PX_NOTE, PX_SVEL,                     /* SEQ: the step the cursor is on, its note, its velocity */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 14u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE,
@@ -94,7 +94,7 @@ static const param_t PAR[NP] = {
     {"RELEASE", "frel", 0, 100, 60, U_TIME},     {"KEY TRACK", "keytrack", 0, 100, 50, U_PCT},
     {"CHORD", "chord", 0, NCHORD - 1, 0, U_CHORD}, {"STRUM", "strum", 0, 100, 0, U_STRUM},
     {"KEY", "key", 0, 11, 0, U_KEY},             {"SCALE", "scale", 0, NSCALE - 1, 0, U_SCALE},
-    {"PRESETS", "loads", 0, 1, 0, U_LOADS},
+    {"PARAMS", "loads", 0, 1, 0, U_LOADS},
     {"LENGTH", "seq_len", 1, 32, 16, U_STEPS},
 };
 
@@ -116,14 +116,14 @@ static const page_t PAGE[NPAGE] = {
     {"SEQ", B_SEQ, {PX_STEP, PX_NOTE, PX_SVEL, P_SEQLEN}},   /* the steps; the keys write them */
     {"DELAY", B_FX, {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
-    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, P_LOADS}},
+    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_NONE}},
     {"CHORUS", B_FX, {P_CHORUS, P_CRATE, P_CDEPTH, PX_NONE}},
     {"OP 1", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 2", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 3", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 4", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"VOICE", B_SEL, {P_VOICES, P_GLIDE, PX_NONE, PX_NONE}},
-    {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, PX_NONE}},
+    {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, P_LOADS}},
     {"FILTER", B_ENV, {P_CUTOFF, P_RES, P_FENV, P_KEYTRK}},
     {"LFO 2", B_LFO, {P_PWM, P_LFOCUT, PX_NONE, PX_NONE}},
     {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
@@ -476,8 +476,9 @@ static uint8_t set_dirty;                /* changed since the last save: SAVE is
 /* the player's own presets, USER 1..16: every knob (the arp, CHORDS, the effects and TEMPO too, not the player's own:
  * CLOCK, MIDI CH, VEL CURVE, LOADS) and the four operators, on the factory sound it began from (base: the operators'
  * details no knob shows). Their own store object, OBJ_USER: SAVE on SOUNDS writes one there. A sound number past the
- * factory's (set.preset >= NPRESET) is user slot n - NPRESET. LOADS decides what a sound change sets: SOUND, the
- * sound's knobs (SOUND_P) only; ALL, everything a USER preset kept, and a factory sound the arp and effects as new */
+ * factory's (set.preset >= NPRESET) is user slot n - NPRESET. LOADS (SOUNDS's PARAMS) decides what a sound change
+ * sets: HOLD, the sound's knobs (SOUND_P) only; CHANGE, everything a USER preset kept, and a factory sound the arp,
+ * effects and sequence as new */
 static const uint8_t SOUND_P[] = {P_TONE, P_STRIKE, P_DETUNE, P_VELO, P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE,
                                   P_LRATE, P_LSHAPE, P_VIB, P_TREM, P_ALGO, P_RATIO, P_FDBK, P_WAVE, P_VOICES,
                                   P_GLIDE, P_CUTOFF, P_RES, P_FENV, P_FDEC, P_PWM, P_LFOCUT, P_FATT, P_FSUS,
@@ -1755,8 +1756,8 @@ static void seq_defaults(void)
 }
 
 static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP and VOICE pages, and SOUND's two
-                                          * at the middle; a user preset: its sound, or with LOADS on ALL everything
-                                          * it kept (a factory sound then the arp and effects as new) */
+                                          * at the middle; a user preset: its sound, or with LOADS on CHANGE
+                                          * everything it kept (a factory sound then the arp and effects as new) */
 {
     const preset_t *pr;
     int all = set.p[P_LOADS] == 1;
@@ -1965,7 +1966,6 @@ static void theme(void)
     pal[4] = RGB(255, 46, 151);          /* C_HI: values, the knobs, new notes: hot pink */
 }
 
-#define RESET_TURNS 1u                   /* GLOBAL's PARAMS: KEEP, then RESET (a detent right) */
 static struct {
     char msg[2][24];                     /* a short message over the header */
     uint32_t msg_until;
@@ -1974,9 +1974,9 @@ static struct {
     uint32_t turned_at[4];               /* when each knob was last turned: its value lit for a moment */
     uint32_t tempo_at, chance_at;        /* the same, SELECT and ALGO */
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
-    uint32_t reset_arm;                  /* GLOBAL's PARAMS: KEEP, or turned right RESET (done) */
+    uint8_t reset_arm;                   /* RESETS's PARAMS: 0 RESET, 1 SURE? (SAVE: done) */
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
-    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 KEEP, 1 SURE? (SAVE: done) */
+    uint8_t factory_arm;                 /* RESETS's FACTORY: 0 RESET, 1 SURE? (SAVE: done); one armed at a time */
     uint8_t rescan;                      /* the keys as up after this scan: one still pressed sounds again (FACTORY) */
     uint8_t seq_cur;                     /* SEQ: the step the cursor is on (the keys write there), 0..LENGTH-1 */
     uint8_t redraw;
@@ -2133,12 +2133,8 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         text_cat(t, users.u[ui.save_slot].used ? " USED" : " FREE");
         return;
     }
-    if (p == PX_RESET) {                     /* GLOBAL's RESET: turn right until it goes */
-        text_cat(t, ui.reset_arm ? "RESET" : "KEEP");
-        return;
-    }
-    if (p == PX_FACTORY) {
-        text_cat(t, ui.factory_arm ? "SURE?" : "KEEP");
+    if (p == PX_RESET || p == PX_FACTORY) {  /* RESETS's: RESET, turned right SURE? (SAVE does it) */
+        text_cat(t, (p == PX_RESET ? ui.reset_arm : ui.factory_arm) ? "SURE?" : "RESET");
         return;
     }
     if (p == PX_STEP) {                      /* SEQ's: "5/16" */
@@ -2296,8 +2292,8 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         int_text(v, t);
         text_cat(t, " STEPS");
         break;
-    case U_LOADS:                        /* PRESETS, on a sound change: KEEP the arp and effects, or CHANGE them */
-        text_cat(t, v ? "CHANGE" : "KEEP");
+    case U_LOADS:                        /* PARAMS, on a sound change: HOLD the arp and effects, or CHANGE them */
+        text_cat(t, v ? "CHANGE" : "HOLD");
         break;
     case U_CH:
         if (v)
@@ -2349,9 +2345,9 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
     case PX_SLOT:
         return (int32_t)ui.save_slot * w / (int32_t)(NUSER - 1u);
     case PX_RESET:
-        return (int32_t)ui.reset_arm * w / (int32_t)RESET_TURNS;
+        return (int32_t)ui.reset_arm * w;
     case PX_FACTORY:
-        return (int32_t)ui.factory_arm * w / 2;
+        return (int32_t)ui.factory_arm * w;
     case PX_STEP:
         return set.p[P_SEQLEN] > 1 ? (int32_t)seq_cur() * w / (set.p[P_SEQLEN] - 1) : 0;
     case PX_NOTE:
@@ -2581,30 +2577,15 @@ static void param_turn(uint32_t p, int32_t d)
         ui.redraw = 1;
         return;
     }
-    if (p == PX_RESET) {                     /* RESET: the arp, SEQ, CHORDS, CHANCE and the effects as new. Once
-                                              * done it stays DONE (turned on, nothing more); back left, it starts over */
-        uint32_t was = ui.reset_arm;
-        if (was >= RESET_TURNS && d < 0)
-            ui.reset_arm = 0;
-        else
-            ui.reset_arm = (uint32_t)clamp((int32_t)ui.reset_arm + d, 0, (int32_t)RESET_TURNS);
-        ui.redraw = 1;
-        if (ui.reset_arm == RESET_TURNS && was < RESET_TURNS) {
-            uint32_t f = plat_lock();
-            patch_defaults();
-            plat_unlock(f);
-            set_dirty = 1;
-            app_say("RESET", "ARP AND FX");
-        }
-        return;
-    }
-    if (p == PX_FACTORY) {                   /* FACTORY: a turn right SURE?; SAVE then erases (no turn of the knob, however
-                                              * quick, ever does); left, KEEP */
+    if (p == PX_RESET || p == PX_FACTORY) {  /* RESETS: a turn right SURE? (the other back to RESET); SAVE then
+                                              * does it (no turn of the knob, however quick, ever does); left, RESET */
+        uint8_t *arm = p == PX_RESET ? &ui.reset_arm : &ui.factory_arm;
         if (d < 0)
-            ui.factory_arm = 0;
-        else if (!ui.factory_arm) {
-            ui.factory_arm = 1;
-            app_say("FACTORY", "SAVE TO ERASE ALL");
+            *arm = 0;
+        else if (!*arm) {
+            ui.reset_arm = ui.factory_arm = 0;
+            *arm = 1;
+            app_say(p == PX_RESET ? "PARAMS" : "FACTORY", p == PX_RESET ? "SAVE TO RESET" : "SAVE TO ERASE ALL");
         }
         ui.redraw = 1;
         return;
@@ -2801,6 +2782,16 @@ static void input(void)
         } else if (k == B_SAVE && ui.page == PG_RESETS && ui.factory_arm) {   /* RESETS, FACTORY on SURE?: done */
             ui.factory_arm = 0;
             factory_reset();
+        } else if (k == B_SAVE && ui.page == PG_RESETS && ui.reset_arm) {   /* PARAMS on SURE?: the arp, CHORDS,
+                                                                              * CHANCE and the effects as new (the
+                                                                              * sound, TEMPO and the steps stay) */
+            uint32_t f = plat_lock();
+            ui.reset_arm = 0;
+            patch_defaults();
+            plat_unlock(f);
+            set_dirty = 1;
+            ui.redraw = 1;
+            app_say("RESET", "ARP AND FX");
         } else if (k == B_SAVE && ui.page == PG_SOUNDS) {   /* on SOUNDS: the sound into the USER slot chosen */
             char nm[16];
             if (user_store(ui.save_slot) != 0)
@@ -3305,7 +3296,7 @@ static void draw(void)
                 [PG_SOUNDS] = "SAVE: INTO THE SLOT", [PG_ENV] = "ENV AGAIN: FILTER",
                 [PG_FILTER] = "ENV AGAIN: ITS ENV", [PG_FENV] = "ENV AGAIN: AMP", [PG_LFO] = "LFO AGAIN: LFO 2", [PG_LFO2] = "LFO AGAIN: LFO 1",
                 [PG_ARP] = "ARP AGAIN: CHORDS", [PG_CHORDS] = "ARP AGAIN: ARP",
-                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "FACTORY: SURE?, THEN SAVE",
+                [PG_GLOBAL] = "GLO AGAIN: RESETS", [PG_RESETS] = "SURE?, THEN SAVE",
                 [PG_SEQ] = "KEYS WRITE  REC: REST", [PG_GROOVE] = "SEQ AGAIN: STEPS"};
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */

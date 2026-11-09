@@ -157,14 +157,18 @@ tap GLO
 wait 30
 spin K1 1
 wait 30
+tap SAVE
+wait 30
 expect seq_len 4
 expect step2 60
 expect arp 2
-# a USER preset keeps its steps: with PARAMS on CHANGE they come back (a factory sound: the default riff), on KEEP
+# a USER preset keeps its steps: with PARAMS on CHANGE they come back (a factory sound: the default riff), on HOLD
 # the ones there stay
-tap GLO
+tap HOME
 wait 30
-expect page 9
+tap HOME
+wait 30
+expect page 16
 spin K4 1
 wait 30
 expect loads 1
@@ -196,9 +200,11 @@ wait 30
 expect preset 64
 expect step2 60
 expect seq_len 4
-tap GLO
+tap HOME
 wait 30
-expect page 9
+tap HOME
+wait 30
+expect page 16
 spin K4 -1
 wait 30
 expect loads 0
