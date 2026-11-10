@@ -29,6 +29,13 @@ Mighty Arp also tells the [FM-1 Screen Reader](https://charlesvestal.github.io/f
 
 The [manual](app/docs/MANUAL.md) has the rest; [SPEC.md](SPEC.md) is the full design, every page and knob.
 
+## Going back to M-VAVE's firmware
+
+If you go back to M-VAVE's V15 and its presets have odd characters in their names (or come up blank), that's leftover
+data from custom firmware in the FM-1's memory. On V15, go to **GLOBAL**, choose **Reset voice patches** and turn
+**SELECT** to confirm. That puts V15's factory voices back. If every preset then plays in mono, installing Baudgirl's
+firmware and choosing **Reset Bank** on its **GLOBAL** page fixed that for us.
+
 ## Building and testing
 
 Mighty Arp is an app (`app/`, the sound in `app/dsp/`) on [fm1-base](https://github.com/charlesvestal/fm1-base)
