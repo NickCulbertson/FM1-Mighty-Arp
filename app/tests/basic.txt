@@ -144,20 +144,20 @@ shot sound.png
 tap HOME
 wait 30
 expect page 0
-# HOME's SPACE turns the reverb's mix and length together
+# HOME's SPACE turns the reverb's mix and length together (TINES EP: KEYS's reverb, 40 and 55)
 expect rev_mix 40
 expect rev_len 55
 spin K3 10
 wait 30
 expect rev_mix 50
 expect rev_len 65
-# a page, a knob, a sound, then SAVE and a reboot keep them
+# a page, a knob, a sound (its effects with it), then SAVE and a reboot keep them
 tap SEL
 wait 30
 turn K4 10
 wait 30
 expect velocity 70
-turn PRESET 1
+turn PRESET 2
 wait 30
 expect preset 2
 tap SAVE
@@ -167,7 +167,8 @@ reboot
 wait 600
 expect preset 2
 expect velocity 70
-expect rev_mix 50
+expect rev_mix 40
+expect dly_time 4
 expect arp 0
 expect hold 0
 # MIDI in feeds the arp too
@@ -231,17 +232,17 @@ wait 400
 shot scope.png
 key 7 up
 wait 30
-spin PRESET 45
+spin PRESET 34
 wait 30
 key 7 down 100
 wait 600
 shot scope_saw.png
 key 7 up
-# EDIT again: OP 1..4, each operator's own; MOD WAVE sets the modulators' waves (TINE EP: ALGO 5, 2 and 4 modulate)
+# EDIT again: OP 1..4, each operator's own; MOD WAVE sets the modulators' waves (TINES EP: ALGO 5, 2 and 4 modulate)
 tap HOME
 wait 30
-expect preset 29
-spin PRESET -46
+expect preset 24
+spin PRESET -36
 wait 30
 expect preset 0
 tap EDIT
@@ -272,13 +273,13 @@ shot op4.png
 tap EDIT
 wait 30
 expect page 4
-# SEL again: VOICE. SAW LEAD is LEGATO with a glide; POLY plays a chord, MONO and LEGATO one note
+# SEL again: VOICE. SOFT SAW is LEGATO with a glide; POLY plays a chord, MONO and LEGATO one note
 tap HOME
 wait 30
 expect arp 0
-spin PRESET 40
+spin PRESET 19
 wait 30
-expect preset 30
+expect preset 25
 tap SEL
 wait 30
 tap SEL
@@ -315,9 +316,9 @@ key 7 up
 key 11 up
 wait 30
 # a bass is MONO with no glide (FM BASS)
-spin PRESET -14
+spin PRESET 18
 wait 30
-expect preset 22
+expect preset 19
 expect voice_mode 1
 expect glide 0
 wait 30

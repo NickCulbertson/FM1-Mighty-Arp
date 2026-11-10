@@ -1,11 +1,10 @@
-# USER presets keep everything; LOADS (SOUNDS's fourth) says what a sound change sets; GLOBAL's DEFAULTS (tests/run_tests.sh)
+# USER presets keep everything and bring it back; a factory sound leaves what is played; GLOBAL's DEFAULTS (tests/run_tests.sh)
 wait 600
 tap PLAY
 wait 30
 tap PLAY
 wait 30
 expect arp 0
-expect loads 0
 # CHORDS: TRIAD, STRUM 30, then saved as U01 from sound 5
 tap ARP
 wait 30
@@ -19,7 +18,7 @@ expect chord 1
 expect strum 30
 spin PRESET 2
 wait 30
-expect preset 3
+expect preset 2
 expect strum 30
 tap HOME
 wait 30
@@ -29,8 +28,8 @@ expect page 16
 tap SAVE
 wait 30
 expect user1_used 1
-expect preset 64
-# CHORDS off again; LOADS on HOLD: U01 brings back its sound only
+expect preset 50
+# CHORDS off again: a factory sound leaves them so (what is played plays on); U01 brings back its own
 tap ARP
 wait 30
 tap ARP
@@ -42,47 +41,29 @@ expect chord 0
 expect strum 0
 spin PRESET -1
 wait 30
-spin PRESET 1
-wait 30
-expect preset 64
+expect preset 43
 expect chord 0
 expect strum 0
-# LOADS on CHANGE: U01 brings back its CHORDS; a factory sound the arp and effects as new
-tap HOME
-wait 30
-tap HOME
-wait 30
-expect page 16
-spin K4 1
-wait 30
-expect loads 1
-tap HOME
-wait 30
-tap HOME
-wait 30
-expect page 16
-spin PRESET -1
-wait 30
 spin PRESET 1
 wait 30
-expect preset 64
+expect preset 50
 expect chord 1
 expect strum 30
+# a factory sound after it: the CHORDS U01 brought play on
 spin PRESET -1
 wait 30
-expect preset 63
-expect chord 0
-expect strum 0
+expect preset 43
+expect chord 1
+expect strum 30
 spin PRESET 1
 wait 30
 expect strum 30
-# and after a reboot: the bank whole, LOADS kept (the player's own)
+# and after a reboot: the bank whole
 tap SAVE
 wait 30
 reboot
 wait 600
-expect loads 1
-expect preset 64
+expect preset 50
 expect strum 30
 spin PRESET -1
 wait 30
@@ -106,8 +87,7 @@ wait 30
 expect strum 0
 expect chord 0
 expect tempo 100
-expect preset 64
-expect loads 1
+expect preset 50
 # a turn never resets: turned on and on, then back left, nothing; SURE? and SAVE does
 turn ALGO -10
 wait 30
@@ -191,14 +171,12 @@ expect user1_used 0
 expect user2_used 0
 expect preset 0
 expect tempo 90
-expect loads 0
 expect page 0
 reboot
 wait 600
 expect user1_used 0
 expect preset 0
 expect tempo 90
-expect loads 0
 # A key held through FACTORY (at OCT +1): it sounds again at OCT 0 by itself; let go, no note left counted down;
 # HOLD replaces as it should
 tap OCT+

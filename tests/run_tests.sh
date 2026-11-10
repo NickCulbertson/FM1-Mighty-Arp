@@ -36,5 +36,7 @@ run presets $H app/tests/presets.txt $B/host
 run userpeek $H app/tests/userpeek.txt $B/host
 run seq $H app/tests/seq.txt $B/host
 run seq2 $H app/tests/seq2.txt $B/host
+run bassfx $H app/tests/bassfx.txt $B/host
+run random $H app/tests/random.txt $B/host
 run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL

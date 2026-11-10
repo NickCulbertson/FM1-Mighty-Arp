@@ -34,7 +34,6 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        P_FATT, P_FSUS, P_FREL, P_KEYTRK,              /* FILTER ENVELOPE (ENV a third time; its DECAY is P_FDEC),
                                                        * FILTER's KEY TRACK */
        P_CHORD, P_STRUM, P_KEY, P_SCALE,              /* CHORDS (ARP again) */
-       P_LOADS,                                       /* SOUNDS's PARAMS: what a sound change sets (the player's) */
        P_SEQLEN,                                      /* SEQ's fourth: the sequence's LENGTH (it goes with the steps) */
        NP,
        PX_SPACE = NP,                                 /* HOME's macro: the reverb's mix and length together */
@@ -43,6 +42,7 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_RESET,                                      /* RESETS: PARAMS, RESET, SURE?, then SAVE: the arp and FX as new */
        PX_FACTORY,                                    /* RESETS: FACTORY, RESET, SURE?, then SAVE: everything as new */
        PX_STEP, PX_NOTE, PX_SVEL,                     /* SEQ: the step the cursor is on, its note, its velocity */
+       PX_RTYPE,                                      /* SOUNDS on RANDOM: the kind of sound a roll makes */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 14u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE,
                                           * W14 NOISE */
@@ -50,7 +50,7 @@ static const char *const WAVE_SHORT[] = {"SINE", "", "", "", "", "", "", "", "SA
                                               "NOISE"};
 typedef char every_wave_short[sizeof WAVE_SHORT / sizeof WAVE_SHORT[0] == NWAVE ? 1 : -1];
 enum { U_PCT, U_TIME, U_DIV, U_OCT, U_MODE, U_DDIV, U_BPM, U_HZ, U_CHZ, U_SHAPE, U_NUM1, U_RATIO, U_NUM, U_WAVE,
-       U_SECS, U_VOICES, U_GLIDE, U_CUT, U_CHORD, U_STRUM, U_KEY, U_SCALE, U_LOADS,
+       U_SECS, U_VOICES, U_GLIDE, U_CUT, U_CHORD, U_STRUM, U_KEY, U_SCALE,
        U_SYNC, U_ONOFF, U_CH, U_CURVE, U_STEPS };
 /* CHORDS: what the arp makes of a note (a diatonic chord on it, or its chord's tones as the notes to play from), in
  * a key and a scale */
@@ -94,7 +94,6 @@ static const param_t PAR[NP] = {
     {"RELEASE", "frel", 0, 100, 60, U_TIME},     {"KEY TRACK", "keytrack", 0, 100, 50, U_PCT},
     {"CHORD", "chord", 0, NCHORD - 1, 0, U_CHORD}, {"STRUM", "strum", 0, 100, 0, U_STRUM},
     {"KEY", "key", 0, 11, 0, U_KEY},             {"SCALE", "scale", 0, NSCALE - 1, 0, U_SCALE},
-    {"PARAMS", "loads", 0, 1, 0, U_LOADS},
     {"LENGTH", "seq_len", 1, 32, 16, U_STEPS},
 };
 
@@ -123,7 +122,7 @@ static const page_t PAGE[NPAGE] = {
     {"OP 3", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 4", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"VOICE", B_SEL, {P_VOICES, P_GLIDE, PX_NONE, PX_NONE}},
-    {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, P_LOADS}},
+    {"SOUNDS", B_HOME, {PX_CAT, PX_SND, PX_SLOT, PX_RTYPE}},   /* (TYPE on RANDOM only) */
     {"FILTER", B_ENV, {P_CUTOFF, P_RES, P_FENV, P_KEYTRK}},
     {"LFO 2", B_LFO, {P_PWM, P_LFOCUT, PX_NONE, PX_NONE}},
     {"FILTER ENVELOPE", B_ENV, {P_FATT, P_FDEC, P_FSUS, P_FREL}},
@@ -187,10 +186,12 @@ static const char *const HOLD_NAME[3] = {"NO HOLD", "HOLD", "LATCH"};
  * follow the ENVELOPE page, which the sound sets (a, d, s, r: the knobs). alg 0..7 is ALGO 1..8 */
 #define OP(r, c, l, w, st, a, d, s) {(r), (c), (l), (w), (st), (a), (d), (s)}
 #define CARRIER(r, c, l) OP(r, c, l, 0, 0, 0.0f, 0.0f, 0.0f)
-/* the sounds' kinds: HOME again browses them so (SOUNDS); USER, the player's own (user[]) */
-enum { CAT_KEYS, CAT_BELLS, CAT_PLUCKS, CAT_BASS, CAT_LEADS, CAT_PADS, CAT_PERC, CAT_WEIRD, CAT_USER, NCAT };
-static const char *const CAT_NAME[NCAT] = {"KEYS", "BELLS", "PLUCKS", "BASS", "LEADS", "PADS", "PERC", "WEIRD",
-                                           "USER"};
+/* the sounds' kinds: HOME again browses them so (SOUNDS); RANDOM, sounds made up on the spot (rnds[]); USER, the
+ * player's own (user[]) */
+enum { CAT_KEYS, CAT_BELLS, CAT_PLUCKS, CAT_LEADS, CAT_PADS, CAT_BASS, CAT_PERC, CAT_WEIRD, CAT_RANDOM, CAT_USER,
+       NCAT };
+static const char *const CAT_NAME[NCAT] = {"KEYS", "BELLS", "PLUCKS", "LEADS", "PADS", "BASS", "PERC", "WEIRD",
+                                           "RANDOM", "USER"};
 typedef struct {
     const char *name;
     uint8_t cat;
@@ -203,7 +204,7 @@ typedef struct {
 } preset_t;
 static const preset_t PRESET[] = {
     /* electric pianos: two stacks (ALGO 5), the body and the tine, which STRIKE rides */
-    {"TINE EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.25f, 0, 0, 0, 1.2f, 0.15f),
+    {"TINES EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.25f, 0, 0, 0, 1.2f, 0.15f),
                         OP(1, 3, 0.35f, 0, 1, 0, 2.0f, 0.08f), OP(14, 0, 0.21f, 0, 0, 0, 0.07f, 0)}, 0, 0},
      0, 74, 25, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* a jazz organ: three drawbars (16', 8', 4') and the third harmonic's percussion, a strike carrier that falls
@@ -214,40 +215,33 @@ static const preset_t PRESET[] = {
     {"DYNO EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.32f, 0, 0, 0, 0.7f, 0.15f),
                         OP(1, 3, 0.55f, 0, 1, 0, 1.2f, 0.05f), OP(14, 0, 0.36f, 0, 0, 0, 0.1f, 0.02f)}, 0, 0},
      0, 74, 20, 80, 72, LFO_TRI, 0, 40, 0, 0, 0, 0, 0, 0},
-    {"BELL EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.2f, 0, 0, 0, 1.4f, 0.15f),
+    {"BELL EP", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.2f, 0, 0, 0, 1.4f, 0.15f),
                         OP(2, 2, 0.4f, 0, 1, 0, 2.6f, 0.02f), OP(7, 0, 0.18f, 0, 0, 0, 0.5f, 0.05f)}, 0, 0},
      0, 80, 20, 86, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"WURLY", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.32f, 1, 0, 0, 0.6f, 0.3f),
                       OP(1, 0, 0.3f, 0, 1, 0, 1.0f, 0.2f), OP(3, 0, 0.12f, 0, 0, 0, 0.25f, 0.05f)}, 0, 0},
      0, 72, 35, 74, 74, LFO_TRI, 0, 35, 0, 0, 0, 0, 0, 0},
-    /* a worn tape of an EP: dull (the filter low), wobbling (deep, slow drift: wow), dusty (W14 NOISE stirring the
-     * tine) */
-    {"LOFI EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.2f, 0, 0, 0, 1.2f, 0.15f),
-                        OP(1, 5, 0.3f, 0, 1, 0, 2.0f, 0.08f), OP(1, 0, 0.05f, 13, 0, 0, 0.5f, 1.0f)}, 0, 0},
-     2, 78, 25, 84, 14, LFO_DRIFT, 48, 10, 1, 40, 15, 20, 50, 0},
     {"DREAM EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.18f, 0, 0, 0, 2.5f, 0.2f),
                          OP(2, 5, 0.25f, 0, 1, 0, 3.5f, 0.15f), OP(14, 0, 0.08f, 0, 0, 0, 0.1f, 0)}, 0, 0},
      8, 86, 35, 92, 25, LFO_DRIFT, 14, 15, 0, 0, 0, 0, 0, 0},
     {"GLASS EP", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(3, 0, 0.12f, 0, 0, 0, 1.5f, 0.2f),
                          OP(1, 0, 0.45f, 0, 1, 0, 2.0f, 0.05f), OP(7, 0, 0.2f, 0, 0, 0, 0.4f, 0.05f)}, 0, 0},
      0, 78, 22, 84, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"FM PIANO", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.3f, 0, 0, 0, 0.8f, 0.1f),
-                         OP(2, 3, 0.3f, 0, 1, 0, 1.0f, 0.05f), OP(5, 0, 0.08f, 0, 0, 0, 0.2f, 0)}, 0, 0},
-     0, 78, 10, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
+    /* tubular bells: the 3.5 ratio's clang on the note, a second stack a little sharp beating against it, long */
+    {"TUBE BELLS", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 0.9f), OP(3.5f, 0, 0.3f, 0, 0, 0, 2.5f, 0.1f),
+                           CARRIER(1, 7, 0.45f), OP(7, 0, 0.12f, 0, 0, 0, 1.0f, 0)}, 0, 0},
+     0, 88, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* keys */
-    {"CLAV", CAT_KEYS, 4, 3, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.55f, 1, 0, 0, 0.25f, 0.25f),
-                     OP(3, 0, 0.3f, 0, 1, 0, 0.3f, 0.1f), OP(1, 0, 0.4f, 0, 0, 0, 0.15f, 0.1f)}, 0, 0},
-     0, 60, 30, 42, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"FM ORGAN", CAT_KEYS, 7, 2, {{CARRIER(0.5f, 0, 0.35f), CARRIER(1, 0, 0.45f), CARRIER(2, 0, 0.3f), CARRIER(4, 0, 0.18f)},
                         0, 0},
      1, 50, 100, 40, 82, LFO_SINE, 30, 15, 0, 0, 0, 0, 0, 0},
     {"VIBES", CAT_KEYS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.12f, 0, 0, 0, 0.4f, 0),
                       OP(4, 0, 0.14f, 0, 1, 0, 0.5f, 0), OP(1, 0, 0.05f, 0, 0, 0, 0.3f, 0)}, 0, 0},
      0, 84, 0, 82, 76, LFO_SINE, 0, 45, 0, 0, 0, 0, 0, 0},
-    /* bells and mallets */
-    {"GLASS BELL", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(3.5f, 0, 0.38f, 0, 0, 0, 2.5f, 0.2f),
-                           OP(1, 0, 0.5f, 0, 1, 0, 3.0f, 0), OP(1.41f, 0, 0.16f, 0, 0, 0, 1.5f, 0.1f)}, 0, 0},
-     0, 86, 0, 88, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
+    /* a brass pad: FM BRASS's chain, swelling slowly and held, a slow vibrato */
+    {"BRASS PAD", CAT_PADS, 0, 3, {{CARRIER(1, 0, 0.9f), OP(1, 0, 0.25f, 0, 0, 0.5f, 2.0f, 0.75f),
+                          OP(1, 0, 0.1f, 0, 0, 0.6f, 2.0f, 0.6f), OP(1, 0, 0.06f, 0, 0, 0.4f, 2.0f, 0.5f)}, 0, 0},
+     66, 85, 95, 82, 60, LFO_SINE, 12, 0, 0, 0, 0, 0, 0, 0},
     /* the WEIRD ones: noise and inharmonic FM for texture. SONAR: a metallic ping that rings and shimmers away */
     {"SONAR", CAT_WEIRD, 4, 0, {{CARRIER(1, 0, 1.0f), OP(2.76f, 0, 0.35f, 0, 0, 0, 2.0f, 0.1f),
                       OP(5.4f, 0, 0.3f, 0, 1, 0, 0.6f, 0), OP(1.41f, 0, 0.15f, 0, 0, 0, 1.0f, 0)}, 0, 0},
@@ -255,9 +249,6 @@ static const preset_t PRESET[] = {
     {"MARIMBA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.32f, 0, 0, 0, 0.03f, 0),
                         OP(1, 0, 0.6f, 0, 1, 0, 0.5f, 0), OP(1, 0, 0.08f, 0, 0, 0, 0.12f, 0)}, 0, 0},
      0, 58, 0, 66, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"MUSIC BOX", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(7, 0, 0.24f, 0, 0, 0, 0.15f, 0.05f),
-                          OP(3, 0, 0.3f, 0, 1, 0, 0.8f, 0), OP(1, 0, 0.03f, 0, 0, 0, 0.4f, 0)}, 0, 0},
-     0, 68, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"CELESTA", CAT_BELLS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(6, 0, 0.27f, 0, 0, 0, 0.35f, 0.02f),
                         OP(4, 0, 0.42f, 0, 1, 0, 0.55f, 0), OP(3, 0, 0.09f, 0, 0, 0, 0.4f, 0)}, 0, 0},
      0, 76, 0, 82, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -274,59 +265,49 @@ static const preset_t PRESET[] = {
     {"NYLON", CAT_PLUCKS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.25f, 0, 0, 0, 0.3f, 0.05f),
                       OP(3, 0, 0.15f, 0, 1, 0, 0.15f, 0), OP(1, 0, 0.1f, 0, 0, 0, 0.1f, 0)}, 0, 0},
      0, 70, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"PLUCK", CAT_PLUCKS, 0, 6, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.4f, 0, 0, 0, 0.25f, 0.05f),
+    {"SAW PLUCK", CAT_PLUCKS, 0, 6, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.4f, 0, 0, 0, 0.25f, 0.05f),
                       OP(1, 0, 0.3f, 0, 0, 0, 0.2f, 0), OP(1, 0, 0.3f, 0, 0, 0, 0.2f, 0)}, 0, 0},
      0, 60, 0, 70, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    /* basses: an octave down (ratio 1/2) */
+    /* basses: an octave down (ratio 1/2), MONO; louder than the rest (LOUDER) */
     /* the 80s DX bass (Danger Zone's): a bright snap falling quickly to a round, barking sustain */
     {"FM BASS", CAT_BASS, 2, 6, {{CARRIER(0.5f, 0, 0.8f), OP(0.5f, 0, 0.55f, 0, 0, 0, 0.18f, 0.25f),
                         OP(1, 0, 0.25f, 0, 0, 0, 0.12f, 0), OP(0.5f, 0, 0.3f, 0, 0, 0, 0.08f, 0.1f)}, 1, 0},
      0, 62, 70, 35, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"SLAP BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.65f, 0, 0, 0, 0.15f, 0.2f),
-                          OP(1.5f, 0, 0.5f, 0, 1, 0, 0.12f, 0), OP(3.5f, 0, 0.45f, 0, 0, 0, 0.06f, 0)}, 1, 0},
-     0, 64, 45, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
+    /* a kick: a sub thump an octave down, a fast FM fall for its punch, a click of noise (play it low) */
+    {"FM KICK", CAT_PERC, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.6f, 0, 0, 0, 0.03f, 0),
+                        OP(1, 0, 0.2f, 13, 1, 0, 0.008f, 0), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
+     0, 56, 0, 44, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* the 16-bit consoles' bass: a four-operator stack with full feedback, a growl that falls to a buzz */
     {"16BIT BASS", CAT_BASS, 0, 6, {{CARRIER(0.5f, 0, 0.85f), OP(1, 0, 0.5f, 0, 0, 0, 0.2f, 0.35f),
                            OP(1, 0, 0.35f, 0, 0, 0, 0.15f, 0.2f), OP(2, 0, 0.3f, 0, 0, 0, 0.1f, 0.1f)}, 1, 0},
      0, 65, 60, 32, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"WOOD BASS", CAT_BASS, 4, 0, {{CARRIER(0.5f, 0, 1.0f), OP(0.5f, 0, 0.2f, 0, 0, 0, 0.15f, 0.05f),
-                          OP(1, 0, 0.2f, 0, 1, 0, 0.08f, 0), OP(2, 0, 0.15f, 0, 0, 0, 0.04f, 0)}, 1, 0},
-     0, 70, 0, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* synths */
-    {"FM BRASS", CAT_LEADS, 0, 4, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.3f, 0, 0, 0.06f, 0.4f, 0.6f),
+    {"FM BRASS", CAT_PADS, 0, 4, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.3f, 0, 0, 0.06f, 0.4f, 0.6f),
                          OP(1, 0, 0.12f, 0, 0, 0.05f, 0.5f, 0.5f), OP(1, 0, 0.08f, 0, 0, 0, 0.4f, 0.5f)}, 0, 0},
      12, 70, 80, 45, 76, LFO_SINE, 25, 0, 0, 0, 0, 0, 0, 0},
     {"SYNC LEAD", CAT_LEADS, 0, 6, {{CARRIER(1, 0, 1.0f), OP(2, 0, 0.35f, 0, 0, 0, 0.6f, 0.6f),
                           OP(1, 0, 0.2f, 0, 0, 0, 0.5f, 0.5f), OP(1, 0, 0.2f, 0, 0, 0, 0.5f, 0.5f)}, 2, 0.05f},
      0, 60, 70, 40, 76, LFO_SINE, 30, 0, 0, 0, 0, 0, 0, 0},
-    {"FM SAW", CAT_LEADS, 4, 5, {{CARRIER(1, -8, 0.7f), OP(1, 0, 0.32f, 0, 0, 0, 1.0f, 0.8f),
-                       CARRIER(1, 8, 0.7f), OP(1, 0, 0.3f, 0, 0, 0, 1.0f, 0.8f)}, 0, 0},
-     0, 60, 85, 50, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     /* saws: W9 carriers (band-limited), a little FM on top */
 #define SAWC(r, c, l) OP(r, c, l, 8, 0, 0.0f, 0.0f, 0.0f)
     {"SAW PAD", CAT_PADS, 4, 0, {{SAWC(1, -7, 0.75f), OP(1, 0, 0.05f, 0, 0, 0.5f, 3.0f, 0.8f),
                         SAWC(1, 7, 0.75f), OP(2, 0, 0.03f, 0, 0, 0.8f, 3.0f, 0.6f)}, 0, 0},
      70, 82, 85, 90, 30, LFO_DRIFT, 15, 0, 1, 60, 10, 15, 85, 0},
-    {"SAW LEAD", CAT_LEADS, 4, 0, {{SAWC(1, -5, 0.85f), OP(1, 0, 0.12f, 0, 0, 0, 0.4f, 0.3f),
-                         SAWC(1, 5, 0.65f), OP(2, 0, 0.08f, 0, 0, 0, 0.5f, 0.3f)}, 2, 0.04f},
-     0, 60, 80, 40, 76, LFO_SINE, 25, 0, 1, 65, 20, 20, 65, 0},
-    {"SAW BASS", CAT_BASS, 4, 0, {{SAWC(0.5f, 0, 0.8f), OP(0.5f, 0, 0.15f, 0, 0, 0, 0.15f, 0.05f),
-                         CARRIER(0.5f, 0, 0.4f), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 1, 0},
-     0, 62, 40, 30, 45, LFO_SINE, 0, 0, 1, 35, 30, 45, 55, 0},
+    /* a soft saw lead: a reed-like buzz (operator 4's feedback through the chain), a breathy attack, vibrato, legato */
+    {"SOFT SAW", CAT_LEADS, 2, 5, {{CARRIER(1, 0, 0.9f), OP(1, 0, 0.2f, 0, 0, 0.03f, 0.4f, 0.7f),
+                          OP(3, 0, 0.1f, 0, 0, 0.03f, 0.3f, 0.6f), OP(1, 0, 0.12f, 0, 0, 0.05f, 0.4f, 0.6f)}, 2,
+                          0.02f},
+     30, 70, 85, 40, 77, LFO_SINE, 30, 10, 0, 0, 0, 0, 0, 0},
     /* pads */
     {"GLASS PAD", CAT_PADS, 4, 0, {{CARRIER(1, 0, 0.7f), OP(1, 0, 0.19f, 0, 0, 0, 4.0f, 0.6f),
                           CARRIER(1, 5, 0.55f), OP(2, 0, 0.13f, 0, 0, 0, 3.0f, 0.5f)}, 0, 0},
      72, 82, 80, 88, 30, LFO_DRIFT, 22, 0, 0, 0, 0, 0, 0, 0},
-    {"STRINGS", CAT_PADS, 4, 3, {{CARRIER(1, -6, 0.7f), OP(1, 0, 0.18f, 0, 0, 0.3f, 1.0f, 0.9f),
-                        CARRIER(1, 6, 0.7f), OP(1, 0, 0.15f, 0, 0, 0.3f, 1.0f, 0.9f)}, 0, 0},
-     70, 80, 90, 85, 76, LFO_SINE, 25, 0, 0, 0, 0, 0, 0, 0},
-    {"CHOIR", CAT_PADS, 5, 0, {{CARRIER(1, 0, 0.8f), CARRIER(3, 0, 0.25f), CARRIER(5, 0, 0.1f),
-                      OP(1, 0, 0.1f, 0, 0, 0.4f, 2.0f, 0.9f)}, 0, 0},
-     75, 80, 90, 86, 30, LFO_DRIFT, 25, 0, 0, 0, 0, 0, 0, 0},
-    {"DRIFT PAD", CAT_PADS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(0.5f, 0, 0.1f, 0, 0, 1.0f, 4.0f, 1.0f),
-                          CARRIER(2, 5, 0.5f), OP(3, 0, 0.08f, 0, 0, 0, 3.0f, 0.7f)}, 0, 0},
-     80, 85, 85, 92, 25, LFO_DRIFT, 40, 25, 0, 0, 0, 0, 0, 0},
-    {"HALO", CAT_PADS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.1f, 0, 0, 0.5f, 3.0f, 0.8f),
+    /* a pan flute: a sine with a touch of breath (a noise strike carrier, its chiff falling away), the octave and twelfth
+     * faint, vibrato */
+    {"PAN FLUTE", CAT_LEADS, 7, 0, {{CARRIER(1, 0, 0.8f), OP(1, 0, 0.05f, 13, 1, 0.01f, 0.12f, 0.06f),
+                          CARRIER(3, 0, 0.05f), CARRIER(2, 0, 0.08f)}, 0, 0},
+     40, 80, 90, 55, 72, LFO_SINE, 22, 0, 0, 0, 0, 0, 0, 0},
+    {"DRIFT SAW", CAT_PADS, 4, 0, {{CARRIER(1, 0, 1.0f), OP(4, 0, 0.1f, 0, 0, 0.5f, 3.0f, 0.8f),
                      CARRIER(2, 0, 0.5f), OP(7, 0, 0.05f, 0, 0, 1.0f, 3.0f, 0.5f)}, 0, 0},
      78, 86, 70, 94, 20, LFO_DRIFT, 20, 20, 0, 0, 0, 0, 0, 0},
     /* the analog waves (W10-W13): square and pulses (two saws), triangle; band-limited like the saw */
@@ -346,9 +327,11 @@ static const preset_t PRESET[] = {
     {"PULSE PLUCK", CAT_PLUCKS, 4, 0, {{WAVC(1, 0, 1.0f, 10), OP(2, 0, 0.15f, 0, 0, 0, 0.1f, 0),
                                        CARRIER(1, 0, 0), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
      0, 66, 0, 75, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    {"TRI PAD", CAT_PADS, 7, 0, {{WAVC(1, -5, 0.7f, 12), WAVC(2, 5, 0.35f, 12), WAVC(0.5f, 0, 0.3f, 12),
-                                 CARRIER(1, 0, 0)}, 0, 0},
-     70, 82, 85, 90, 25, LFO_DRIFT, 15, 0, 0, 0, 0, 0, 0, 0},
+    /* a talking computer: three carriers on vowel-like harmonics, a resonant filter and the pitch jumping at random
+     * (S&H) */
+    {"ROBOT", CAT_WEIRD, 6, 4, {{CARRIER(1, 0, 0.5f), CARRIER(3, 0, 0.3f), CARRIER(5, 0, 0.2f),
+                      OP(1, 0, 0.3f, 0, 0, 0, 0.5f, 0.8f)}, 0, 0},
+     10, 70, 80, 50, 60, LFO_SH, 30, 0, 1, 70, 60, 0, 60, 40},
     {"TRI FLUTE", CAT_LEADS, 4, 0, {{WAVC(1, 0, 0.9f, 12), OP(1, 0, 0.03f, 0, 0, 0.08f, 1.0f, 0.6f),
                                     CARRIER(1, 0, 0), OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
      6, 70, 80, 40, 76, LFO_SINE, 30, 0, 0, 0, 0, 0, 0, 0},
@@ -359,37 +342,30 @@ static const preset_t PRESET[] = {
     {"POLY SYNTH", CAT_KEYS, 6, 4, {{SAWC(1, -6, 0.45f), SAWC(1, 6, 0.45f), CARRIER(1, 0, 0.5f),
                                     OP(1, 0, 0.25f, 0, 0, 0, 0.3f, 0.1f)}, 0, 0},
      0, 72, 40, 60, 45, LFO_SINE, 0, 0, 1, 45, 25, 45, 60, 0},
-    {"80S KEYS", CAT_KEYS, 7, 0, {{WAVC(1, 0, 0.9f, 9), SAWC(2, 0, 0.45f), Z, Z}, 0, 0},
-     0, 70, 30, 62, 45, LFO_SINE, 0, 0, 1, 58, 15, 35, 58, 0},
-    {"SAW PLUCK", CAT_PLUCKS, 4, 0, {{SAWC(1, 0, 0.95f), OP(1, 0, 0.25f, 0, 0, 0, 0.12f, 0),
-                                     SAWC(1, 8, 0.55f), OP(2, 0, 0.15f, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     0, 66, 0, 72, 45, LFO_SINE, 0, 0, 1, 30, 30, 60, 55, 0},
-    {"SQR PLUCK", CAT_PLUCKS, 7, 0, {{WAVC(1, 0, 1.0f, 9), WAVC(2, 4, 0.4f, 10), Z, Z}, 0, 0},
-     0, 64, 0, 70, 45, LFO_SINE, 0, 0, 1, 38, 35, 55, 52, 0},
+    /* a log drum: a woody knock, the FM's quick fall heard as the pitch dropping */
+    {"LOG DRUM", CAT_PERC, 4, 0, {{CARRIER(1, 0, 1.0f), OP(1, 0, 0.5f, 0, 0, 0, 0.05f, 0), Z,
+                         OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
+     0, 64, 0, 52, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
     {"SQUARE BASS", CAT_BASS, 7, 0, {{WAVC(0.5f, 0, 0.6f, 9), CARRIER(0.5f, 0, 0.4f), Z, Z}, 1, 0},
      0, 60, 60, 25, 45, LFO_SINE, 0, 0, 1, 35, 20, 40, 55, 0},
-    {"PULSE BASS", CAT_BASS, 4, 0, {{WAVC(0.5f, 0, 1.0f, 10), OP(0.5f, 0, 0.2f, 0, 0, 0, 0.15f, 0.05f), Z,
-                                    OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 1, 0},
-     0, 62, 45, 28, 45, LFO_SINE, 0, 0, 1, 30, 35, 50, 50, 0},
-    {"SYNTH BASS", CAT_BASS, 6, 0, {{SAWC(0.5f, 0, 0.6f), SAWC(0.5f, 10, 0.4f), CARRIER(0.5f, 0, 0.35f),
-                                    OP(1, 0, 0.2f, 0, 0, 0, 0.1f, 0)}, 1, 0},
-     0, 62, 55, 25, 45, LFO_SINE, 0, 0, 1, 28, 45, 55, 52, 0},
     /* the West Coast lead (G-funk's): two saws a little apart, a long legato glide between notes, vibrato */
     {"WEST COAST", CAT_LEADS, 7, 0, {{SAWC(1, -4, 0.5f), SAWC(1, 4, 0.5f), Z, Z}, 2, 0.09f},
      4, 60, 90, 45, 62, LFO_SINE, 28, 0, 1, 70, 22, 15, 65, 0},
     {"PULSE LEAD", CAT_LEADS, 7, 0, {{WAVC(1, 0, 0.6f, 10), WAVC(1, 7, 0.35f, 11), Z, Z}, 2, 0.04f},
      0, 60, 80, 40, 76, LFO_SINE, 30, 0, 1, 60, 25, 25, 62, 0},
-    {"80S BRASS", CAT_LEADS, 6, 0, {{SAWC(1, -5, 0.4f), SAWC(1, 5, 0.4f), CARRIER(1, 0, 0.4f),
-                                   OP(1, 0, 0.3f, 0, 0, 0.08f, 0.5f, 0.4f)}, 0, 0},
-     10, 70, 80, 45, 76, LFO_SINE, 15, 0, 1, 40, 15, 45, 70, 0},
+    {"80S BRASS", CAT_PADS, 6, 0, {{SAWC(1, -5, 0.4f), SAWC(1, 5, 0.4f), CARRIER(1, 0, 0.4f),
+                                   OP(1, 0, 0.22f, 0, 0, 0.08f, 0.5f, 0.1f)}, 0, 0},
+     25, 70, 80, 45, 76, LFO_SINE, 15, 0, 1, 32, 15, 55, 66, 0},
     {"SAW STRINGS", CAT_PADS, 7, 0, {{SAWC(1, -12, 0.35f), SAWC(1, 0, 0.35f), SAWC(1, 12, 0.35f),
                                      WAVC(2, 0, 0.15f, 10)}, 0, 0},
-     72, 82, 90, 88, 70, LFO_SINE, 10, 0, 1, 65, 10, 10, 80, 0},
-    {"SQUARE PAD", CAT_PADS, 7, 0, {{WAVC(1, -6, 0.45f, 9), WAVC(1, 6, 0.45f, 9), WAVC(2, 0, 0.25f, 12), Z}, 0, 0},
-     75, 82, 85, 92, 25, LFO_DRIFT, 12, 15, 1, 55, 20, 15, 85, 0},
-    {"SWEEP PAD", CAT_PADS, 4, 0, {{SAWC(1, 0, 0.55f), OP(1, 0, 0.1f, 0, 0, 2.0f, 4.0f, 0.6f),
-                                   SAWC(1, 7, 0.55f), OP(1, 0, 0.08f, 0, 0, 3.0f, 4.0f, 0.5f)}, 0, 0},
-     70, 85, 85, 92, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 92, 0},
+     72, 88, 95, 94, 70, LFO_SINE, 10, 0, 1, 50, 10, 10, 92, 0},
+    /* a dark drone: an octave-down stack and one a little sharp, inharmonic shimmer rising slowly, drifting */
+    {"DARK DRONE", CAT_WEIRD, 4, 4, {{CARRIER(0.5f, 0, 0.7f), OP(1.41f, 0, 0.3f, 0, 0, 1.5f, 6.0f, 0.8f),
+                           CARRIER(1, 7, 0.4f), OP(2.76f, 0, 0.25f, 0, 0, 2.5f, 6.0f, 0.7f)}, 0, 0},
+     70, 90, 90, 85, 30, LFO_DRIFT, 15, 20, 0, 0, 0, 0, 0, 0},
+    {"SWEEP PAD", CAT_PADS, 4, 0, {{SAWC(1, 0, 0.55f), OP(1, 0, 0.1f, 0, 0, 2.0f, 8.0f, 0.6f),
+                                   SAWC(1, 7, 0.55f), OP(1, 0, 0.08f, 0, 0, 3.0f, 8.0f, 0.5f)}, 0, 0},
+     70, 92, 95, 95, 20, LFO_DRIFT, 12, 0, 1, 35, 40, 50, 97, 0},
     /* gnarly FM, the 16-bit consoles' way: feedback and inharmonic ratios */
     {"METAL LEAD", CAT_LEADS, 0, 6, {{CARRIER(1, 0, 0.9f), OP(2, 0, 0.4f, 0, 0, 0, 0.6f, 0.7f),
                            OP(3, 0, 0.25f, 0, 0, 0, 0.5f, 0.6f), OP(1, 0, 0.2f, 0, 0, 0, 0.4f, 0.5f)}, 2, 0.03f},
@@ -406,26 +382,18 @@ static const preset_t PRESET[] = {
     {"NOISE HAT", CAT_PERC, 4, 0, {{NOISEC(0.7f), OP(1, 0, 0, 0, 0, 0, 0.1f, 0),
                           CARRIER(9, 0, 0.25f), OP(14, 0, 0.6f, 0, 0, 0, 0.05f, 0)}, 0, 0},
      0, 36, 0, 30, 45, LFO_SINE, 0, 0, 0, 0, 0, 0, 0, 0},
-    /* STATIC: a wash of noise swelling in, crackling (random tremolo, S&H) over a low hum */
-    {"STATIC", CAT_WEIRD, 6, 0, {{CARRIER(1, 0, 0.2f), CARRIER(0.5f, 0, 0.15f), NOISEC(0.35f),
-                       OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
-     60, 80, 80, 85, 70, LFO_SH, 0, 45, 1, 70, 10, 0, 60, 0},
     /* WIND: noise through a resonant filter the slow LFO sweeps, gusting */
     {"WIND", CAT_WEIRD, 6, 0, {{CARRIER(1, 0, 0.05f), CARRIER(0.5f, 0, 0.03f), NOISEC(0.8f),
                      OP(1, 0, 0, 0, 0, 0, 0.1f, 0)}, 0, 0},
      75, 85, 90, 88, 30, LFO_DRIFT, 0, 20, 1, 45, 60, 0, 60, 60},
-    /* ALIEN: two inharmonic stacks, the pitch jumping at random (S&H vibrato) */
-    {"ALIEN", CAT_WEIRD, 4, 3, {{CARRIER(1, 0, 0.7f), OP(1.41f, 0, 0.4f, 0, 0, 0, 1.0f, 0.8f),
-                      CARRIER(2.76f, 12, 0.4f), OP(5.4f, 0, 0.2f, 0, 0, 0, 1.0f, 0.6f)}, 0, 0},
-     20, 80, 70, 70, 55, LFO_SH, 60, 0, 0, 0, 0, 0, 0, 0},
 };
 #define NPRESET (sizeof PRESET / sizeof PRESET[0])
-/* the order PRESET and SOUNDS go through them: kind by kind, each kind's like sounds together (the numbers stay
- * as saves know them; a sound added goes into its kind here). tests/make_sounds_test.py reads it */
+/* the order PRESET and SOUNDS go through them: kind by kind, and within a kind mixed up (an EP, a vibraphone, an EP...,
+ * the organs last: browsing keeps surprising). The numbers stay as saves know them; a sound added goes into its kind here.
+ * tests/make_sounds_test.py reads it */
 static const uint8_t ORDER[] = {
-    0, 2, 3, 4, 5, 6, 7, 8, 45, 44, 9, 10, 1, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 41, 46, 47, 22, 23, 24, 25,
-    31, 38, 48, 49, 50, 26, 53, 27, 28, 57, 30, 51, 39, 52, 40, 43, 29, 37, 54, 33, 32, 34, 35, 36, 42, 55, 56, 59,
-    60, 13, 58, 61, 62, 63};
+    0, 9, 2, 36, 6, 4, 5, 8, 1, 7, 12, 3, 14, 13, 18, 17, 15, 16, 33, 25, 23, 35, 39, 32, 45, 27, 31, 40, 29, 22,
+    26, 42, 41, 28, 10, 44, 24, 19, 30, 21, 38, 20, 47, 37, 48, 11, 46, 34, 49, 43};
 #define NORDER (sizeof ORDER)
 #define NBROWSE (NORDER + NUSER)         /* what PRESET goes through: the sounds in ORDER, then the USER slots */
 typedef char order_is_every_sound[NORDER == NPRESET ? 1 : -1];
@@ -442,7 +410,7 @@ static uint32_t browse_pos(uint32_t n)   /* where sound n is browsed */
 }
 /* a saved record names sounds by number: a sound added or taken out, or a knob, changes what the numbers mean, so
  * bump SET_MAGIC and USER_MAGIC (an older record then loads as new: there are no saves before 1.0 to bring forward) */
-typedef char npreset_is_marf[NPRESET == 64u ? 1 : -1];
+typedef char npreset_is_mark[NPRESET == 50u ? 1 : -1];
 
 /* the wave EDIT shows for a sound: its first modulator's (the knob, turned, gives every modulator one) */
 static uint32_t preset_wave(const preset_t *pr)
@@ -455,8 +423,8 @@ static uint32_t preset_wave(const preset_t *pr)
 }
 
 /* --------------------------------------------------------------- settings --- */
-/* "MARF": the settings record (another magic, or size: the settings as new) */
-#define SET_MAGIC 0x4652414Du
+/* "MARL": the settings record (another magic, or size: the settings as new) */
+#define SET_MAGIC 0x4C52414Du
 #define SEQ_N 32u                        /* the sequence's steps, at most (LENGTH plays the first of them) */
 #define SEQ_REST 0xFFu
 typedef struct {
@@ -469,28 +437,29 @@ typedef struct {
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
     uint8_t seq_note[SEQ_N], seq_vel[SEQ_N];   /* the sequence: each step's note (SEQ_REST: a rest), velocity 1..127 */
+    uint8_t rnd_base, rnd_gain16;        /* a RANDOM roll playing: its factory sound and level, */
+    uint16_t rnd_name;                   /* and its name */
 } settings_t;
 static settings_t set;
 static uint8_t set_dirty;                /* changed since the last save: SAVE is lit */
 
 /* the player's own presets, USER 1..16: every knob (the arp, CHORDS, the effects and TEMPO too, not the player's own:
- * CLOCK, MIDI CH, VEL CURVE, LOADS) and the four operators, on the factory sound it began from (base: the operators'
+ * CLOCK, MIDI CH, VEL CURVE) and the four operators, on the factory sound it began from (base: the operators'
  * details no knob shows). Their own store object, OBJ_USER: SAVE on SOUNDS writes one there. A sound number past the
- * factory's (set.preset >= NPRESET) is user slot n - NPRESET. LOADS (SOUNDS's PARAMS) decides what a sound change
- * sets: HOLD, the sound's knobs (SOUND_P) only; CHANGE, everything a USER preset kept, and a factory sound the arp,
- * effects and sequence as new */
+ * factory's (set.preset >= NPRESET) is user slot n - NPRESET. A USER preset brings back all it kept (preset_load) */
 static const uint8_t SOUND_P[] = {P_TONE, P_STRIKE, P_DETUNE, P_VELO, P_ATTACK, P_DECAY, P_SUSTAIN, P_RELEASE,
                                   P_LRATE, P_LSHAPE, P_VIB, P_TREM, P_ALGO, P_RATIO, P_FDBK, P_WAVE, P_VOICES,
                                   P_GLIDE, P_CUTOFF, P_RES, P_FENV, P_FDEC, P_PWM, P_LFOCUT, P_FATT, P_FSUS,
                                   P_FREL, P_KEYTRK};
 #define NSOUNDP (sizeof SOUND_P)
 #define NUSER 16u
-#define USER_MAGIC 0x3655414Du           /* "MAU6": every knob (user_t); another magic, or size: an empty bank */
-typedef char np_is_mau6s[NP == 58u ? 1 : -1];   /* a knob added: bump USER_MAGIC (and SET_MAGIC) */
+#define USER_MAGIC 0x4355414Du           /* "MAUC": every knob (user_t); another magic, or size: an empty bank */
+typedef char np_is_maucs[NP == 57u ? 1 : -1];   /* a knob added: bump USER_MAGIC (and SET_MAGIC) */
 typedef struct {
     uint8_t used, base;
     uint8_t whole;                       /* it kept everything; one from an older bank its sound only */
-    uint8_t name;                        /* its name, 1..255 (NAME_A x NAME_B, user_name); 0: none, the factory
+    uint8_t gain16;                      /* its level x 16 (a RANDOM roll's); 0: its factory sound's (sound_gain) */
+    uint16_t name;                       /* its name, 1..NNAME - 1 (NAME_A x NAME_B, user_name); 0: none, the factory
                                           * sound's it began from (an older save's) */
     int16_t p[NP];                       /* every knob, by its number (the player's own kept, never loaded) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
@@ -501,6 +470,12 @@ static struct {
     user_t u[NUSER];
 } users;
 typedef char users_fit_the_store[sizeof users <= PLAT_STORE_MAX ? 1 : -1];
+/* RANDOM's rolls, the last NRND (oldest first; not kept: the one playing at a save comes back as the first). Sound
+ * numbers RND0.. past the USER slots */
+#define NRND 8u
+#define RND0 (NPRESET + NUSER)
+static user_t rnds[NRND];
+static uint32_t nrnd;
 
 
 static uint32_t drift_rng = 0x9E3779B9u;
@@ -605,28 +580,56 @@ static const preset_t *cur_preset(void)
 {
     if (set.preset < NPRESET)
         return &PRESET[set.preset];
+    if (set.preset >= RND0)
+        return &PRESET[rnds[(set.preset - RND0) % NRND].base < NPRESET ? rnds[(set.preset - RND0) % NRND].base : 0];
     return &PRESET[set.preset - NPRESET < NUSER && users.u[set.preset - NPRESET].base < NPRESET
                    ? users.u[set.preset - NPRESET].base : 0];
 }
 
 /* a USER preset's name, given when it is saved: an animal and a hairdo, "FROG MULLET" (at most 4 + 1 + 6 letters:
  * with "U03 " it fits the screen) */
-static const char *const NAME_A[16] = {"LION", "FROG", "CRAB", "OWL", "YAK", "EMU", "BEAR", "WOLF",
-                                       "MOLE", "NEWT", "TOAD", "DUCK", "GOAT", "SEAL", "MOTH", "HARE"};
-static const char *const NAME_B[16] = {"AFRO", "MULLET", "MOHAWK", "BOB", "BUN", "PERM", "FADE", "BANGS",
-                                       "MOPTOP", "BOWL", "BRAIDS", "BUZZ", "SHAG", "CURLS", "DREADS", "SPIKES"};
+static const char *const NAME_A[32] = {"LION", "FROG", "CRAB", "OWL", "YAK", "EMU", "BEAR", "WOLF",
+                                       "MOLE", "NEWT", "TOAD", "DUCK", "GOAT", "SEAL", "MOTH", "HARE",
+                                       "FOX", "CAT", "BAT", "ELK", "EEL", "PONY", "ORCA", "LYNX",
+                                       "SWAN", "CROW", "HAWK", "PUMA", "IBEX", "DEER", "BOAR", "SLUG"};
+static const char *const NAME_B[32] = {"AFRO", "MULLET", "MOHAWK", "BOB", "BUN", "PERM", "FADE", "BANGS",
+                                       "MOPTOP", "BOWL", "BRAIDS", "BUZZ", "SHAG", "CURLS", "DREADS", "SPIKES",
+                                       "SWOOP", "CROP", "PIXIE", "LOCKS", "WAVES", "TWISTS", "FLUFF", "UPDO",
+                                       "MANE", "LAYERS", "BALD", "TAPER", "WEDGE", "TUFT", "BRUSH", "PLAITS"};
+#define NNAME 1024u                      /* the names: NAME_A x NAME_B (0, LION AFRO, stands for none) */
 static void text_cat(char *d, const char *s);
 static void user_name(uint32_t name, char *t)   /* (appended to t) */
 {
-    text_cat(t, NAME_A[name >> 4 & 15u]);
+    text_cat(t, NAME_A[name >> 5 & 31u]);
     text_cat(t, " ");
-    text_cat(t, NAME_B[name & 15u]);
+    text_cat(t, NAME_B[name & 31u]);
+}
+/* a name a USER preset or a RANDOM roll already has (not self's own): a new one is drawn again */
+static int name_taken(uint32_t nm, const user_t *self)
+{
+    uint32_t k;
+    for (k = 0; k < NUSER; k++)
+        if (users.u[k].used && users.u[k].name == nm && &users.u[k] != self)
+            return 1;
+    for (k = 0; k < nrnd; k++)
+        if (rnds[k].name == nm && &rnds[k] != self)
+            return 1;
+    return 0;
 }
 
-static void sound_name(uint32_t n, char *t)   /* sound n's name: a factory sound's, or "U03 FROG MULLET" */
+static void sound_name(uint32_t n, char *t)   /* sound n's name: a factory sound's, or "U03 FROG MULLET" (a RANDOM
+                                               * roll's: "FROG MULLET") */
 {
     const char *b;
     uint32_t i = 0;
+    if (n >= RND0) {
+        t[0] = 0;
+        if (n - RND0 < nrnd)
+            user_name(rnds[n - RND0].name, t);
+        else
+            text_cat(t, "RANDOM");
+        return;
+    }
     if (n < NPRESET) {
         for (b = PRESET[n].name; *b && i < 15u; b++)
             t[i++] = *b;
@@ -659,8 +662,11 @@ static void sound_title(uint32_t n, char *t)
             ;
 }
 
-static uint32_t sound_cat(uint32_t n) { return n < NPRESET ? PRESET[n].cat : CAT_USER; }
-static int sound_ok(uint32_t n) { return n < NPRESET || (n - NPRESET < NUSER && users.u[n - NPRESET].used); }
+static uint32_t sound_cat(uint32_t n) { return n < NPRESET ? PRESET[n].cat : n >= RND0 ? CAT_RANDOM : CAT_USER; }
+static int sound_ok(uint32_t n)
+{
+    return n < NPRESET || (n - NPRESET < NUSER && users.u[n - NPRESET].used) || (n >= RND0 && n - RND0 < nrnd);
+}
 
 static void held_add(int32_t note, uint32_t vel)
 {
@@ -1538,6 +1544,37 @@ static volatile uint32_t dsp_resets;     /* how often the guard had to clear (GL
 static volatile uint32_t sheds;          /* how often the render ran late and a voice went (GLOBAL shows it) */
 static uint32_t cap_back_at;             /* the sample clock at which a voice shed comes back */
 
+static int name_is(const char *a, const char *b)
+{
+    while (*a && *a == *b)
+        a++, b++;
+    return *a == *b;
+}
+/* the sounds louder than the rest (eng_params_t's gain), by name: the basses, about 6 dB over the keys and leads (one
+ * voice, so the headroom is there; at the others' level a bass sounds thin); and a few brought up to their kind's */
+static const struct {
+    const char *name;
+    float gain;
+} LOUDER[] = {{"FM BASS", 1.5f}, {"16BIT BASS", 1.35f}, {"ANALOG BASS", 3.8f}, {"SQUARE BASS", 4.0f},
+                  {"80S BRASS", 1.8f}, {"SAW STRINGS", 1.6f},
+                  {"WIND", 1.4f}, {"POLY SYNTH", 1.4f}};
+#define POLY_GAIN_MAX 1.4f               /* on POLY, at most this: a chord of a boosted bass (made for one voice)
+                                          * would drive the output's limit */
+static float sound_gain(const preset_t *pr)
+{
+    uint32_t i;
+    float g = 1.0f;
+    const user_t *u = set.preset >= RND0 ? &rnds[(set.preset - RND0) % NRND]
+                      : set.preset >= NPRESET ? &users.u[(set.preset - NPRESET) % NUSER] : 0;
+    if (u && u->gain16)                  /* a RANDOM roll's own (and a USER preset saved from one) */
+        g = (float)u->gain16 / 16.0f;
+    else
+        for (i = 0; i < sizeof LOUDER / sizeof LOUDER[0]; i++)
+            if (name_is(LOUDER[i].name, pr->name))
+                g = LOUDER[i].gain;
+    return set.p[P_VOICES] == V_POLY && g > POLY_GAIN_MAX ? POLY_GAIN_MAX : g;
+}
+
 static void engine_params(uint32_t n)    /* the knobs, as the engine takes them */
 {
     static eng_sound_t snd;              /* the sound with OP 1-4's settings on it */
@@ -1553,6 +1590,7 @@ static void engine_params(uint32_t n)    /* the knobs, as the engine takes them 
     }
     snd.mono = (uint8_t)set.p[P_VOICES];   /* (engine.h: 0 poly, 1 mono, 2 legato) */
     snd.glide = glide_secs(set.p[P_GLIDE]);
+    ep.gain = sound_gain(pr);
     float beat = tick_samples() * 24.0f, v = (float)set.p[P_VIB] / 100.0f;
     ep.tone = fm_exp2f(((float)set.p[P_TONE] - 50.0f) / 25.0f);   /* x0.25 .. x4 */
     ep.strike = (float)set.p[P_STRIKE] / 50.0f;
@@ -1729,7 +1767,7 @@ static int sound_par(uint32_t p)         /* one of the sound's knobs (SOUND_P) *
 }
 static int patch_par(uint32_t p)         /* one a USER preset loads: not the player's own */
 {
-    return p != P_CLOCK && p != P_MIDICH && p != P_VCURVE && p != P_LOADS;
+    return p != P_CLOCK && p != P_MIDICH && p != P_VCURVE;
 }
 static void patch_defaults(void)         /* the arp, GROOVE, CHORDS, CHANCE and the effects as new (not the sound, TEMPO,
                                           * the sequence) */
@@ -1755,25 +1793,81 @@ static void seq_defaults(void)
     set.p[P_SEQLEN] = PAR[P_SEQLEN].def;
 }
 
-static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP and VOICE pages, and SOUND's two
-                                          * at the middle; a user preset: its sound, or with LOADS on CHANGE
-                                          * everything it kept (a factory sound then the arp and effects as new) */
+/* the effects (DELAY, REVERB, CHORUS): a sound's own, as its kind has them (FX_KIND, FX_OWN), loaded with it; a USER
+ * preset its own */
+static const uint8_t FX_P[] = {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH, P_RMIX, P_RLEN, P_RDARK, P_SHIMMER, P_CHORUS,
+                               P_CRATE, P_CDEPTH};
+#define NFXP (sizeof FX_P)
+static const uint8_t FX_KIND[CAT_RANDOM][NFXP] = {
+    {30, 4, 45, 100, 40, 55, 40, 0, 25, 44, 65},    /* KEYS: the dotted-eighth delay, reverb, chorus (as new) */
+    {15, 4, 40, 100, 40, 60, 35, 0, 0, 44, 65},     /* BELLS: reverb, a faint echo */
+    {30, 4, 45, 100, 25, 50, 40, 0, 0, 44, 65},     /* PLUCKS: the delay */
+    {25, 4, 40, 25, 25, 50, 40, 0, 0, 44, 65},      /* LEADS: delay (near the middle, not full ping-pong) and
+                                                     * reverb */
+    {0, 4, 45, 100, 55, 75, 45, 0, 40, 44, 65},     /* PADS: a long reverb, chorus */
+    {0, 4, 45, 100, 0, 55, 40, 0, 0, 44, 65},       /* BASS: dry (they blur its low end) */
+    {0, 4, 45, 100, 15, 30, 40, 0, 0, 44, 65},      /* PERC: a short room */
+    {35, 4, 55, 100, 55, 80, 40, 20, 20, 44, 65},   /* WEIRD: everything */
+};
+/* a factory sound's own, over its kind's: -1 its kind's (DELAY MIX, TIME, FEEDBACK, WIDTH; REVERB MIX, LENGTH, DARK,
+ * SHIMMER; CHORUS MIX, RATE, DEPTH) */
+#define K -1
+static const struct {
+    const char *name;
+    int8_t fx[NFXP];
+} FX_OWN[] = {
+    {"FM ORGAN", {0, K, K, K, K, K, K, K, K, K, K}},       {"PERC ORGAN", {0, K, K, K, K, K, K, K, K, K, K}},
+    {"POLY SYNTH", {0, K, K, K, K, K, K, K, K, K, K}},     {"MARIMBA", {0, K, K, K, K, K, K, K, K, K, K}},
+    {"KOTO", {0, K, K, K, K, K, K, K, K, K, K}},           {"SYNC LEAD", {0, K, K, K, K, K, K, K, K, K, K}},
+    {"METAL LEAD", {0, K, K, K, K, K, K, K, K, K, K}},
+    {"SAW PLUCK", {0, K, K, K, 55, 75, K, K, K, K, K}},    {"PULSE PLUCK", {0, K, K, K, 55, 75, K, K, K, K, K}},
+    };
+#undef K
+static int fx_par(uint32_t p)
+{
+    uint32_t i;
+    for (i = 0; i < NFXP; i++)
+        if (FX_P[i] == p)
+            return 1;
+    return 0;
+}
+static void fx_kind(uint32_t cat, int16_t *p)
+{
+    uint32_t i;
+    for (i = 0; i < NFXP; i++)
+        p[FX_P[i]] = FX_KIND[cat < CAT_RANDOM ? cat : CAT_KEYS][i];
+}
+static void fx_own(const char *name, int16_t *p)   /* a factory sound's own, over its kind's (FX_OWN) */
+{
+    uint32_t i, k;
+    for (k = 0; k < sizeof FX_OWN / sizeof FX_OWN[0]; k++)
+        if (name_is(FX_OWN[k].name, name))
+            for (i = 0; i < NFXP; i++)
+                if (FX_OWN[k].fx[i] >= 0)
+                    p[FX_P[i]] = FX_OWN[k].fx[i];
+}
+
+/* a sound: its envelope, LFO, EDIT, OP, VOICE and FILTER pages, SOUND's two at the middle, and its effects (a
+ * factory sound's its kind's; a USER preset or a RANDOM roll its own). What is being played (the arp, CHORDS, GROOVE,
+ * CHANCE, TEMPO and the steps) plays on, but for a USER preset: it brings back everything it kept */
+static void preset_load(uint32_t p)
 {
     const preset_t *pr;
-    int all = set.p[P_LOADS] == 1;
+    int all = p >= NPRESET && p < RND0;  /* a USER preset: saved on purpose, all of it */
+    uint32_t i;
     if (all) {                           /* the arp's settings replaced: what it had queued under the old goes, and
                                           * what the old still sounds (the effects' tails ring on) */
         arp_cancel();
         arp_let_go();
     }
     if (p >= NPRESET) {
-        const user_t *u = &users.u[(p - NPRESET) % NUSER];
-        uint32_t i;
+        const user_t *u = p >= RND0 ? &rnds[(p - RND0) % NRND] : &users.u[(p - NPRESET) % NUSER];
+        int mine = all && u->whole;      /* a USER preset's own arp and steps */
         set.preset = (uint8_t)p;
-        if (all && !u->whole)            /* an older bank's: only its sound kept */
+        if (all && !mine)                /* (an older bank's: its sound only) */
             patch_defaults();
         for (i = 0; i < NP; i++)
-            if (sound_par(i) || (all && u->whole && patch_par(i)))
+            if (sound_par(i) || fx_par(i) || (mine && patch_par(i)))
                 set.p[i] = (int16_t)clamp(u->p[i], PAR[i].lo, PAR[i].hi);
         for (i = 0; i < 4u; i++) {
             set.op_ratio[i] = u->op_ratio[i];
@@ -1781,11 +1875,16 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
             set.op_wave[i] = u->op_wave[i];
             set.op_decay[i] = u->op_decay[i];
         }
-        if (all && u->whole)             /* its sequence too */
+        if (mine)                        /* its sequence too */
             for (i = 0; i < SEQ_N; i++) {
                 set.seq_note[i] = u->seq_note[i];
                 set.seq_vel[i] = u->seq_vel[i];
             }
+        if (p >= RND0) {                 /* kept with the settings: a save brings the roll back */
+            set.rnd_base = u->base;
+            set.rnd_name = u->name;
+            set.rnd_gain16 = u->gain16;
+        }
         return;
     }
     pr = &PRESET[p];
@@ -1806,12 +1905,142 @@ static void preset_load(uint32_t p)      /* a sound: its envelope, LFO, EDIT, OP
     set.p[P_TONE] = 50;
     set.p[P_STRIKE] = 50;
     voice_load(pr);                      /* last: the filter's envelope follows this sound's amp envelope */
-    if (all) {                           /* CHANGE: a factory sound brings the defaults, the sequence too (RESET
-                                          * alone leaves the steps) */
-        patch_defaults();
-        seq_defaults();
-    }
+    fx_kind(pr->cat, set.p);
+    fx_own(pr->name, set.p);
 }
+
+/* RANDOM: a sound made up. Its kind (TYPE, or any) sets the ranges each knob is drawn from and the either-ors
+ * (the algorithm, sine FM or the table waves, the filter, MONO or POLY); WILD of the choices are drawn from
+ * anywhere (most of a WEIRD's). Every value is a knob, so it can be played with and SAVEd as a USER preset; the
+ * operators' own attack and sustain (no knob) are a factory sound's of its kind (base) */
+static uint32_t rnd_rng = 0x2545F491u;   /* its own: a roll never moves the arp's chance (drift_rng) */
+static uint32_t rr(void)
+{
+    rnd_rng ^= rnd_rng << 13;
+    rnd_rng ^= rnd_rng >> 17;
+    rnd_rng ^= rnd_rng << 5;
+    return rnd_rng;
+}
+static int32_t rr_in(int32_t lo, int32_t hi) { return lo + (int32_t)(rr() % (uint32_t)(hi - lo + 1)); }
+static int rr_pc(uint32_t pc) { return rr() % 100u < pc; }
+typedef struct {
+    int8_t a0, a1, d0, d1, s0, s1, r0, r1;   /* the ENVELOPE's ranges */
+    int8_t ml0, ml1, md0, md1;           /* a modulator's depth and decay */
+    uint8_t synth, filt, fb, wild;       /* % table-wave carriers, % filter on (sine carriers), FEEDBACK at most,
+                                          * % drawn from anywhere */
+    uint8_t alg[6];                      /* the algorithms it draws from (ALGO - 1) */
+} rkind_t;
+static const rkind_t RK[CAT_RANDOM] = {
+    {0, 10, 65, 85, 10, 50, 40, 70, 15, 40, 50, 80, 15, 20, 3, 15, {4, 4, 4, 2, 3, 0}},    /* KEYS */
+    {0, 0, 80, 92, 0, 10, 70, 90, 15, 45, 60, 90, 0, 10, 3, 25, {4, 4, 5, 2, 3, 6}},       /* BELLS */
+    {0, 0, 50, 72, 0, 10, 40, 60, 15, 45, 35, 65, 35, 40, 3, 15, {4, 4, 2, 3, 0, 6}},      /* PLUCKS */
+    {0, 30, 60, 80, 60, 95, 30, 60, 10, 40, 60, 90, 55, 60, 6, 15, {0, 1, 2, 6, 7, 4}},    /* LEADS */
+    {55, 80, 80, 92, 70, 95, 75, 92, 4, 22, 75, 95, 50, 50, 3, 15, {4, 5, 6, 7, 4, 7}},    /* PADS */
+    {0, 5, 55, 75, 30, 80, 20, 40, 20, 55, 35, 65, 50, 70, 6, 15, {0, 2, 4, 6, 7, 4}},     /* BASS */
+    {0, 0, 40, 65, 0, 0, 30, 50, 20, 60, 25, 50, 10, 20, 5, 20, {4, 6, 7, 4, 2, 3}},       /* PERC */
+    {0, 80, 50, 95, 0, 100, 30, 95, 10, 80, 30, 95, 40, 50, 7, 55, {0, 1, 2, 3, 4, 5}},    /* WEIRD */
+};
+static const uint8_t R_HARM[] = {1, 1, 1, 4, 4, 7, 9, 10, 12, 13, 14};   /* OP_RATIO's 1 2 3 4 5 6 7 8, mostly 1, 2 */
+static const uint8_t R_INH[] = {2, 5, 6, 8, 11, 15, 16, 17, 19, 21};     /* 1.41 2.5 2.76 3.5 5.4 9 10 11 13 15 */
+static const uint8_t R_CWAVE[] = {8, 8, 9, 10, 11, 12};                  /* SAW SAW SQUARE PULSES TRIANGLE */
+static const uint8_t R_CAR[] = {1, 1, 4, 0};                             /* another carrier: 1, 2 or 1/2 */
+static void rnd_make(user_t *r, uint32_t c)
+{
+    const rkind_t *k = &RK[c];
+    int16_t *p = r->p;
+    uint32_t i, n = 0, pick, alg, car, ncar = 0, ci = 0, first_mod = 4u, synth, on;
+    for (i = 0; i < NPRESET; i++)
+        n += PRESET[i].cat == c;
+    pick = n ? rr() % n : 0u;
+    for (i = 0; i < NPRESET; i++)
+        if (PRESET[i].cat == c && pick-- == 0u)
+            break;
+    r->base = (uint8_t)(i < NPRESET ? i : 0u);
+    r->used = 1;
+    r->whole = 1;
+    {                                    /* a name nothing else has (a few tries: 1023 of them) */
+        uint32_t tries, nm = 1u;
+        for (tries = 0; tries < 64u; tries++)
+            if (!name_taken(nm = 1u + rr() % (NNAME - 1u), r))
+                break;
+        r->name = (uint16_t)nm;
+    }
+    r->gain16 = (uint8_t)(c == CAT_BASS ? 32u : 16u);   /* a bass louder, as the factory ones (LOUDER) */
+    for (i = 0; i < NP; i++)
+        p[i] = set.p[i];
+    for (i = 0; i < SEQ_N; i++) {
+        r->seq_note[i] = set.seq_note[i];
+        r->seq_vel[i] = set.seq_vel[i];
+    }
+    alg = rr_pc(k->wild) ? rr() % 8u : k->alg[rr() % 6u];
+    car = ENG_CAR[alg];
+    for (i = 0; i < 4u; i++)
+        ncar += car >> i & 1u;
+    synth = (uint32_t)rr_pc(k->synth);
+    for (i = 0; i < 4u; i++) {
+        int wild = rr_pc(k->wild);
+        if (car >> i & 1u) {             /* a carrier: the note (a bass's an octave down), others on or off it */
+            int32_t lv = 95 / (int32_t)ncar * rr_in(70, 130) / 100;
+            if (ci == 0u)
+                r->op_ratio[i] = (uint8_t)(c == CAT_BASS ? 0u : 1u);
+            else if ((wild || c == CAT_BELLS || c == CAT_WEIRD) && rr_pc(50))
+                r->op_ratio[i] = R_INH[rr() % sizeof R_INH];
+            else
+                r->op_ratio[i] = (uint8_t)(c == CAT_BASS ? rr() % 2u : (uint32_t)R_CAR[rr() % sizeof R_CAR]);
+            if (ci && rr_pc(30))
+                lv = lv * 2 / 5;
+            r->op_level[i] = (uint8_t)clamp(lv, 5, 100);
+            r->op_wave[i] = (uint8_t)(synth ? R_CWAVE[rr() % sizeof R_CWAVE] : 0u);
+            if (ci && ((c == CAT_PERC && rr_pc(30)) || (c == CAT_WEIRD && rr_pc(20))))
+                r->op_wave[i] = 13u;     /* NOISE */
+            r->op_decay[i] = (uint8_t)rr_in(40, 80);
+            ci++;
+        } else {                         /* a modulator: harmonic, or (a bell's, a weird's) inharmonic */
+            if (first_mod == 4u)
+                first_mod = i;
+            r->op_ratio[i] = (uint8_t)(wild ? rr() % N_OPRATIO
+                                       : (c == CAT_BELLS || c == CAT_WEIRD) && rr_pc(50) ? R_INH[rr() % sizeof R_INH]
+                                       : R_HARM[rr() % sizeof R_HARM]);
+            r->op_level[i] = (uint8_t)(rr_in(k->ml0, k->ml1) * (synth ? 2 : 5) / 5);   /* (on a saw, less) */
+            r->op_wave[i] = (uint8_t)(rr_pc(c == CAT_WEIRD ? 50u : 25u) ? rr_in(1, 7) : 0);
+            r->op_decay[i] = (uint8_t)rr_in(k->md0, k->md1);
+        }
+    }
+    p[P_ALGO] = (int16_t)alg;
+    p[P_FDBK] = (int16_t)(rr_pc(50) ? 0 : rr_in(0, k->fb));
+    p[P_WAVE] = (int16_t)(first_mod < 4u ? r->op_wave[first_mod] : 0u);
+    p[P_RATIO] = 1;
+    p[P_TONE] = 50;
+    p[P_STRIKE] = 50;
+    p[P_DETUNE] = (int16_t)(c == CAT_PADS ? rr_in(20, 55) : rr_in(0, 25));
+    p[P_VELO] = (int16_t)rr_in(40, 70);
+    p[P_ATTACK] = (int16_t)rr_in(k->a0, k->a1);
+    p[P_DECAY] = (int16_t)rr_in(k->d0, k->d1);
+    p[P_SUSTAIN] = (int16_t)rr_in(k->s0, k->s1);
+    p[P_RELEASE] = (int16_t)rr_in(k->r0, k->r1);
+    p[P_LSHAPE] = (int16_t)(rr() % LFO_NSHAPE);
+    p[P_LRATE] = (int16_t)rr_in(30, 80);
+    p[P_VIB] = (int16_t)(c == CAT_LEADS ? rr_in(15, 35) : c == CAT_WEIRD ? rr_in(0, 60) : rr_pc(20) ? rr_in(5, 15) : 0);
+    p[P_TREM] = (int16_t)(c == CAT_WEIRD ? rr_in(0, 50) : c == CAT_PADS ? rr_in(0, 15) : 0);
+    p[P_VOICES] = (int16_t)(c == CAT_BASS ? V_MONO : c == CAT_LEADS ? (rr_pc(60) ? V_LEGATO : V_MONO) : V_POLY);
+    p[P_GLIDE] = (int16_t)(c == CAT_LEADS ? rr_in(20, 50) : c == CAT_BASS && rr_pc(40) ? rr_in(20, 45) : 0);
+    on = (uint32_t)rr_pc(synth ? 80u : k->filt);
+    p[P_CUTOFF] = (int16_t)(!on ? 100 : c == CAT_BASS ? rr_in(30, 55) : rr_in(35, 75));
+    p[P_RES] = (int16_t)(on ? rr_in(0, c == CAT_WEIRD ? 85 : 60) : 0);
+    p[P_FENV] = (int16_t)(on ? rr_in(0, 60) : 0);
+    p[P_FDEC] = (int16_t)(on ? rr_in(40, 85) : PAR[P_FDEC].def);
+    p[P_LFOCUT] = (int16_t)(on && c == CAT_WEIRD && rr_pc(30) ? rr_in(10, 50) : 0);
+    p[P_PWM] = 0;
+    fenv_fill(p);
+    fx_kind(c, p);
+    p[P_DMIX] = (int16_t)(p[P_DMIX] ? p[P_DMIX] + rr_in(-10, 10) : 0);
+    p[P_RMIX] = (int16_t)(p[P_RMIX] ? p[P_RMIX] + rr_in(-10, 10) : 0);
+    if (c == CAT_WEIRD)
+        p[P_SHIMMER] = (int16_t)rr_in(0, 40);
+    for (i = 0; i < NP; i++)
+        p[i] = (int16_t)clamp(p[i], PAR[i].lo, PAR[i].hi);
+}
+
 
 /* the sound now, kept as user sound slot, and that then the one playing; 0 = written. The slot changes only once
  * the flash has it: a failed write leaves the bank, and the sound playing, as they were */
@@ -1820,27 +2049,32 @@ static int user_store(uint32_t slot)
     static user_t was;
     user_t *u = &users.u[slot % NUSER];
     uint32_t i;
+    const user_t *from = set.preset >= RND0 ? &rnds[(set.preset - RND0) % NRND]
+                         : set.preset >= NPRESET ? &users.u[(set.preset - NPRESET) % NUSER] : 0;
+    uint8_t g = from ? from->gain16 : 0u;
+    uint16_t rn = set.preset >= RND0 && from ? from->name : 0u;
     was = *u;
     u->used = 1;
     u->base = (uint8_t)(cur_preset() - PRESET);
     u->whole = 1;
+    u->gain16 = g;
     if (!was.used || !was.name) {        /* a new name (over one already named: it keeps its own), none another
                                           * slot has */
         static uint32_t name_rng = 0x6D2B79F5u;   /* its own: SAVE never moves the arp's chance (drift_rng) */
-        uint32_t tries, k, nm = 0;
+        uint32_t tries, nm = 0;
         name_rng ^= plat_ms() | 1u;
         for (tries = 0; tries < 32u; tries++) {
             name_rng ^= name_rng << 13;
             name_rng ^= name_rng >> 17;
             name_rng ^= name_rng << 5;
-            nm = 1u + (name_rng >> 8) % 255u;
-            for (k = 0; k < NUSER && !(users.u[k].used && users.u[k].name == nm && &users.u[k] != u); k++)
-                ;
-            if (k == NUSER)
+            nm = 1u + (name_rng >> 8) % (NNAME - 1u);
+            if (!name_taken(nm, u))
                 break;
         }
-        u->name = (uint8_t)nm;
+        u->name = (uint16_t)nm;
     }
+    if (rn)                              /* a RANDOM roll keeps the name it was shown with */
+        u->name = rn;
     for (i = 0; i < NP; i++)
         u->p[i] = set.p[i];
     for (i = 0; i < 4u; i++) {
@@ -1866,7 +2100,8 @@ static int user_store(uint32_t slot)
  * (cat NCAT) */
 static uint32_t sound_step(uint32_t n, int32_t d, uint32_t cat)
 {
-    uint32_t total = NBROWSE, i, k = browse_pos(n);   /* (in the browsing order) */
+    uint32_t total = NBROWSE, i, k = n >= RND0 ? NBROWSE - 1u : browse_pos(n);   /* (in the browsing order; from
+                                                                                  * a RANDOM roll, the end) */
     while (d) {
         for (i = 0; i < total; i++) {
             k = (k + (d > 0 ? 1u : total - 1u)) % total;
@@ -1943,6 +2178,23 @@ void app_init(void)
     }
     if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) != (int)sizeof set)   /* the settings (else as new, below) */
         set.magic = 0;
+    if (set.magic == SET_MAGIC && set.preset >= RND0 && set.preset < RND0 + NRND && set.rnd_base < NPRESET) {
+        user_t *r = &rnds[0];            /* a RANDOM roll playing at the last save: back, as the first roll */
+        for (i = 0; i < NP; i++)
+            r->p[i] = set.p[i];
+        for (i = 0; i < 4u; i++) {
+            r->op_ratio[i] = set.op_ratio[i];
+            r->op_level[i] = set.op_level[i];
+            r->op_wave[i] = set.op_wave[i];
+            r->op_decay[i] = set.op_decay[i];
+        }
+        r->used = r->whole = 1;
+        r->base = set.rnd_base;
+        r->name = set.rnd_name;
+        r->gain16 = set.rnd_gain16;
+        nrnd = 1;
+        set.preset = (uint8_t)RND0;
+    }
     if (set.magic != SET_MAGIC || !settings_ok())
         settings_defaults();
 #ifndef PLAT_HOST
@@ -1976,6 +2228,7 @@ static struct {
     uint32_t save_slot;                  /* SOUNDS: the USER slot SAVE writes, 0..15 */
     uint8_t reset_arm;                   /* RESETS's PARAMS: 0 RESET, 1 SURE? (SAVE: done) */
     uint8_t user_peek;                   /* SOUNDS on USER with none saved: its empty slots, the sound kept */
+    uint8_t rtype;                       /* SOUNDS on RANDOM, TYPE: 0 any, else the kind + 1 */
     uint8_t factory_arm;                 /* RESETS's FACTORY: 0 RESET, 1 SURE? (SAVE: done); one armed at a time */
     uint8_t rescan;                      /* the keys as up after this scan: one still pressed sounds again (FACTORY) */
     uint8_t seq_cur;                     /* SEQ: the step the cursor is on (the keys write there), 0..LENGTH-1 */
@@ -2061,6 +2314,8 @@ static const char *par_name(uint32_t p)
         return "SPACE";
     if (p == PX_CAT)
         return "KIND";
+    if (p == PX_RTYPE)
+        return "TYPE";
     if (p == PX_SND)
         return "SOUND";
     if (p == PX_SLOT)
@@ -2103,6 +2358,8 @@ static uint32_t page_knob(uint32_t i)
     if ((p == PX_OPD && !op_own_env(IS_OP_PAGE(ui.page) ? ui.page - PG_OP1 : 0u))
         || (p == P_GLIDE && set.p[P_VOICES] == V_POLY) || (p == P_WAVE && mod_wave() == -2))
         return PX_NONE;
+    if (p == PX_RTYPE && shown_cat() != CAT_RANDOM)   /* SOUNDS's TYPE: on RANDOM only */
+        return PX_NONE;
     return p;
 }
 
@@ -2125,6 +2382,10 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
             text_cat(t, "EMPTY");
         else
             sound_title(set.preset, t);
+        return;
+    }
+    if (p == PX_RTYPE) {
+        text_cat(t, ui.rtype ? CAT_NAME[ui.rtype - 1u] : "ANY");
         return;
     }
     if (p == PX_SLOT) {
@@ -2292,9 +2553,6 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
         int_text(v, t);
         text_cat(t, " STEPS");
         break;
-    case U_LOADS:                        /* PARAMS, on a sound change: HOLD the arp and effects, or CHANGE them */
-        text_cat(t, v ? "CHANGE" : "HOLD");
-        break;
     case U_CH:
         if (v)
             int_text(v, t);
@@ -2332,8 +2590,12 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
     switch (p) {
     case PX_CAT:
         return (int32_t)shown_cat() * w / (int32_t)(NCAT - 1u);
+    case PX_RTYPE:
+        return (int32_t)ui.rtype * w / (int32_t)CAT_RANDOM;
     case PX_SND: {
         uint32_t n = 0, at = 0, i, k;        /* where in its kind */
+        if (set.preset >= RND0)          /* RANDOM: where in the rolls */
+            return nrnd > 1u ? (int32_t)(set.preset - RND0) * w / (int32_t)(nrnd - 1u) : w;
         for (k = 0; k < NBROWSE; k++)
             if (i = browse_at(k), sound_ok(i) && sound_cat(i) == sound_cat(set.preset)) {
                 if (i == set.preset)
@@ -2462,6 +2724,7 @@ static void speak(void)
 }
 
 static void sound_go(uint32_t n);
+static void rnd_go(uint32_t type);
 static int set_par(uint32_t p, int32_t v)    /* 1 = changed */
 {
     v = clamp(v, PAR[p].lo, PAR[p].hi);
@@ -2528,6 +2791,14 @@ static void param_turn(uint32_t p, int32_t d)
         uint32_t c = shown_cat(), n = set.preset, i, list[NPRESET + NUSER], cnt = 0, at = 0;
         if (p == PX_SND && user_peeking())   /* USER with none saved: nothing to choose */
             return;
+        if (p == PX_SND && c == CAT_RANDOM) {   /* RANDOM: back through the rolls; past the latest, a new one */
+            int32_t at2 = set.preset >= RND0 ? (int32_t)(set.preset - RND0) : (int32_t)nrnd - 1, to = at2 + d;
+            if (to >= (int32_t)nrnd)
+                rnd_go(ui.rtype);
+            else if ((to = clamp(to, 0, (int32_t)nrnd - 1)) != at2)
+                sound_go(RND0 + (uint32_t)to);
+            return;
+        }
         if (p == PX_SND) {
             uint32_t k;
             for (k = 0; k < NBROWSE; k++)
@@ -2541,15 +2812,21 @@ static void param_turn(uint32_t p, int32_t d)
             int32_t step = d > 0 ? 1 : -1, cc = (int32_t)c;
             while (d) {                      /* a kind further each detent, an empty one (USER) passed over */
                 int32_t nx = cc + step;
-                uint32_t j, first = NPRESET + NUSER;
+                uint32_t j, first = 0xFFFFu;
                 for (; nx >= 0 && nx < (int32_t)NCAT; nx += step) {
-                    for (j = 0; j < NBROWSE && first == NPRESET + NUSER; j++)   /* (the first browsed) */
+                    if (nx == (int32_t)CAT_RANDOM) {   /* RANDOM: the latest roll, or a first */
+                        if (!nrnd)
+                            rnd_go(ui.rtype);
+                        first = RND0 + nrnd - 1u;
+                        break;
+                    }
+                    for (j = 0; j < NBROWSE && first == 0xFFFFu; j++)   /* (the first browsed) */
                         if (sound_ok(browse_at(j)) && sound_cat(browse_at(j)) == (uint32_t)nx)
                             first = browse_at(j);
-                    if (first < NPRESET + NUSER)
+                    if (first != 0xFFFFu)
                         break;
                 }
-                if (first == NPRESET + NUSER) {  /* the end of the kinds: USER shown, empty, if none is saved */
+                if (first == 0xFFFFu) {  /* the end of the kinds: USER shown, empty, if none is saved */
                     if (step > 0 && cc < (int32_t)CAT_USER && !ui.user_peek) {
                         ui.user_peek = 1;
                         ui.redraw = 1;
@@ -2570,6 +2847,11 @@ static void param_turn(uint32_t p, int32_t d)
             sound_go(n);
             ui.user_peek = pk;
         }
+        return;
+    }
+    if (p == PX_RTYPE) {
+        ui.rtype = (uint8_t)clamp((int32_t)ui.rtype + d, 0, (int32_t)CAT_RANDOM);
+        ui.redraw = 1;
         return;
     }
     if (p == PX_SLOT) {
@@ -2680,6 +2962,33 @@ static void sound_go(uint32_t n)          /* to sound n, whole (no note between 
 {
     char nm[16];
     uint32_t f = plat_lock();
+    preset_load(n);
+    plat_unlock(f);
+    ui.user_peek = 0;
+    set_dirty = 1;
+    ui.redraw = 1;
+    sound_name(n, nm);
+    app_say("SOUND", nm);
+}
+
+/* a new RANDOM roll, after the others (the oldest gone past NRND), and to it: made aside, then the rolls moved up, it
+ * put last and loaded in one lock (the render reads the roll playing: never one half moved, or another's base and
+ * level under this one's knobs). TYPE's kind, or any */
+static void rnd_go(uint32_t type)
+{
+    static user_t r;
+    char nm[16];
+    uint32_t f, k, n;
+    rnd_rng ^= plat_ms() * 2654435761u | 1u;
+    rnd_make(&r, type ? type - 1u : rr() % CAT_RANDOM);
+    f = plat_lock();
+    if (nrnd == NRND) {
+        for (k = 1; k < NRND; k++)
+            rnds[k - 1u] = rnds[k];
+        nrnd--;
+    }
+    rnds[nrnd] = r;
+    n = RND0 + nrnd++;
     preset_load(n);
     plat_unlock(f);
     ui.user_peek = 0;
@@ -3133,12 +3442,19 @@ static void sounds_view(int32_t h)
     int32_t first, row;
     char nm[16];
     uint32_t k;
-    for (k = 0; k < NBROWSE; k++)
-        if (i = browse_at(k), c == CAT_USER ? i >= NPRESET : sound_cat(i) == c) {
-            if (i == set.preset)
+    if (c == CAT_RANDOM)                 /* RANDOM: the rolls, the latest last */
+        for (k = 0; k < nrnd; k++) {
+            if (RND0 + k == set.preset)
                 at = n;
-            list[n++] = i;
+            list[n++] = RND0 + k;
         }
+    else
+        for (k = 0; k < NBROWSE; k++)
+            if (i = browse_at(k), c == CAT_USER ? i >= NPRESET && i < RND0 : sound_cat(i) == c) {
+                if (i == set.preset)
+                    at = n;
+                list[n++] = i;
+            }
     first = clamp((int32_t)at - 2, 0, n > 5u ? (int32_t)n - 5 : 0);
     for (row = 0; row < 5 && first + row < (int32_t)n; row++) {
         uint32_t s2 = list[first + row];
@@ -3301,8 +3617,10 @@ static void draw(void)
             int32_t x = cv_text(10, 0, &FONT_B, pg->name, C_GRAY);
             if (IS_OP_PAGE(ui.page))         /* the operator's part in the algorithm */
                 cv_text(x + 6, 0, &FONT_B, op_is_carrier(op_now()) ? "CARRIER" : "MODULATOR", C_HI);
-            if (NEXT[ui.page])
-                cv_text(230 - text_w(&FONT_XS, NEXT[ui.page]), 1, &FONT_XS, NEXT[ui.page], C_DIM);
+            const char *nx = ui.page == PG_SOUNDS && shown_cat() == CAT_RANDOM ? "TURN SOUND: NEW ONE"
+                                                                                 : NEXT[ui.page];
+            if (nx)
+                cv_text(230 - text_w(&FONT_XS, nx), 1, &FONT_XS, nx, C_DIM);
         }
         cv_rect(10, 18, 220, 1, C_LINE);
         for (i = 0; i < 4u; i++) {

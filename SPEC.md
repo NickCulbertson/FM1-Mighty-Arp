@@ -46,26 +46,27 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
-| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | PRESETS (KEEP, CHANGE: below) |
-| RESETS (GLO again) | PARAMS (KEEP; a detent right, RESET: ARP, GROOVE, CHORDS, CHANCE and the effects as new; the sound, TEMPO and the sequence kept) | FACTORY (KEEP; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
+| RESETS (GLO again) | PARAMS (RESET; a detent right SURE?, then SAVE: ARP, GROOVE, CHORDS, CHANCE and the effects as new; the sound, TEMPO and the sequence kept) | FACTORY (RESET; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
-PRESET and SOUNDS go through the 64 sounds kind by kind (KEYS, BELLS, PLUCKS, BASS, LEADS, PADS, PERC, WEIRD), like sounds
-together (`ORDER` in app.c; the sounds' numbers, which saves hold, never move). A bass loads MONO with no glide, a
+PRESET and SOUNDS go through the 50 sounds kind by kind (KEYS, BELLS, PLUCKS, LEADS, PADS, BASS, PERC, WEIRD), each
+kind's mixed up so browsing keeps surprising (`ORDER` in app.c; the sounds' numbers, which saves hold, never move).
+KIND then reaches RANDOM (sounds made up on the spot; TYPE steers the kind) and USER. A sound brings its effects (its
+kind's, `FX_KIND`, or its own, `FX_OWN`); the arp, CHORDS, GROOVE, CHANCE, TEMPO and the steps play on, but a USER
+preset brings back everything it kept. A bass loads MONO with no glide, a
 lead LEGATO.
 A USER preset is named when first saved, an animal and a hairdo ("FROG MULLET"; saved over, it keeps its name).
 A USER preset keeps everything: the sound pages, ARP, the sequence, GROOVE, CHORDS, the effects, CHANCE and TEMPO (not GLOBAL's
-CLOCK, MIDI CH, VEL CURVE, or PRESETS). PRESETS (GLOBAL's fourth knob) says what a sound change does to the rest:
+CLOCK, MIDI CH or VEL CURVE), and brings it all back when chosen.
 
-- KEEP (the default): it sets the sound pages only. ARP, the sequence, GROOVE, CHORDS and the effects stay as they are, so changing sound
-  mid-piece keeps its rhythm and its space.
-- CHANGE: a USER preset brings back everything it kept; a factory sound starts from the arp, effects and sequence as
-  new (TEMPO kept).
+A sound's level: most at 1; the basses louder (one voice, about 6 dB over the keys and leads) and a few brought up to
+their kind's (`LOUDER` in app.c); on POLY a boost is held to x1.4, so a chord never drives the output's limit.
 
 ## Engine
 
 - 4 operators a voice, 8 algorithms (DX21 / TX81Z style), feedback on operator 4, 8 waveforms (W1 sine .. W8, as the
   TX81Z's), computed from the sine table; W9 a saw from band-limited tables (30 bands, three an octave, 512 points, int16,
-  made at boot), on carriers too (SAW PAD, SAW LEAD, SAW BASS).
+  made at boot), on carriers too (SAW PAD, SAW PLUCK, SOFT SAW).
 - Carriers follow the ENVELOPE page; modulators and STRIKE operators have the sound's own envelopes.
 - TONE scales the modulators; STRIKE scales the STRIKE operators and the modulators' attack burst.
 - Mono with glide, per sound (basses, leads).
@@ -130,5 +131,5 @@ GATE, GROOVE (SWING, HUMANIZE, OCT JUMP, VEL RAND), CHORDS (not the TONES kinds)
 At GATE 100 % a step followed by the same note is tied into it (one note, one chance roll; never from the last step
 round to the first), and a different note follows with a small overlap so LEGATO glides. On the SEQ page the keys write
 at the cursor (heard once, not played), REC writes a rest; MIDI notes still transpose. The steps are in the settings
-and in USER presets (PRESETS CHANGE brings a preset's back); on CHANGE a factory sound puts back the default riff, as
-FACTORY does; RESET leaves them.
+and in USER presets (choosing one brings its steps back); a factory or RANDOM sound leaves them, and so does RESET;
+FACTORY puts back the default riff.

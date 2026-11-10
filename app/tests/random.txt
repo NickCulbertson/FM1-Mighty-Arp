@@ -1,0 +1,271 @@
+# RANDOM (KIND past WEIRD): each SOUND detent past the latest roll a new sound, back through the last eight; TYPE
+# (knob 4 there) steers the kind; a roll SAVEd as a USER preset; the one playing at a save back after a reboot
+# (tests/run_tests.sh). KEYS (the arp's chance would rest some notes)
+wait 600
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+expect arp 0
+tap HOME
+wait 30
+expect page 16
+spin K1 8
+wait 30
+expect preset 66
+spin K2 1
+wait 30
+expect preset 67
+spin K2 -1
+wait 30
+expect preset 66
+spin K2 -5
+wait 30
+expect preset 66
+spin K4 6
+wait 30
+spin K2 2
+wait 30
+expect preset 68
+expect voice_mode 1
+peakreset
+key 7 down 100
+wait 800
+key 7 up
+wait 300
+expect peak_db_min -45
+expect dsp_resets 0
+spin K4 -6
+wait 30
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+spin K2 1
+wait 30
+peakreset
+key 7 down 100
+wait 1500
+key 7 up
+wait 400
+expect peak_db_min -42
+expect dsp_resets 0
+expect preset 73
+shot random.png
+tap SAVE
+wait 30
+expect user1_used 1
+expect preset 50
+spin K1 -1
+wait 30
+expect preset 73
+tap HOME
+wait 30
+tap SAVE
+wait 30
+reboot
+wait 600
+expect preset 66

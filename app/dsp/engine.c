@@ -354,7 +354,7 @@ void eng_note_on(int32_t note, uint32_t vel, int32_t gate)
     }
     car = CAR[prm.alg & 7u];
     velf = (float)vel / 127.0f;
-    amp = 0.5f * (1.0f - prm.velo * (1.0f - velf) * 0.85f);
+    amp = 0.5f * (1.0f - prm.velo * (1.0f - velf) * 0.85f) * prm.gain;
     kscale = fm_clampf(fm_exp2f((float)(60 - note) / 48.0f), 0.6f, 1.6f);   /* low notes a little brighter */
     dscale = fm_clampf(fm_exp2f((float)(60 - note) / 36.0f), 0.35f, 2.0f);  /* and longer */
     bright = prm.tone * (1.0f - prm.velo * (1.0f - velf) * 0.7f) * kscale;
@@ -709,7 +709,7 @@ AI void voice_loop(voice_t *v, float *l, float *r, uint32_t a, uint32_t b, const
     case alg * 2u + 1u: voice_loop(v, l, r, a, b, alg, 1, 0); break;
 static void voice_run(voice_t *v, float *l, float *r, uint32_t a, uint32_t b)
 {
-    /* ALGO 7 with two saws and two sines (POLY SYNTH, SYNTH BASS, 80S BRASS): its own loop (Codex's). A segment that
+    /* ALGO 7 with two saws and two sines (POLY SYNTH, 80S BRASS): its own loop (Codex's). A segment that
      * starts while a saw's table fades takes the general one */
     if (v->alg == 6u && v->wv[0] == 8u && v->wv[1] == 8u && !(v->wv[2] | v->wv[3]) && v->xf[0] == 0.0f
         && v->xf[1] == 0.0f) {

@@ -62,17 +62,23 @@ same note joins it into one long note.
 
 ## Sounds and presets
 
-There are 64 sounds in eight kinds: keys, bells, plucks, bass, leads, pads, percussion and weird (noise and
-strange FM textures). Turn PRESET, or press HOME twice for the SOUNDS page.
+There are 50 sounds in eight kinds: keys, bells, plucks, leads, pads, bass, percussion and weird (noise and
+strange FM textures), and RANDOM makes up more. Turn PRESET, or press HOME twice for the SOUNDS page.
 
-![The SOUNDS page: KIND, SOUND, SAVE TO and PARAMS, the kind's sounds listed below](img/sounds.png "SOUNDS")
+![The SOUNDS page: KIND, SOUND and SAVE TO, the kind's sounds listed below](img/sounds.png "SOUNDS")
 
 **Save your own:** on SOUNDS, pick a slot with SAVE TO and press SAVE. A USER preset keeps everything: the sound,
 arp, sequence, chords, effects and tempo. It gets a name like FROG MULLET.
 
-**PARAMS** (knob 4 on SOUNDS) decides what changing preset does. On **HOLD**, only the sound changes and your arp,
-effects and sequence carry on. On **CHANGE**, a USER preset brings back everything it saved, sequence and tempo
-included, and a factory sound starts from the default arp, effects and sequence (your tempo stays).
+**Changing preset** brings the new sound with its own effects (a bass comes in dry, a pad with a long reverb),
+and leaves what you're playing alone: your arp, chords, groove, chance, tempo and sequence carry on. A **USER
+preset** is the exception: you saved it on purpose, so it brings back everything it kept, sequence and tempo
+included.
+
+**RANDOM** (the kind after WEIRD) makes up sounds. Each click of SOUND past the newest makes a new one; turn back to
+hear the last eight again. **TYPE** (knob 4, on RANDOM) steers it: ANY, or a kind (KEYS, BASS, PADS, and so on), whose
+ranges it draws from. Every value is an ordinary knob, so edit what it made, and SAVE it to a USER slot to keep it
+(it keeps its name).
 
 **Reset:** press GLO twice for RESETS. Both knobs work the same way: turn one click right to SURE?, then press SAVE.
 PARAMS puts the arp, chords and effects back to their defaults; the sound, tempo and your steps stay. FACTORY puts

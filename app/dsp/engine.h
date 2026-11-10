@@ -55,6 +55,7 @@ typedef struct {
     float fatt, fdec, fsus, frel;        /* its envelope: seconds, a level, seconds */
     float keytrack;                      /* octaves of cutoff an octave of the key */
     float pwm;                           /* how far the LFO moves the square's and pulses' width (0 .. 1) */
+    float gain;                          /* the sound's level, its new notes' (1; the basses louder) */
 } eng_params_t;
 
 /* the 8 algorithms (DX21 / TX81Z): ENG_MOD[alg][k], the operators (bit j = operator j + 1) that modulate operator

@@ -12,7 +12,7 @@ expect held 0
 expect arp_mark 0
 wait 2000
 expect arp_notes 0
-# keys mode: a key let go releases; TINE EP's release is 3.3 s, so after 8 s nothing sounds
+# keys mode: a key let go releases; TINES EP's release is 3.3 s, so after 8 s nothing sounds
 expect play_keys 0
 wait 30
 key 7 down 90

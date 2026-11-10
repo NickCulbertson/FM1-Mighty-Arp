@@ -1,0 +1,27 @@
+# A sound brings its effects (a factory sound its kind's, or its own: a bass dry, a pad a long reverb); the arp
+# plays on as set (tests/run_tests.sh)
+wait 600
+tap ARP
+wait 30
+expect page 5
+spin K1 2
+wait 30
+expect rate 7
+tap HOME
+wait 30
+tap HOME
+wait 30
+expect page 16
+spin PRESET 37
+wait 30
+expect preset 19
+expect dly_mix 0
+expect rev_mix 0
+expect chorus 0
+expect rate 7
+spin PRESET -1
+wait 30
+expect dly_mix 0
+expect rev_mix 55
+expect rev_len 75
+expect rate 7

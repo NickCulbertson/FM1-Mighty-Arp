@@ -226,19 +226,22 @@ clock 24 21
 wait 30
 expect arp_notes 2
 expect voices 1
-# PARAMS CHANGE mid-tie: the old pattern's long note lets go (and its MIDI off), not left over the new riff
+# a USER preset mid-tie (it brings its own steps): the old pattern's long note lets go (and its MIDI off), not left
+# over the new riff. Saved as U01, then a factory sound to play from
 tap HOME
 wait 30
 expect page 16
-spin K4 1
+tap SAVE
 wait 30
-expect loads 1
+expect preset 50
+spin PRESET -1
+wait 30
 midi FA 00 00
 clock 1 21
 wait 30
 expect arp_out 1
 spin PRESET 1
 wait 30
-expect seq_len 16
+expect preset 50
 expect arp_out 0
 midi FC 00 00

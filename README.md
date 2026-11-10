@@ -2,7 +2,7 @@
 
 Mighty Arp is custom firmware for the M-VAVE FM-1. It's a 4-op FM and subtractive hybrid synth built around a chance
 arpeggiator. You choose the notes, the arp decides when they play. Hold a chord, set CHANCE, and let it create melodies. Plus it has a
-32-step sequencer, 64 sounds, chords with strum, swing and humanize, a chorus, a ping-pong delay and a reverb with
+32-step sequencer, 50 sounds, chords with strum, swing and humanize, a chorus, a ping-pong delay and a reverb with
 shimmer, 16 presets of your own, and MIDI and clock in and out.
 
 ![Mighty Arp's screen: HOME](app/docs/img/home.png) ![The sequencer](app/docs/img/seq.png) ![The oscilloscope, on KEYS](app/docs/img/scope.png)
@@ -16,7 +16,7 @@ shimmer, 16 presets of your own, and MIDI and clock in and out.
 
 1. **Hold a chord** on the keys and the arp plays it. Turn **ALGORITHM** for CHANCE (how many steps play) and
    **SELECT** for the tempo.
-2. **Turn PRESETS** for another sound: 64 of them, in eight kinds.
+2. **Turn PRESETS** for another sound: 50 of them, in eight kinds, and RANDOM makes up more.
 3. **Press REC** for HOLD, so the arp keeps going after you let go.
 4. **Press PLAY** for SEQ: the sequencer runs by itself, and a key transposes it. On the **SEQ** page the keys
    write its steps.

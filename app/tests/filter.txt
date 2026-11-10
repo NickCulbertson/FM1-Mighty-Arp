@@ -4,9 +4,9 @@ tap PLAY
 wait 30
 tap PLAY
 wait 30
-spin PRESET 46
+spin PRESET 36
 wait 30
-expect preset 29
+expect preset 24
 tap ENV
 tap ENV
 wait 30
