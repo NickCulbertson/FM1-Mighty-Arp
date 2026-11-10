@@ -13,3 +13,11 @@ tagline = "An FM synth with a chance arpeggiator and a step sequencer, for gener
 repo = "https://github.com/NickCulbertson/FM1-Mighty-Arp"
 licence = "MPL-2.0"
 credits = "Built on fm1-base by Charles Vestal and felucca-bsp"   # a sentence for the installer's footer: what your firmware is built from
+# firmware.json, for firmware hubs (base/docs/FIRMWARE-JSON.md): the build writes it from these and the keys above
+title = "Mighty Arp"            # the name people see (firmware.json; the USB names stay as they are)
+author = "Nick Culbertson"
+description = "Mighty Arp is a 4-op FM and subtractive hybrid synth built around a chance arpeggiator. You choose the notes, the arp decides when they play. Hold a chord, set CHANCE, and let it create melodies. Plus it has a 32-step sequencer, 50 sounds and a RANDOM kind that makes up new ones, chords with strum, swing and humanize, a chorus, a ping-pong delay and a reverb with shimmer, 16 presets of your own, and MIDI and clock over USB."
+tags = ["synth", "fm", "generative", "sequencer", "chords"]
+install = "https://nickculbertson.github.io/FM1-Mighty-Arp/install/"
+site = "https://nickculbertson.github.io/FM1-Mighty-Arp/"
+screenshot = "app/docs/img/home.png"   # for the hubs' cards: square, 240 x 240
