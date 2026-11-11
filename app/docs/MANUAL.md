@@ -50,7 +50,7 @@ from your chords' notes (the TONES settings). STRUM rolls each chord from low to
 
 Press PLAY until the screen says **SEQ**: the sequence starts from step 1 and runs by itself. A key transposes it from
 the next step, and it stays transposed after you let go (the sequence's first note puts it back as written). Press
-PLAY again to stop it.
+PLAY again (KEYS) to stop it.
 
 On the **SEQ** page the keys write instead of playing. Each key writes its note at the cursor and moves on, and REC
 writes a rest. STEP moves the cursor, NOTE and VELOCITY change its step, and LENGTH sets 1 to 32 steps.
@@ -81,7 +81,7 @@ ranges it draws from. Every value is an ordinary knob, so edit what it made, and
 (it keeps its name).
 
 **Reset:** press GLO twice for RESETS. Both knobs work the same way: turn one click right to SURE?, then press SAVE.
-PARAMS puts the arp, chords and effects back to their defaults; the sound, tempo and your steps stay. FACTORY puts
+PARAMS puts the arp, chords, CHANCE and effects back to their defaults; the sound, tempo and your steps stay. FACTORY puts
 everything back as new and deletes every USER preset. Turning left backs out.
 
 **SAVE on any other page** keeps how things are now for the next power-on.

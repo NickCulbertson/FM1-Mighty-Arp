@@ -16,7 +16,7 @@ shimmer, 16 presets of your own, and MIDI and clock in and out.
 
 1. **Hold a chord** on the keys and the arp plays it. Turn **ALGORITHM** for CHANCE (how many steps play) and
    **SELECT** for the tempo.
-2. **Turn PRESETS** for another sound: 50 of them, in eight kinds, and RANDOM makes up more.
+2. **Turn PRESET** for another sound: 50 of them, in eight kinds, and RANDOM makes up more.
 3. **Press REC** for HOLD, so the arp keeps going after you let go.
 4. **Press PLAY** for SEQ: the sequencer runs by itself, and a key transposes it. On the **SEQ** page the keys
    write its steps.
@@ -28,13 +28,6 @@ Every note the arp and the sequencer play also goes out over USB MIDI, and MIDI 
 Mighty Arp also tells the [FM-1 Screen Reader](https://charlesvestal.github.io/fm1-reader/) what its screen shows.
 
 The [manual](app/docs/MANUAL.md) has the rest; [SPEC.md](SPEC.md) is the full design, every page and knob.
-
-## Going back to M-VAVE's firmware
-
-If you go back to M-VAVE's V15 and its presets have odd characters in their names (or come up blank), that's leftover
-data from custom firmware in the FM-1's memory. On V15, go to **GLOBAL**, choose **Reset voice patches** and turn
-**SELECT** to confirm. That puts V15's factory voices back. If every preset then plays in mono, installing Baudgirl's
-firmware and choosing **Reset Bank** on its **GLOBAL** page fixed that for us.
 
 ## Building and testing
 
