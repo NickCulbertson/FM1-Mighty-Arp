@@ -3,6 +3,7 @@
   "author": "Nick Culbertson",
   "kinds": ["synth"],
   "play": "https://nickculbertson.github.io/FM1-Mighty-Arp/emu/",
+  "cheat": "https://nickculbertson.github.io/FM1-Mighty-Arp/manual/",
   "image": "docs/card.png",
   "color": "#FF2E97"
 }
