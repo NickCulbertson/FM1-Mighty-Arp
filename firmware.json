@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "mightyarp",
   "name": "Mighty Arp",
-  "author": "Nick Culbertson",
+  "author": "Moby Pixel",
   "license": "MPL-2.0",
   "tagline": "An FM synth with a chance arpeggiator and a step sequencer, for generative playing",
   "description": "Mighty Arp, from the creator of Mighty Synth Sampler, is a 4-op FM/subtractive synth built around a chance arpeggiator. Just hold a chord and let chance play the melody. 50 sounds plus a RANDOM mode that invents new ones, a 32-step sequencer, chords, effects and more.",
