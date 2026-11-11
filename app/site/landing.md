@@ -2,7 +2,7 @@
      needs this file, and its words are the fallback. -->
 # Mighty Arp
 
-Custom firmware for the M-VAVE FM-1. Mighty Arp, from the creator of Mighty Synth Sampler, is a 4-op FM/subtractive synth built around a chance arpeggiator. Just hold a chord and let chance play the melody. 50 sounds plus a RANDOM mode that invents new ones, a 32-step sequencer, strummed chords, shimmer reverb and more.
+Custom firmware for the M-VAVE FM-1. Mighty Arp, from the creator of Mighty Synth Sampler, is a 4-op FM/subtractive synth built around a chance arpeggiator. Just hold a chord and let chance play the melody. 50 sounds plus a RANDOM mode that invents new ones, a 32-step sequencer, chords, effects and more.
 
 ![Mighty Arp's HOME page: the arp's recent notes above, then CHANCE, RATE, SPACE and DRIFT](manual/img/home.png "Mighty Arp on the FM-1's screen")
 
