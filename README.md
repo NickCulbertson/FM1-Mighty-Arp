@@ -57,3 +57,5 @@ firmware in the browser comes from [Groove OS](https://www.groove-os.com/). MPL-
 M-VAVE and FM-1 are trademarks of their owners. Mighty Arp is not affiliated with M-VAVE or Hügelton Instruments.
 
 This project was developed with assistance from Claude Code.
+
+You can also try Mighty Arp in the browser, no flashing needed, in the free community [FM-1 Emulator](https://fm1-emulator.atst.tools/).
