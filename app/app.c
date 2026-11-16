@@ -43,6 +43,7 @@ enum { P_TONE, P_STRIKE, P_DETUNE, P_VELO,            /* SOUND */
        PX_FACTORY,                                    /* RESETS: FACTORY, RESET, SURE?, then SAVE: everything as new */
        PX_STEP, PX_NOTE, PX_SVEL,                     /* SEQ: the step the cursor is on, its note, its velocity */
        PX_RTYPE,                                      /* SOUNDS on RANDOM: the kind of sound a roll makes */
+       PX_BT,                                         /* GLOBAL's BLUETOOTH: OFF or ON (set.bt, kept with SAVE) */
        PX_NONE = 0xFF };                              /* no knob there */
 #define NWAVE 14u                        /* W1..W8 the TX81Z's, W9 SAW, W10 SQUARE, W11-W12 PULSES, W13 TRIANGLE,
                                           * W14 NOISE */
@@ -115,7 +116,7 @@ static const page_t PAGE[NPAGE] = {
     {"SEQ", B_SEQ, {PX_STEP, PX_NOTE, PX_SVEL, P_SEQLEN}},   /* the steps; the keys write them */
     {"DELAY", B_FX, {P_DMIX, P_DTIME, P_DFDBK, P_WIDTH}},
     {"REVERB", B_FX, {P_RMIX, P_RLEN, P_RDARK, P_SHIMMER}},
-    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_NONE}},
+    {"GLOBAL", B_GLO, {P_CLOCK, P_MIDICH, P_VCURVE, PX_BT}},
     {"CHORUS", B_FX, {P_CHORUS, P_CRATE, P_CDEPTH, PX_NONE}},
     {"OP 1", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
     {"OP 2", B_EDIT, {PX_OPR, PX_OPL, PX_OPW, PX_OPD}},
@@ -175,9 +176,11 @@ static const char *const RATIO_NAME[8] = {"X1/2", "X1", "X2", "X3", "X4", "X5", 
 static const float RATIO_MUL[8] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f};
 static const char *const CURVE_NAME[4] = {"SOFT", "LINEAR", "HARD", "FIXED"};
 enum { H_OFF, H_HOLD, H_LATCH };
-enum { PL_KEYS, PL_ARP, PL_SEQ };        /* PLAY: the keys alone, the arp, the sequencer (the arp's engine, its steps;
-                                          * it runs on its own, a held note transposing it) */
-static const char *const PLAY_NAME[3] = {"KEYS", "ARP", "SEQ"};
+enum { PL_KEYS, PL_ARP, PL_SEQ, PL_GEN };   /* PLAY: the keys alone, the arp, the sequencer (the arp's engine, its
+                                          * steps; it runs on its own, a held note transposing it), GEN (generative: the arp on
+                                          * CHORDS' KEY and SCALE, no keys held: a key transposes it, as SEQ's) */
+#define ALONE(m) ((m) == PL_SEQ || (m) == PL_GEN)   /* it plays with no note held */
+static const char *const PLAY_NAME[4] = {"KEYS", "ARP", "SEQ", "GEN"};
 static const char *const HOLD_NAME[3] = {"NO HOLD", "HOLD", "LATCH"};
 
 /* ----------------------------------------------------------------- sounds --- */
@@ -432,14 +435,17 @@ typedef struct {
     int16_t p[NP];
     uint8_t preset;
     int8_t octave;                       /* -2 .. +2 */
-    uint8_t arp_on, hold;                /* arp_on: PLAY, PL_KEYS, PL_ARP, PL_SEQ; hold: H_OFF, H_HOLD, H_LATCH */
+    uint8_t arp_on, hold;                /* arp_on: PLAY, PL_KEYS, PL_ARP, PL_SEQ, PL_GEN; hold: H_OFF, H_HOLD, H_LATCH */
     /* the sound's four operators as OP 1-4 left them (the sound sets them): the ratio (OP_RATIO's index), the level
      * (0..100: a carrier's amplitude, a modulator's depth, x 100), the wave (0..8), the decay (0..100, knob_secs) */
     uint8_t op_ratio[4], op_level[4], op_wave[4], op_decay[4];
     uint8_t seq_note[SEQ_N], seq_vel[SEQ_N];   /* the sequence: each step's note (SEQ_REST: a rest), velocity 1..127 */
     uint8_t rnd_base, rnd_gain16;        /* a RANDOM roll playing: its factory sound and level, */
     uint16_t rnd_name;                   /* and its name */
+    uint8_t bt;                          /* BLUETOOTH (GLOBAL): 1 the radio on, at power-on too (in the record's old
+                                          * padding: a save from before reads 0, OFF, and keeps its size) */
 } settings_t;
+typedef char settings_size_kept[sizeof(settings_t) == 208u ? 1 : -1];   /* (1.4's: an old save still loads) */
 static settings_t set;
 static uint8_t set_dirty;                /* changed since the last save: SAVE is lit */
 
@@ -521,6 +527,11 @@ static uint32_t nheld;
  * the rest; held_src remembers who a held note came from, so MIDI's can go when MIDI says so */
 static uint8_t down[128];
 static uint16_t midi_down[128];
+static uint16_t ble_down[128], wire_down[128];   /* who holds each MIDI note, by channel: Bluetooth, and the rest
+                                          * (USB, TRS). midi_down is either; a note lets go when both have (Bluetooth's off
+                                          * may never come: the radio turned off, the link dropped). A bit midi_down no
+                                          * longer has (a panic, MIDI CH, FACTORY let it go) counts for nothing */
+static volatile uint8_t ble_drop;        /* the UI asks: let go of Bluetooth's notes (the render does, in midi_in) */
 #define DN_KEY 1u
 #define DN_MIDI 2u
 static uint8_t held_src[NHELD];
@@ -541,12 +552,13 @@ static volatile uint32_t sample_clock;   /* samples rendered: the falling notes'
 
 static uint8_t midi_ch_now;              /* MIDI CH as the render last acted on: the channel in and out (0 ALL) */
 static uint32_t out_ch(void) { return midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0u; }
+#define MIDI_TO (TO_USB | TO_BLE)         /* where the arp's notes and the clock go: USB and Bluetooth, each its own queue */
 static void midi_note(uint32_t note, uint32_t vel)
 {
-    plat_midi_send(0x09u | (0x90u | out_ch()) << 8 | note << 16 | vel << 24, TO_USB);
+    plat_midi_send(0x09u | (0x90u | out_ch()) << 8 | note << 16 | vel << 24, MIDI_TO);
 }
-static void midi_off(uint32_t note) { plat_midi_send(0x08u | (0x80u | out_ch()) << 8 | note << 16, TO_USB); }
-static void midi_rt(uint32_t st) { plat_midi_send(0x0Fu | st << 8, TO_USB); }   /* clock, start, stop */
+static void midi_off(uint32_t note) { plat_midi_send(0x08u | (0x80u | out_ch()) << 8 | note << 16, MIDI_TO); }
+static void midi_rt(uint32_t st) { plat_midi_send(0x0Fu | st << 8, MIDI_TO); }   /* clock, start, stop */
 
 /* the arp's MIDI out: each note it sent and the sample clock its note-off is due at */
 static int16_t out_note[NHELD];
@@ -725,8 +737,8 @@ static void held_remove(int32_t note)
         held_ch[i] = held_ch[i + 1];
     }
     nheld--;
-    if (!nheld && arp_on_now != PL_SEQ)  /* nothing held: what the arp had queued (a strum's notes, a late step) goes
-                                          * (SEQ plays on) */
+    if (!nheld && !ALONE(arp_on_now))   /* nothing held: what the arp had queued (a strum's notes, a late step) goes
+                                          * (SEQ and GEN play on) */
         arp_cancel();
     if (!arp_on_now) {
         if (set.p[P_VOICES] != V_POLY && nheld && eng_sounding(note))   /* mono: back to the top note still held */
@@ -1018,6 +1030,9 @@ static uint8_t seq_legato;               /* and a note follows the run */
 static int32_t seq_tr;                   /* the transpose, semitones (the last key's, kept) */
 static int32_t seq_key = -1;             /* the note pressed last in SEQ (-1 none since SEQ began): the transpose,
                                           * from the next step struck (a tap between steps counts too) */
+static int32_t gen_tr;                   /* GEN: the transpose, semitones, as the note pressed last set it (from the
+                                          * root then: OCT-, OCT+ and KEY still move it after) */
+static int gen_root(void) { return 48 + set.p[P_KEY] + 12 * set.octave; }   /* GEN's root: C3 .. B3, by octaves */
 static uint32_t seq_left;                /* the steps the note struck still goes through (its tie, as decided when it
                                           * was struck: GATE turned later changes nothing) */
 static int seq_take(uint32_t kind)
@@ -1088,14 +1103,40 @@ static void arp_step(void)
     uint32_t n = nheld, oct = (uint32_t)set.p[P_OCTAVES], s, i, k, idx, kind = (uint32_t)set.p[P_CHORD];
     int32_t gate, vr, j;
     float step = step_samples();
-    if (!n && arp_on_now != PL_SEQ)      /* (SEQ runs with none held) */
+    if (!n && !ALONE(arp_on_now))        /* (SEQ and GEN run with none held) */
         return;
     strum_wait = 0;
     if (arp_on_now == PL_SEQ) {          /* SEQ: the sequence's step (none: a rest, or a tie's) */
         if (!seq_take(kind))
             return;
     } else {
-        if (CH_TONES(kind)) {                /* the chords' tones the notes to play from */
+        if (arp_on_now == PL_GEN) {         /* GEN: the key's scale, an octave of it from the key's root (C3 .. B3,
+                                          * OCT- and OCT+ move it), up OCTAVES; with a TONES kind, the key's own
+                                          * chord's tones. A key pressed moves it all there */
+            int32_t root = gen_root(), t[8];
+            const uint8_t *sc = SCALE_STEPS[set.p[P_SCALE] % NSCALE];
+            uint32_t m;
+            if (CH_TONES(kind)) {
+                m = chord_of(root, kind, t);
+                for (i = 0; i < m; i++)
+                    pool[i] = t[i];
+                for (i = 1; i < m; i++)  /* low to high */
+                    for (k = i; k > 0 && pool[k - 1] > pool[k]; k--) {
+                        int32_t x = pool[k];
+                        pool[k] = pool[k - 1], pool[k - 1] = x;
+                    }
+            } else
+                for (m = 0; m < 7u; m++)
+                    pool[m] = root + sc[m];
+            for (i = 0; i < m; i++) {    /* (in the key as set: the transpose after, chords and all, below) */
+                pool_vel[i] = 100;
+                pool_root[i] = -1;       /* (no key owns it: the panics leave it) */
+            }
+            hn = pool;
+            hv = pool_vel;
+            n = m;
+            kind = CH_TONES(kind) ? CH_OFF : kind;   /* (a TONES kind made the pool: one note a step) */
+        } else if (CH_TONES(kind)) {         /* the chords' tones the notes to play from */
             uint32_t m = 0, h, c;
             int32_t t[8];
             for (h = 0; h < nheld; h++) {
@@ -1148,6 +1189,13 @@ static void arp_step(void)
             }
         }
     }
+    if (arp_on_now == PL_GEN && gen_tr)  /* GEN transposed: every note moved, a chord's too (it was made in the key
+                                          * as set, so it moves whole: D pressed in C major, D major's) */
+        for (i = 0; i < st_n; i++) {
+            st_note[i] += gen_tr;
+            while (st_note[i] < 0)
+                st_note[i] += 12;
+        }
     for (i = 0; i < st_n; i++)
         while (st_note[i] > 127)
             st_note[i] -= 12;
@@ -1199,9 +1247,9 @@ static void on_tick(void)                /* a clock tick: MIDI out, and a step w
 {
     uint32_t L = DIV_TICKS[set.p[P_RATE]];
     tick_n = (tick_n + 1u) % CLK_WRAP;
-    if (clk_out_now && !sync_now && plat_midi_out_room(TO_USB))
+    if (clk_out_now && !sync_now && plat_midi_out_room(MIDI_TO))
         midi_rt(0xF8u);
-    if (!arp_on_now || (!nheld && arp_on_now != PL_SEQ) || tick_n % L)
+    if (!arp_on_now || (!nheld && !ALONE(arp_on_now)) || tick_n % L)
         return;
     step_at = sample_clock + rend_i;
     if ((tick_n / L) & 1u && set.p[P_SWING]) {   /* SWING: every second step late, up to half a step */
@@ -1243,6 +1291,9 @@ static void note_down(int32_t note, uint32_t vel, uint32_t by, uint32_t ch)   /*
     was = nheld;
     if (arp_on_now == PL_SEQ)            /* SEQ: the key transposes it, from the next step struck */
         seq_key = note;
+    if (arp_on_now == PL_GEN)           /* GEN: the key moves it all there, from the next step (kept as a transpose:
+                                          * OCT- and OCT+ go on moving it) */
+        gen_tr = note - gen_root();
     if (!is_down(note))
         ndown++;
     if (by == DN_MIDI) {                 /* the note's sound now this channel's (a channel already holding it shares
@@ -1416,8 +1467,9 @@ static void modes_follow(void)
                 midi_off((uint32_t)held[i]);
             seq_tr = 0;                  /* SEQ: as written, from step 1, until a key transposes it */
             seq_key = -1;
+            gen_tr = 0;                  /* GEN: from the key's root, until a key moves it */
             seq_left = 0;
-            if (nheld || arp_on_now == PL_SEQ)
+            if (nheld || ALONE(arp_on_now))
                 arp_restart();
         }
     }
@@ -1465,6 +1517,18 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
 {
     uint32_t pkt, ch_want = midi_ch_now ? (uint32_t)midi_ch_now - 1u : 0xFFu;
     int port;
+    if (ble_drop) {                      /* Bluetooth off or gone: its notes let go, as their offs would have (HOLD and
+                                          * LATCH keep theirs, as they do a key's) */
+        uint32_t n, c;
+        ble_drop = 0;
+        for (n = 0; n < 128u; n++) {
+            uint32_t m = ble_down[n] & midi_down[n] & ~(uint32_t)wire_down[n];   /* (what USB also holds stays) */
+            ble_down[n] = 0;
+            for (c = 0; m && c < 16u; c++)
+                if (m >> c & 1u)
+                    note_up((int32_t)n, DN_MIDI, c);
+        }
+    }
     while (plat_midi_in(&pkt, &port)) {
         uint32_t st = (pkt >> 8) & 0xFFu, d1 = (pkt >> 16) & 0x7Fu, d2 = pkt >> 24 & 0x7Fu, ty = st & 0xF0u;
         if (st == 0xF8u) {
@@ -1487,10 +1551,26 @@ static void midi_in(void)                /* audio interrupt: the packets that ca
         if (st < 0x80u || st >= 0xF0u || (ch_want != 0xFFu && (st & 0x0Fu) != ch_want))
             continue;
         if (ty == 0x90u && d2) {
+            uint16_t b = (uint16_t)(1u << (st & 0x0Fu));
+            ble_down[d1] &= midi_down[d1];
+            wire_down[d1] &= midi_down[d1];
             note_down((int32_t)d1, d2, DN_MIDI, st & 0x0Fu);
+            if (port == PORT_BLE)
+                ble_down[d1] |= b;
+            else
+                wire_down[d1] |= b;
             midi_count++;
-        } else if (ty == 0x80u || ty == 0x90u) {
-            note_up((int32_t)d1, DN_MIDI, st & 0x0Fu);
+        } else if (ty == 0x80u || ty == 0x90u) {   /* its own side's hold gone, only (an extra off never ends what
+                                                 * the other side holds); the note when neither holds it */
+            uint16_t b = (uint16_t)(1u << (st & 0x0Fu));
+            ble_down[d1] &= midi_down[d1];
+            wire_down[d1] &= midi_down[d1];
+            if (port == PORT_BLE)
+                ble_down[d1] &= (uint16_t)~b;
+            else
+                wire_down[d1] &= (uint16_t)~b;
+            if (!((ble_down[d1] | wire_down[d1]) & b))
+                note_up((int32_t)d1, DN_MIDI, st & 0x0Fu);
         } else if (ty == 0xB0u && d1 == 1u) {
             modwheel = (float)d2 / 127.0f;
         } else if (ty == 0xE0u) {
@@ -1671,7 +1751,7 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
          * step may replace the step's notes, and an old timer must never play the new ones */
         if (ev & 8u && arp_on_now)
             strummed();
-        if (ev & 4u && arp_on_now && (nheld || arp_on_now == PL_SEQ))
+        if (ev & 4u && arp_on_now && (nheld || ALONE(arp_on_now)))
             humanized();
         if (ev & 2u && arp_on_now)
             arp_step();
@@ -2117,6 +2197,7 @@ static void settings_defaults(void)
 {
     uint32_t i;
     set.magic = SET_MAGIC;
+    set.bt = 0;                          /* Bluetooth: off until it's turned on */
     seq_defaults();
     for (i = 0; i < NP; i++)
         set.p[i] = PAR[i].def;
@@ -2129,7 +2210,9 @@ static void settings_defaults(void)
 static int settings_ok(void)
 {
     uint32_t i;
-    if (set.magic != SET_MAGIC || !sound_ok(set.preset) || set.octave < -2 || set.octave > 2 || set.arp_on > PL_SEQ
+    if (set.bt > 1u)
+        set.bt = 0;
+    if (set.magic != SET_MAGIC || !sound_ok(set.preset) || set.octave < -2 || set.octave > 2 || set.arp_on > PL_GEN
         || set.hold > H_LATCH)
         return 0;
     for (i = 0; i < NP; i++)
@@ -2316,6 +2399,8 @@ static const char *par_name(uint32_t p)
         return "KIND";
     if (p == PX_RTYPE)
         return "TYPE";
+    if (p == PX_BT)
+        return "BLUETOOTH";
     if (p == PX_SND)
         return "SOUND";
     if (p == PX_SLOT)
@@ -2386,6 +2471,10 @@ static void param_text(uint32_t p, char *t)  /* a parameter's value as the scree
     }
     if (p == PX_RTYPE) {
         text_cat(t, ui.rtype ? CAT_NAME[ui.rtype - 1u] : "ANY");
+        return;
+    }
+    if (p == PX_BT) {
+        text_cat(t, set.bt ? "ON" : "OFF");
         return;
     }
     if (p == PX_SLOT) {
@@ -2592,6 +2681,8 @@ static int32_t par_frac(uint32_t p, int32_t w)   /* how far the knob is turned, 
         return (int32_t)shown_cat() * w / (int32_t)(NCAT - 1u);
     case PX_RTYPE:
         return (int32_t)ui.rtype * w / (int32_t)CAT_RANDOM;
+    case PX_BT:
+        return set.bt ? w : 0;
     case PX_SND: {
         uint32_t n = 0, at = 0, i, k;        /* where in its kind */
         if (set.preset >= RND0)          /* RANDOM: where in the rolls */
@@ -2698,7 +2789,7 @@ static void speak(void)
             text_cat(t, nm);
         }
         text_cat(t, ". PLAY ");
-        text_cat(t, PLAY_NAME[set.arp_on % 3u]);
+        text_cat(t, PLAY_NAME[set.arp_on % 4u]);
         text_cat(t, ". ");
         text_cat(t, HOLD_NAME[set.hold]);
         text_cat(t, ". ");
@@ -2769,6 +2860,7 @@ static void factory_reset(void)
     }
     settings_defaults();
     plat_unlock(f);
+    plat_ble_enable(0);                  /* (Bluetooth as new: off) */
     ui.save_slot = 0;
     page_go(PG_HOME);
     if (plat_store_save(OBJ_SETTINGS, &set, sizeof set) != 0) {
@@ -2851,6 +2943,19 @@ static void param_turn(uint32_t p, int32_t d)
     }
     if (p == PX_RTYPE) {
         ui.rtype = (uint8_t)clamp((int32_t)ui.rtype + d, 0, (int32_t)CAT_RANDOM);
+        ui.redraw = 1;
+        return;
+    }
+    if (p == PX_BT) {                        /* BLUETOOTH: right ON, left OFF; the radio follows at once */
+        uint8_t on = d > 0 ? 1u : 0u;
+        if (on != set.bt) {
+            set.bt = on;
+            set_dirty = 1;
+            plat_ble_enable(on);
+            if (!on)
+                ble_drop = 1;            /* (no Note Off can come now) */
+        }
+        app_say("BLUETOOTH", on ? "ON" : "OFF");
         ui.redraw = 1;
         return;
     }
@@ -3080,10 +3185,18 @@ static void input(void)
         } else if (k == B_OCTUP) {
             octave_step(1);
         } else if (k == B_PLAY) {
-            set.arp_on = (uint8_t)(set.arp_on == PL_ARP ? PL_SEQ : set.arp_on == PL_SEQ ? PL_KEYS : PL_ARP);   /* ARP ->
-                                                                                                  * SEQ -> KEYS */
+            set.arp_on = (uint8_t)(set.arp_on == PL_ARP ? PL_SEQ : set.arp_on == PL_SEQ ? PL_GEN
+                                   : set.arp_on == PL_GEN ? PL_KEYS : PL_ARP);   /* ARP -> SEQ -> GEN -> KEYS */
             set_dirty = 1;
-            app_say("PLAY", PLAY_NAME[set.arp_on]);
+            if (set.arp_on == PL_GEN) {     /* GEN: and the key and scale it plays in */
+                char t[24];
+                t[0] = 0;
+                text_cat(t, KEY_NAME[set.p[P_KEY] % 12]);
+                text_cat(t, " ");
+                text_cat(t, SCALE_NAME[set.p[P_SCALE] % NSCALE]);
+                app_say("PLAY GEN", t);
+            } else
+                app_say("PLAY", PLAY_NAME[set.arp_on]);
         } else if (k == B_REC) {             /* REC: NO HOLD -> HOLD -> LATCH */
             set.hold = (uint8_t)((set.hold + 1u) % 3u);
             set_dirty = 1;
@@ -3553,7 +3666,7 @@ static void state_line(uint32_t now)     /* the arp and hold under PLAY and REC,
     char t[24];
     cv_begin(240, 28, C_BG);
     cv_text(10, 0, &FONT_XS, "PLAY", C_DIM);
-    cv_text(10, 12, &FONT_B, PLAY_NAME[set.arp_on % 3u], set.arp_on ? C_HI : C_GRAY);
+    cv_text(10, 12, &FONT_B, PLAY_NAME[set.arp_on % 4u], set.arp_on ? C_HI : C_GRAY);
     cv_text(52, 0, &FONT_XS, "REC", C_DIM);
     cv_text(52, 12, &FONT_B, HOLD_NAME[set.hold], set.hold ? C_HI : C_GRAY);
     cv_text(120, 0, &FONT_XS, "TEMPO", C_DIM);
@@ -3705,6 +3818,11 @@ void app_frame(void)
     static uint32_t last_viz, last_frame;
     static int32_t last_seq = -1;
     uint32_t now = plat_ms();
+    static int ble_was;
+    int ble_now = plat_ble_connected();
+    if (ble_was && !ble_now)             /* the Bluetooth link gone: what it held lets go */
+        ble_drop = 1;
+    ble_was = ble_now;
     input();
     speak();
     lights();
@@ -3810,6 +3928,28 @@ int app_expect(const char *what, int *got)
     }
     else if (!strcmp(what, "dsp_resets"))    /* the render's guard cleared a bad number */
         *got = (int)dsp_resets;
+    else if (!strcmp(what, "off_key") || !strcmp(what, "marked_lo") || !strcmp(what, "marked_hi")) {
+        /* the notes since arp_mark (16 at most): how many fall outside CHORDS' KEY and SCALE; the lowest; the highest */
+        uint32_t n = arp_count - arp_mark_at, i, d, off = 0;
+        int lo = 127, hi = 0;
+        const uint8_t *sc = SCALE_STEPS[set.p[P_SCALE] % NSCALE];
+        for (i = 0; i < n && i < 16u; i++) {
+            int x = played_seq[i], pc = ((x - set.p[P_KEY]) % 12 + 12) % 12;
+            for (d = 0; d < 7u && sc[d] != pc; d++)
+                ;
+            off += d == 7u;
+            lo = x < lo ? x : lo;
+            hi = x > hi ? x : hi;
+        }
+        *got = what[0] == 'o' ? (int)off : what[7] == 'l' ? lo : hi;
+    } else if (!strncmp(what, "has_pc", 6)) {   /* has_pcN: of the notes since arp_mark, how many are pitch class N */
+        uint32_t n = arp_count - arp_mark_at, i;
+        int pc = atoi(what + 6), c = 0;
+        for (i = 0; i < n && i < 16u; i++)
+            c += played_seq[i] % 12 == pc;
+        *got = c;
+    } else if (!strcmp(what, "bt"))          /* BLUETOOTH: 1 on */
+        *got = set.bt;
     else if (!strcmp(what, "last_note"))     /* the arp's last note played */
         *got = (int)last_played;
     else if (!strcmp(what, "ext_bpm"))       /* the tempo coming in over MIDI clock */
@@ -3827,3 +3967,5 @@ int app_expect(const char *what, int *got)
     return 1;
 }
 #endif
+
+int app_ble_on(void) { return set.bt; }  /* app.h APP_BLE_AT_BOOT: Bluetooth at power-on as GLOBAL left it (saved) */

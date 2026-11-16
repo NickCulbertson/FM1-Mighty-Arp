@@ -16,12 +16,13 @@ Custom firmware for the M-VAVE FM-1. Mighty Arp, from the creator of Mighty Synt
 2. **Turn PRESET** for another sound: 50 of them, in eight kinds, and RANDOM makes up more.
 3. **Press REC** for HOLD, so the arp keeps going after you let go.
 4. **Press PLAY** for SEQ: the sequencer runs by itself, and a key transposes it. On the **SEQ** page the keys
-   write its steps.
+   write its steps. Press it again for **GEN**: the arp plays the key and scale you set on CHORDS, no keys held.
 5. **Shape it:** press a page button (ENV, LFO, ARP, FX ...) and turn **KNOB 1–4**. Press it again for its second
    page.
 6. **SAVE** keeps how things are for the next power-on. On the sounds page (HOME twice), it saves a USER preset.
 
-Every note the arp and the sequencer play also goes out over USB MIDI, and MIDI notes in play them like the keys.
+Every note the arp and the sequencer play also goes out over USB MIDI, and over Bluetooth MIDI once it's turned on
+(GLO, KNOB 4). MIDI notes in play them like the keys, and MIDI clock goes in and out over both.
 Mighty Arp also tells the [FM-1 Screen Reader](https://charlesvestal.github.io/fm1-reader/) what its screen shows.
 
 The [manual](app/docs/MANUAL.md) has the rest; [SPEC.md](SPEC.md) is the full design, every page and knob.

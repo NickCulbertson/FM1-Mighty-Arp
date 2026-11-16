@@ -4,6 +4,8 @@ tap PLAY
 wait 30
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 expect arp 0
 # CHORDS: TRIAD, STRUM 30, then saved as U01 from sound 5
 tap ARP

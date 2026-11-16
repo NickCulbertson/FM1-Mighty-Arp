@@ -98,6 +98,8 @@ tap PLAY
 wait 30
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 expect arp 0
 key 7 down 100
 wait 30
@@ -222,9 +224,7 @@ shot algo8.png
 # HOME with the arp off: the scope
 tap HOME
 wait 30
-tap PLAY
-wait 30
-tap PLAY
+expect play_keys 0
 wait 30
 expect arp 0
 key 7 down 100
@@ -288,6 +288,9 @@ expect page 15
 expect voice_mode 2
 expect glide >0
 shot voice.png
+# (SOFT SAW's long release from the scope above dies away first)
+wait 6000
+expect voices 0
 key 7 down 100
 key 11 down 100
 wait 100

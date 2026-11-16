@@ -12,10 +12,13 @@
 #define APP_TOUCH                        /* velocity and pressure from the keys (lib/touch.h) */
 #define APP_OVERLOAD                     /* the render ran late: app_overload sheds voices */
 #define APP_SPLASH                       /* the boot screen is app_splash's */
+#define APP_BLE_AT_BOOT (app_ble_on())   /* Bluetooth at power-on: GLOBAL's BLUETOOTH as saved (OFF as new) */
+int app_ble_on(void);
 
 /* the store: the app's settings and the panel calibration (the platform's), and their flash offsets */
-enum { OBJ_SETTINGS, OBJ_PANEL, OBJ_USER, OBJ_NOBJ };   /* OBJ_USER: the 16 user sounds */
-#define APP_STORE_MAP {0xFC000u, 0xDC000u, 0xDA000u}
+enum { OBJ_SETTINGS, OBJ_PANEL, OBJ_USER, OBJ_BLE, OBJ_NOBJ };   /* OBJ_USER: the 16 user sounds; OBJ_BLE:
+                                                                 * Bluetooth's address (the platform's) */
+#define APP_STORE_MAP {0xFC000u, 0xDC000u, 0xDA000u, 0xDE000u}
 
 /* the contract: the platform calls these */
 void app_init(void);                     /* boot: the engine, then the saved settings (or defaults) */

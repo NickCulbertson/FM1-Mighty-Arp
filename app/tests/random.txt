@@ -6,6 +6,8 @@ tap PLAY
 wait 30
 tap PLAY
 wait 30
+tap PLAY
+wait 30
 expect arp 0
 tap HOME
 wait 30

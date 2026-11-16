@@ -1,0 +1,134 @@
+# GEN: PLAY's third (ARP -> SEQ -> GEN -> KEYS). The arp plays CHORDS' KEY and SCALE with no key held, from the
+# key's root at C3 .. B3 up OCTAVES; a key pressed moves it all there (tests/run_tests.sh)
+wait 600
+turn ALGO 40
+wait 30
+expect chance 100
+expect held 0
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+expect arp 3
+shot gen.png
+# C MAJOR, OCTAVES 2: only the scale's notes, C3 .. B4
+wait 100
+expect arp_mark 0
+wait 3000
+expect arp_notes >6
+expect off_key 0
+expect marked_lo >47
+expect marked_hi <72
+# CHORDS (ARP twice): KEY E, SCALE MINOR: E minor from E3
+tap ARP
+wait 30
+tap ARP
+wait 30
+expect page 20
+spin K3 4
+spin K4 1
+wait 30
+expect key 4
+expect scale 1
+tap HOME
+wait 30
+expect arp_mark 0
+wait 3000
+expect arp_notes >6
+expect off_key 0
+expect marked_lo >51
+expect marked_hi <76
+# a key moves it: C4 pressed, the scale from there on (the next step)
+key 7 down 100
+wait 30
+key 7 up
+wait 400
+expect arp_mark 0
+wait 3000
+expect arp_notes >6
+expect marked_lo >59
+expect marked_hi <84
+expect held 0
+# PLAY again: KEYS, and nothing runs
+tap PLAY
+wait 30
+expect arp 0
+expect arp_mark 0
+wait 1500
+expect arp_notes 0
+# back to GEN later: from the key's root again (the transpose forgotten)
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+expect arp 3
+wait 400
+expect arp_mark 0
+wait 3000
+expect off_key 0
+expect marked_lo >51
+expect marked_hi <76
+# a transpose moves CHORDS' chords whole: TRIAD, D4 pressed in C major plays D major's (F#, never F or C)
+tap PLAY
+wait 30
+expect arp 0
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+tap PLAY
+wait 30
+expect arp 3
+tap ARP
+wait 30
+tap ARP
+wait 30
+expect page 20
+spin K3 -20
+spin K4 -10
+spin K1 -20
+spin K1 1
+wait 30
+expect key 0
+expect scale 0
+expect chord 1
+tap ARP
+wait 30
+expect page 5
+spin K3 -20
+spin K3 1
+wait 30
+expect mode 1
+tap HOME
+wait 30
+key 9 down 100
+wait 30
+key 9 up
+wait 700
+expect arp_mark 0
+wait 2500
+expect arp_notes >8
+expect has_pc5 0
+expect has_pc0 0
+expect has_pc6 >0
+# and OCT+ after a transpose still moves it: up an octave from D4's
+tap ARP
+wait 30
+tap ARP
+wait 30
+spin K1 -20
+wait 30
+expect chord 0
+tap HOME
+wait 30
+tap OCT+
+wait 700
+expect octave 1
+expect arp_mark 0
+wait 3000
+expect arp_notes >6
+expect marked_lo >73
+tap OCT-
+wait 30

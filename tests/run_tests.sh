@@ -38,5 +38,7 @@ run seq $H app/tests/seq.txt $B/host
 run seq2 $H app/tests/seq2.txt $B/host
 run bassfx $H app/tests/bassfx.txt $B/host
 run random $H app/tests/random.txt $B/host
+run gen $H app/tests/gen.txt $B/host
+run bt $H app/tests/bt.txt $B/host
 run sounds $H app/tests/sounds.txt $B/host
 exit $FAIL

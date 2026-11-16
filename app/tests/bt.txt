@@ -1,0 +1,102 @@
+# GLOBAL's BLUETOOTH (K4): OFF as new; right ON, left OFF; SAVE keeps it (tests/run_tests.sh)
+wait 600
+expect bt 0
+tap GLO
+wait 30
+expect page 9
+shot global_bt.png
+spin K4 1
+wait 30
+expect bt 1
+expect dirty 1
+spin K4 3
+wait 30
+expect bt 1
+spin K4 -1
+wait 30
+expect bt 0
+spin K4 1
+wait 30
+expect bt 1
+# a note held over Bluetooth lets go when Bluetooth turns off (its Note Off can't come now): KEYS, SUSTAIN 100 %
+expect play_keys 0
+wait 1200
+ble connect
+wait 100
+midi BLE 90 3C 64
+wait 100
+expect held 1
+spin K4 -1
+wait 100
+expect bt 0
+expect held 0
+# and when the link drops
+spin K4 1
+wait 1200
+ble connect
+wait 100
+midi BLE 90 3E 64
+wait 100
+expect held 1
+ble disconnect
+wait 100
+expect held 0
+# a USB note isn't touched by any of it
+ble connect
+wait 100
+midi 90 40 64
+wait 100
+expect held 1
+spin K4 -1
+wait 100
+expect held 1
+midi 80 40 00
+wait 100
+expect held 0
+# the same note on the same channel from USB and Bluetooth: Bluetooth gone, USB's still holds it; its off lets go
+spin K4 1
+wait 1200
+ble connect
+wait 100
+midi 90 3C 64
+wait 50
+midi BLE 90 3C 64
+wait 50
+expect held 1
+spin K4 -1
+wait 100
+expect bt 0
+expect held 1
+expect voices >0
+midi 80 3C 00
+wait 100
+expect held 0
+# both hold it, each lets go in turn: only the last off ends it
+spin K4 1
+wait 1200
+ble connect
+wait 100
+midi 90 3C 64
+wait 50
+midi BLE 90 3C 64
+wait 50
+midi BLE 80 3C 00
+wait 50
+expect held 1
+midi 80 3C 00
+wait 50
+expect held 0
+# an extra Bluetooth off never ends what USB holds
+midi 90 3C 64
+wait 50
+midi BLE 90 3C 64
+wait 50
+midi BLE 80 3C 00
+wait 50
+midi BLE 80 3C 00
+wait 50
+expect held 1
+expect voices >0
+midi 80 3C 00
+wait 50
+expect held 0

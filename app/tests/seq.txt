@@ -211,7 +211,10 @@ wait 600
 expect step2 72
 expect seq_len 4
 expect arp 2
-# PLAY again: KEYS (nothing runs), then ARP
+# PLAY again: GEN, then KEYS (nothing runs), then ARP
+tap PLAY
+wait 30
+expect arp 3
 tap PLAY
 wait 30
 expect arp 0

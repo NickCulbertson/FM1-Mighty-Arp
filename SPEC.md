@@ -21,7 +21,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | FX | DELAY page; FX again: REVERB, again CHORUS (and round) |
 | GLO | GLOBAL page: MIDI and the keys |
 | SAVE | saves everything (one slot); SAVE on SOUNDS: a USER preset (everything but GLOBAL) |
-| PLAY | ARP -> SEQ -> KEYS (the arp, the step sequencer, the keys alone) |
+| PLAY | ARP -> SEQ -> GEN -> KEYS (the arp, the step sequencer, the arp on CHORDS' KEY and SCALE with nothing held, the keys alone) |
 | REC | hold: OFF -> HOLD -> LATCH -> OFF |
 | OCT- / OCT+ | octave |
 
@@ -46,7 +46,7 @@ This is the plan for the first complete version (was DRIFT). Agreed with Nick on
 | DELAY | MIX | TIME (1/16, 1/16D, 1/8T, 1/8, 1/8D, 1/4T, 1/4, 1/4D, 1/2) | FEEDBACK | WIDTH |
 | REVERB | MIX | LENGTH (0.5 s .. 15 s) | DARK | SHIMMER |
 | CHORUS (FX again) | MIX | RATE | DEPTH | |
-| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | |
+| GLOBAL | CLOCK (INT, OUT, EXT) | MIDI CH (ALL, 1-16) | VEL CURVE (SOFT, LINEAR, HARD, FIXED) | BLUETOOTH (OFF, ON) |
 | RESETS (GLO again) | PARAMS (RESET; a detent right SURE?, then SAVE: ARP, GROOVE, CHORDS, CHANCE and the effects as new; the sound, TEMPO and the sequence kept) | FACTORY (RESET; a detent right SURE?, then SAVE: the settings as new, every USER preset gone, both saved) | | |
 
 PRESET and SOUNDS go through the 50 sounds kind by kind (KEYS, BELLS, PLUCKS, LEADS, PADS, BASS, PERC, WEIRD), each
@@ -105,7 +105,7 @@ Voices -> tremolo -> chorus -> ping-pong delay -> reverb (with shimmer) -> out.
 - The boot screen: "Mighty" brushed in pink, tilted across a chrome "ARP" with a curved horizon, speed stripes behind (tools/make_splash.py, from Barlow).
 - HOME: the arp's notes over the last seconds, large; the held notes; the macros. With the arp off, an
   oscilloscope of the output in their place.
-- The state line: PLAY ARP/KEYS, REC hold mode, BPM, CHANCE.
+- The state line: PLAY ARP/SEQ/GEN/KEYS, REC hold mode, BPM, CHANCE.
 
 ## Sounds (about 32)
 
@@ -119,7 +119,7 @@ device build (size, RAM, pool). Installing on the FM-1 waits for Nick.
 
 ## Not now
 
-User preset slots (one save, as now), reverb freeze, Bluetooth MIDI, samples.
+User preset slots (one save, as now), reverb freeze, samples. (Bluetooth MIDI: in 1.5.)
 
 ## The step sequencer (PLAY: SEQ)
 
@@ -133,3 +133,23 @@ round to the first), and a different note follows with a small overlap so LEGATO
 at the cursor (heard once, not played), REC writes a rest; MIDI notes still transpose. The steps are in the settings
 and in USER presets (choosing one brings its steps back); a factory or RANDOM sound leaves them, and so does RESET;
 FACTORY puts back the default riff.
+
+## GEN (PLAY: GEN, generative)
+
+PLAY's third state runs the arp with nothing held. Its notes are CHORDS' KEY and SCALE: seven, from the key's root
+at C3 .. B3 (OCT- and OCT+ move it by octaves), up OCTAVES as on ARP, through MODE, RATE, GATE, CHANCE and GROOVE.
+A chord kind (TRIAD .. OPEN) plays a chord on each; a TONES kind's notes are the key's own chord's (the tonic's), one
+a step. A key or a MIDI note moves it all there, from the next step: a transpose from the root, kept after it is let
+go, applied after the chords are made (D pressed in C major: D major's chords), so OCT-, OCT+ and KEY still move it; leaving GEN forgets it. Nothing held owns its notes, so the MIDI panics leave them to their gates.
+
+## Bluetooth MIDI
+
+fm1-base's own stack (fm1.toml `ble_stack = "own"`), peripheral only: a computer, phone or tablet connects to the
+FM-1. OBJ_BLE (0xDE000) keeps its address. In: notes, CC and clock as over USB (every port reads alike). Out: the
+arp's and sequencer's notes, and CLOCK OUT's clock, Start and Stop, to USB and Bluetooth (MIDI_TO in app.c), each
+with its own queue. Without `ble_midi_time`, clock and transport over Bluetooth are held to the sender's spacing (up
+to 0.12 s late). GLOBAL's BLUETOOTH (set.bt, in the settings record's old padding, so 1.4's saves still load and
+read OFF) turns the radio on and off at once (plat_ble_enable) and at power-on (APP_BLE_AT_BOOT); OFF as new and after
+FACTORY. A note that came in over Bluetooth (ble_down: its channels) lets go when BLUETOOTH turns off or the link
+drops, as its Note Off would have (HOLD and LATCH keep theirs). Not yet: the FM-1 connecting out to Bluetooth MIDI
+devices (`ble_central`).

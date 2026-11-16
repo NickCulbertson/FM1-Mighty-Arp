@@ -18,7 +18,7 @@ steps actually play: at 100% every step, lower and it thins out into something m
 
 | Control | What it does |
 | --- | --- |
-| PLAY | ARP, SEQ (the sequencer) or KEYS (the keys play the sound directly). |
+| PLAY | ARP, SEQ (the sequencer), GEN (the arp plays your key and scale by itself) or KEYS (the keys play the sound directly). |
 | REC | Hold: NO HOLD (let go and it stops), HOLD (a new chord replaces the last), LATCH (each key on or off). |
 | SELECT | Tempo. |
 | ALGORITHM | Chance. |
@@ -41,7 +41,7 @@ Each button opens a page for the four knobs. Press it again for its second page.
 | ARP | RATE, OCTAVES, MODE, GATE | CHORDS: CHORD, STRUM, KEY, SCALE |
 | SEQ | The sequencer: STEP, NOTE, VELOCITY, LENGTH | GROOVE: HUMANIZE, OCT JUMP, VEL RAND, SWING |
 | FX | DELAY | REVERB, then CHORUS |
-| GLO | CLOCK, MIDI CH, VEL CURVE | RESETS: PARAMS, FACTORY |
+| GLO | CLOCK, MIDI CH, VEL CURVE, BLUETOOTH | RESETS: PARAMS, FACTORY |
 
 **CHORDS** turns each arp note into a chord in your key and scale (TRIAD, 7TH, LUSH, OPEN), or makes the arp pick
 from your chords' notes (the TONES settings). STRUM rolls each chord from low to high.
@@ -50,13 +50,24 @@ from your chords' notes (the TONES settings). STRUM rolls each chord from low to
 
 Press PLAY until the screen says **SEQ**: the sequence starts from step 1 and runs by itself. A key transposes it from
 the next step, and it stays transposed after you let go (the sequence's first note puts it back as written). Press
-PLAY again (KEYS) to stop it.
+PLAY again to go on to GEN, and again (KEYS) to stop.
 
 On the **SEQ** page the keys write instead of playing. Each key writes its note at the cursor and moves on, and REC
 writes a rest. STEP moves the cursor, NOTE and VELOCITY change its step, and LENGTH sets 1 to 32 steps.
 
 CHANCE, SWING, CHORDS and STRUM work on the steps as they do on the arp. At **GATE 100%**, a step followed by the
 same note joins it into one long note.
+
+## GEN
+
+GEN is the generative mode. Press PLAY until the screen says **GEN**: the arp plays by itself, with no keys held, from the **KEY** and **SCALE**
+on the CHORDS page (ARP twice). It starts on the key's root in the octave below middle C and covers **OCTAVES** of
+the scale (the range); OCT− and OCT+ move it down or up. MODE, RATE, CHANCE and GATE shape it as they do on ARP.
+
+A CHORD kind plays a chord on each note, as on ARP. A TONES kind plays the key's own chord, one note at a time.
+
+Press a key and the whole thing moves there from the next step, as a key transposes SEQ. Leaving GEN forgets it,
+so it comes back on your KEY. Set CLOCK to EXT and GEN follows the rest of your gear's tempo.
 
 **On KEYS**, the lower half of most pages shows an oscilloscope of the sound, so you can watch a knob change it.
 
@@ -88,15 +99,21 @@ everything back as new and deletes every USER preset. Turning left backs out.
 
 ## MIDI and audio
 
-Notes come in over USB and the TRS jack (MIDI CH: all channels, or one). The arp's and the sequencer's notes go out over
-USB. CLOCK: INT runs on its own tempo, OUT sends MIDI clock, EXT follows incoming clock (Start, Stop and Continue
-too). Over USB the FM-1 is also a sound
+Notes come in over USB, Bluetooth and the TRS jack (MIDI CH: all channels, or one). The arp's and the sequencer's
+notes go out over USB and Bluetooth. CLOCK: INT runs on its own tempo, OUT sends MIDI clock (USB and Bluetooth), EXT
+follows incoming clock from any of them (Start, Stop and Continue too).
+
+**Bluetooth MIDI:** it's off until you turn it on: GLO, then KNOB 4 (BLUETOOTH) to ON. Press SAVE and it stays on at
+the next power-on. The FM-1 shows up as "FM-1" and four characters of its own. Connect from your computer, phone or
+tablet as you would any Bluetooth MIDI device: on a Mac, Audio MIDI Setup's Bluetooth window; on an iPhone or iPad,
+an app's Bluetooth MIDI settings. Only one can be connected at a time. Clock over Bluetooth arrives a little later and less evenly than over USB, so for the tightest timing
+with other gear, use USB. Over USB the FM-1 is also a sound
 card, named "Mighty Arp FM-1".
 
 ## Trouble
 
 **No sound:** turn MASTER up, and check that CHANCE isn't at 0%. On ARP, notes only play while held (or with
-HOLD or LATCH).
+HOLD or LATCH). On GEN with CLOCK EXT, it waits for the other gear's clock.
 
 **It won't start after an install:** put the stock firmware back with the installer, then install again.
 
