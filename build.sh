@@ -31,5 +31,6 @@ fi
 "$PY" tools/xxyy.py build.py app "$@"            # fm1-base's build, with Mighty Arp's 8-digit release identity
 case " $* " in                           # the emulator page shows the name with its space (fm1.toml's has none: it
 *" --web "*)                             # names the build's files)
-    sed -i.bak 's/MightyArp/Mighty Arp/g' app/build/emu/index.html && rm -f app/build/emu/index.html.bak ;;
+    sed -i.bak 's/MightyArp/Mighty Arp/g' app/build/emu/index.html && rm -f app/build/emu/index.html.bak
+    "$PY" tools/emu_style.py app/build/emu/index.html ;;   # the front page's look
 esac

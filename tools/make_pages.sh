@@ -17,6 +17,7 @@ DYLD_FALLBACK_LIBRARY_PATH="${FRIBIDI_LIB:-$HOME/.local/fribidi-arm64/lib}" "$PY
 # the front page: Mighty Arp's own (app/site/index.html), its version and package filled in, over
 # the one make_site.py makes from app/site/landing.md (which it needs)
 sed -e "s/{{VERSION}}/$V/g" -e "s/{{PKG}}/$(basename "$PKG")/g" app/site/index.html > app/build/site/index.html
+rm -rf app/build/site/emu/o2   # (o2: the build's object files, not the site's)
 # the pages show the name with its space (fm1.toml's has none: it names the build's files)
 find app/build/site -name '*.html' -exec sed -i '' 's/MightyArp/Mighty Arp/g' {} +
 # with gh-pages checked out (GitHub Desktop, to push it), main's build folders are there too: never part of the site
